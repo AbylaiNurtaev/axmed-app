@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "AxMed",
+    "slug": "axmed-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.axmed.mobile"
+    },
+    "android": {
+      "package": "com.axmed.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#00a87e"
+      }
+    }
+  }
+}
