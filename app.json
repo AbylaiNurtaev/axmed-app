@@ -5,7 +5,9 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.axmed.mobile"
@@ -15,6 +17,9 @@
       "adaptiveIcon": {
         "backgroundColor": "#00a87e"
       }
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
