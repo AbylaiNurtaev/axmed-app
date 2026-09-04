@@ -15,6 +15,7 @@ import {
   View
 } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
+import { AuthFlow } from "./src/features/auth/AuthFlow";
 
 const green = "#00a87e";
 const ink = "#071225";
@@ -59,6 +60,16 @@ function notify(title: string) {
 }
 
 export default function App() {
+  const [authComplete, setAuthComplete] = useState(false);
+
+  if (!authComplete) {
+    return <AuthFlow onComplete={() => setAuthComplete(true)} />;
+  }
+
+  return <MainApp />;
+}
+
+function MainApp() {
   const [tab, setTab] = useState<Tab>("home");
   const [sheet, setSheet] = useState<string | null>(null);
   const [profileDetail, setProfileDetail] = useState<ProfileDetail>(null);
