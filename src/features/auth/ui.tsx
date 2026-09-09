@@ -34,10 +34,12 @@ export const authColors = {
 export function AuthScaffold({
   children,
   contentStyle,
+  decorVariant = "default",
   noScroll = false
 }: {
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
+  decorVariant?: "default" | "welcome";
   noScroll?: boolean;
 }) {
   const content = <View style={[styles.content, contentStyle]}>{children}</View>;
@@ -46,7 +48,7 @@ export function AuthScaffold({
     <SafeAreaView style={styles.safe}>
       <StatusBar style="dark" />
       <View style={styles.screen}>
-        <BackgroundDecor />
+        <BackgroundDecor variant={decorVariant} />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboard}
@@ -68,33 +70,37 @@ export function AuthScaffold({
   );
 }
 
-function BackgroundDecor() {
+function BackgroundDecor({ variant }: { variant: "default" | "welcome" }) {
+  const isWelcome = variant === "welcome";
+
   return (
     <>
-      <View style={styles.ringOne} />
-      <View style={styles.ringTwo} />
-      <View style={styles.plusOne}><Text style={styles.plus}>+</Text></View>
-      <View style={styles.plusTwo}><Text style={styles.plus}>+</Text></View>
-      <Svg width="100%" height="180" viewBox="0 0 430 180" style={styles.wave} preserveAspectRatio="none">
-        <Path d="M0 72 C96 112 136 160 224 128 C310 96 346 42 430 74 L430 180 L0 180 Z" fill="#EAF8F4" />
-        <Path d="M0 122 C86 86 142 178 232 158 C320 138 356 93 430 110 L430 180 L0 180 Z" fill="#D7F2EA" />
+      <View style={isWelcome ? styles.welcomeRingOuter : styles.ringOne} />
+      <View style={isWelcome ? styles.welcomeRingMiddle : styles.ringTwo} />
+      {isWelcome ? <View style={styles.welcomeRingInner} /> : null}
+      <View style={isWelcome ? styles.welcomePlusOne : styles.plusOne}><Text style={styles.plus}>+</Text></View>
+      <View style={isWelcome ? styles.welcomePlusTwo : styles.plusTwo}><Text style={styles.plus}>+</Text></View>
+      {isWelcome ? <View style={styles.welcomePlusThree}><Text style={styles.plusSmall}>+</Text></View> : null}
+      <Svg width="100%" height={isWelcome ? 138 : 180} viewBox="0 0 430 180" style={styles.wave} preserveAspectRatio="none">
+        <Path d="M0 72 C96 112 136 160 224 128 C310 96 346 42 430 74 L430 180 L0 180 Z" fill={isWelcome ? "#EFFAF7" : "#EAF8F4"} />
+        <Path d="M0 122 C86 86 142 178 232 158 C320 138 356 93 430 110 L430 180 L0 180 Z" fill={isWelcome ? "#DDF5EE" : "#D7F2EA"} />
       </Svg>
     </>
   );
 }
 
-export function AxMedLogo({ compact = false }: { compact?: boolean }) {
-  const iconSize = compact ? 56 : 72;
+export function AxMedLogo({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
+  const iconSize = compact ? 56 : hero ? 60 : 72;
   return (
-    <View style={[styles.logoWrap, compact && styles.logoWrapCompact]}>
+    <View style={[styles.logoWrap, compact && styles.logoWrapCompact, hero && styles.logoWrapHero]}>
       <View style={[styles.logoMark, { width: iconSize, height: iconSize }]}> 
-        <View style={[styles.crossHorizontal, compact && styles.crossHorizontalCompact]} />
-        <View style={[styles.crossVertical, compact && styles.crossVerticalCompact]} />
+        <View style={[styles.crossHorizontal, compact && styles.crossHorizontalCompact, hero && styles.crossHorizontalHero]} />
+        <View style={[styles.crossVertical, compact && styles.crossVerticalCompact, hero && styles.crossVerticalHero]} />
         <Svg width={iconSize} height={iconSize} viewBox="0 0 72 72" style={styles.logoPulse}>
           <Path d="M8 37 H25 L31 23 L39 49 L45 34 L52 37 H64" stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       </View>
-      <Text style={[styles.logoText, compact && styles.logoTextCompact]}>AxMed</Text>
+      <Text style={[styles.logoText, compact && styles.logoTextCompact, hero && styles.logoTextHero]}>AxMed</Text>
     </View>
   );
 }
@@ -134,22 +140,24 @@ export function PrimaryButton({
   title,
   onPress,
   disabled = false,
-  icon
+  icon,
+  variant = "default"
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
+  variant?: "default" | "welcome";
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.primaryButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+      style={({ pressed }) => [styles.primaryButton, variant === "welcome" && styles.welcomeButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
     >
       {!!icon && <Ionicons name={icon} size={24} color="#fff" />}
-      <Text style={styles.primaryButtonText}>{title}</Text>
+      <Text style={[styles.primaryButtonText, variant === "welcome" && styles.welcomeButtonText]}>{title}</Text>
     </Pressable>
   );
 }
@@ -158,21 +166,23 @@ export function SecondaryButton({
   title,
   onPress,
   icon,
-  darkText = false
+  darkText = false,
+  variant = "default"
 }: {
   title: string;
   onPress: () => void;
   icon?: keyof typeof Ionicons.glyphMap;
   darkText?: boolean;
+  variant?: "default" | "welcome";
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.secondaryButton, variant === "welcome" && styles.welcomeButton, pressed && styles.pressed]}
     >
       {!!icon && <Ionicons name={icon} size={24} color={darkText ? authColors.ink : authColors.green} />}
-      <Text style={[styles.secondaryButtonText, darkText && styles.secondaryDark]}>{title}</Text>
+      <Text style={[styles.secondaryButtonText, variant === "welcome" && styles.welcomeButtonText, darkText && styles.secondaryDark]}>{title}</Text>
     </Pressable>
   );
 }
@@ -237,20 +247,31 @@ const styles = StyleSheet.create({
   content: { width: "100%", maxWidth: 560, alignSelf: "center", flexGrow: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 54 },
   ringOne: { position: "absolute", width: 420, height: 420, borderRadius: 210, borderWidth: 1, borderColor: "#E9F7F3", top: -230, alignSelf: "center" },
   ringTwo: { position: "absolute", width: 280, height: 280, borderRadius: 140, borderWidth: 1, borderColor: "#ECF8F5", top: -160, alignSelf: "center" },
+  welcomeRingOuter: { position: "absolute", width: 520, height: 520, borderRadius: 260, borderWidth: 1, borderColor: "#E9F7F3", top: 22, alignSelf: "center" },
+  welcomeRingMiddle: { position: "absolute", width: 380, height: 380, borderRadius: 190, borderWidth: 1, borderColor: "#EDF9F6", top: 76, alignSelf: "center" },
+  welcomeRingInner: { position: "absolute", width: 252, height: 252, borderRadius: 126, borderWidth: 1, borderColor: "#F1FAF8", top: 116, alignSelf: "center" },
   plusOne: { position: "absolute", top: 70, left: 30 },
   plusTwo: { position: "absolute", top: 160, right: 34 },
+  welcomePlusOne: { position: "absolute", top: 72, left: 66 },
+  welcomePlusTwo: { position: "absolute", top: 126, right: 48 },
+  welcomePlusThree: { position: "absolute", top: "48%", right: 54 },
   plus: { color: "#C4F0E4", fontSize: 28, fontWeight: "700" },
+  plusSmall: { color: "#C7F0E5", fontSize: 22, fontWeight: "700" },
   wave: { position: "absolute", left: 0, right: 0, bottom: 0 },
   logoWrap: { alignItems: "center", gap: 10 },
   logoWrapCompact: { gap: 6 },
+  logoWrapHero: { gap: 6 },
   logoMark: { alignItems: "center", justifyContent: "center" },
   crossHorizontal: { position: "absolute", width: 68, height: 32, borderRadius: 12, backgroundColor: authColors.greenLight },
   crossVertical: { position: "absolute", width: 32, height: 68, borderRadius: 12, backgroundColor: authColors.green },
   crossHorizontalCompact: { width: 54, height: 26, borderRadius: 10 },
   crossVerticalCompact: { width: 26, height: 54, borderRadius: 10 },
+  crossHorizontalHero: { width: 58, height: 28, borderRadius: 10 },
+  crossVerticalHero: { width: 28, height: 58, borderRadius: 10 },
   logoPulse: { position: "absolute" },
   logoText: { color: authColors.ink, fontSize: 45, lineHeight: 50, fontWeight: "800", letterSpacing: -1.5 },
   logoTextCompact: { fontSize: 35, lineHeight: 39 },
+  logoTextHero: { fontSize: 38, lineHeight: 40, letterSpacing: -1.2 },
   backButton: { width: 38, height: 44, justifyContent: "center", alignItems: "flex-start" },
   stepHeader: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 28 },
   steps: { flex: 1, flexDirection: "row", gap: 7 },
@@ -266,6 +287,8 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: authColors.white, fontSize: 19, fontWeight: "700", textAlign: "center" },
   secondaryButton: { minHeight: 58, borderRadius: 15, borderWidth: 1.5, borderColor: authColors.green, paddingHorizontal: 18, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.88)" },
   secondaryButtonText: { color: authColors.green, fontSize: 18, fontWeight: "700", textAlign: "center" },
+  welcomeButton: { minHeight: 52, borderRadius: 14 },
+  welcomeButtonText: { fontSize: 17 },
   secondaryDark: { color: authColors.ink },
   linkButton: { minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 10 },
   linkButtonText: { color: authColors.greenDark, fontSize: 17, fontWeight: "600", textAlign: "center" },
@@ -282,4 +305,3 @@ const styles = StyleSheet.create({
   infoText: { color: authColors.text, fontSize: 15, lineHeight: 22 },
   surface: { borderWidth: 1, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.94)", shadowColor: authColors.ink, shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 3 }
 });
-

@@ -6,8 +6,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View
 } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { AuthMode } from "./types";
 import {
   AuthScaffold,
@@ -22,21 +24,27 @@ import {
 } from "./ui";
 
 export function WelcomeScreen({ onCreateAccount, onSignIn }: { onCreateAccount: () => void; onSignIn: () => void }) {
+  const { height } = useWindowDimensions();
+  const isCompact = height < 760;
+
   return (
-    <AuthScaffold contentStyle={styles.welcomeContent}>
+    <AuthScaffold
+      contentStyle={[styles.welcomeContent, isCompact && styles.welcomeContentCompact]}
+      decorVariant="welcome"
+    >
       <View style={styles.welcomeTop}>
-        <AxMedLogo />
+        <AxMedLogo hero />
         <Text style={styles.welcomeTitle}>Добро пожаловать</Text>
         <Text style={styles.welcomeSubtitle}>
           AxMed помогает отслеживать важные показатели здоровья, понимать изменения и получать понятные рекомендации.
         </Text>
       </View>
 
-      <HealthIllustration />
+      <HealthIllustration compact={isCompact} />
 
       <View style={styles.welcomeActions}>
-        <PrimaryButton title="Создать аккаунт" onPress={onCreateAccount} />
-        <SecondaryButton title="Войти" onPress={onSignIn} />
+        <PrimaryButton title="Создать аккаунт" onPress={onCreateAccount} variant="welcome" />
+        <SecondaryButton title="Войти" onPress={onSignIn} variant="welcome" />
         <View style={styles.safetyLine}>
           <Ionicons name="lock-closed-outline" size={20} color={authColors.greenDark} />
           <Text style={styles.safetyText}>Безопасно. Конфиденциально. Для пользователей 18+</Text>
@@ -46,9 +54,10 @@ export function WelcomeScreen({ onCreateAccount, onSignIn }: { onCreateAccount: 
   );
 }
 
-function HealthIllustration() {
+function HealthIllustration({ compact }: { compact: boolean }) {
   return (
-    <View style={styles.illustration}>
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.illustration, compact && styles.illustrationCompact]}>
+      <View style={styles.illustrationGlow} />
       <View style={styles.shieldBubble}>
         <MaterialCommunityIcons name="shield-check-outline" size={55} color={authColors.green} />
       </View>
@@ -61,16 +70,25 @@ function HealthIllustration() {
           <Text style={styles.phoneMetricValue}>120/80</Text>
           <Text style={styles.phoneMetricUnit}>мм рт. ст.</Text>
         </View>
+        <View style={styles.phoneGraph}>
+          <Svg width="100%" height="34" viewBox="0 0 104 34">
+            <Path d="M2 23 C10 23 12 12 21 14 C29 16 31 8 39 9 C47 10 48 24 58 22 C67 20 69 14 77 17 C86 21 91 7 102 8" stroke={authColors.green} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          </Svg>
+        </View>
         <View style={styles.phoneMetricRow}>
           <Text style={styles.phoneMiniMetric}>98% SpO₂</Text>
           <Text style={styles.phoneMiniMetric}>♥ 72</Text>
         </View>
       </View>
       <View style={styles.chartBubble}>
-        <View style={[styles.chartBar, { height: 30 }]} />
-        <View style={[styles.chartBar, { height: 43 }]} />
-        <View style={[styles.chartBar, { height: 35 }]} />
-        <View style={[styles.chartBar, { height: 55 }]} />
+        <View style={styles.chartHeaderLong} />
+        <View style={styles.chartHeaderShort} />
+        <View style={styles.chartBars}>
+          <View style={[styles.chartBar, styles.chartBarOne]} />
+          <View style={[styles.chartBar, styles.chartBarTwo]} />
+          <View style={[styles.chartBar, styles.chartBarThree]} />
+          <View style={[styles.chartBar, styles.chartBarFour]} />
+        </View>
       </View>
       <View style={styles.heartBubble}>
         <MaterialCommunityIcons name="heart-pulse" size={62} color="#fff" />
@@ -278,26 +296,37 @@ function maskEmail(email: string) {
 }
 
 const styles = StyleSheet.create({
-  welcomeContent: { justifyContent: "space-between", paddingTop: 34 },
-  welcomeTop: { alignItems: "center" },
-  welcomeTitle: { color: authColors.ink, fontSize: 34, lineHeight: 41, fontWeight: "800", textAlign: "center", marginTop: 28 },
-  welcomeSubtitle: { color: authColors.text, fontSize: 17, lineHeight: 26, textAlign: "center", marginTop: 12, maxWidth: 460 },
-  illustration: { height: 300, marginTop: 16, marginBottom: 12, alignItems: "center", justifyContent: "center" },
-  phone: { width: 145, height: 250, borderRadius: 28, borderWidth: 7, borderColor: "#D7EDE7", backgroundColor: "#F9FFFD", padding: 16, transform: [{ rotate: "4deg" }], shadowColor: authColors.greenDark, shadowOpacity: 0.14, shadowRadius: 18, shadowOffset: { width: 0, height: 9 }, elevation: 4 },
-  phoneSpeaker: { width: 36, height: 5, borderRadius: 3, backgroundColor: "#C8E6DE", alignSelf: "center", marginBottom: 18 },
-  phonePulse: { height: 54, borderRadius: 13, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
-  phoneMetric: { marginTop: 12, borderRadius: 12, backgroundColor: "#fff", padding: 10, borderWidth: 1, borderColor: "#E4F2EE" },
-  phoneMetricValue: { color: authColors.ink, fontSize: 18, fontWeight: "800" },
+  welcomeContent: { paddingHorizontal: 40, paddingTop: 104, paddingBottom: 64 },
+  welcomeContentCompact: { paddingTop: 66, paddingBottom: 18 },
+  welcomeTop: { alignItems: "center", marginHorizontal: -16 },
+  welcomeTitle: { color: authColors.ink, fontSize: 28, lineHeight: 34, fontWeight: "800", letterSpacing: -1, textAlign: "center", marginTop: 24 },
+  welcomeSubtitle: { color: "#53617A", fontSize: 15, lineHeight: 23, textAlign: "center", marginTop: 12, maxWidth: 330, alignSelf: "center" },
+  illustration: { height: 240, marginTop: 10, marginBottom: 14, alignItems: "center", justifyContent: "center" },
+  illustrationCompact: { height: 190, marginTop: 6, marginBottom: 4, transform: [{ scale: 0.86 }] },
+  illustrationGlow: { position: "absolute", width: 280, height: 194, borderRadius: 140, backgroundColor: "rgba(222,246,239,0.56)" },
+  phone: { width: 132, height: 222, borderRadius: 26, borderWidth: 6, borderColor: "#D7EDE7", backgroundColor: "#F9FFFD", padding: 13, transform: [{ rotate: "5deg" }], shadowColor: authColors.greenDark, shadowOpacity: 0.14, shadowRadius: 18, shadowOffset: { width: 0, height: 9 }, elevation: 4 },
+  phoneSpeaker: { width: 32, height: 4, borderRadius: 3, backgroundColor: "#C8E6DE", alignSelf: "center", marginBottom: 10 },
+  phonePulse: { height: 42, borderRadius: 11, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
+  phoneMetric: { marginTop: 9, borderRadius: 10, backgroundColor: "#fff", paddingHorizontal: 9, paddingVertical: 7, borderWidth: 1, borderColor: "#E4F2EE" },
+  phoneMetricValue: { color: authColors.ink, fontSize: 16, fontWeight: "800" },
   phoneMetricUnit: { color: authColors.greenDark, fontSize: 10 },
-  phoneMetricRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 13 },
-  phoneMiniMetric: { color: authColors.greenDark, fontSize: 10, fontWeight: "700" },
-  shieldBubble: { position: "absolute", zIndex: 2, left: "9%", top: 118, width: 94, height: 94, borderRadius: 47, backgroundColor: "#E8F8F3", alignItems: "center", justifyContent: "center" },
-  chartBubble: { position: "absolute", right: "6%", top: 62, width: 112, height: 104, borderRadius: 20, backgroundColor: "#fff", flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: 8, paddingBottom: 20, shadowColor: authColors.greenDark, shadowOpacity: 0.1, shadowRadius: 16, elevation: 3 },
-  chartBar: { width: 13, borderRadius: 7, backgroundColor: authColors.greenLight },
-  heartBubble: { position: "absolute", right: "16%", bottom: 12, width: 88, height: 88, borderRadius: 44, backgroundColor: authColors.green, alignItems: "center", justifyContent: "center" },
-  welcomeActions: { gap: 14 },
-  safetyLine: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12 },
-  safetyText: { color: authColors.text, fontSize: 13, flexShrink: 1, textAlign: "center" },
+  phoneGraph: { height: 36, marginTop: 7, borderRadius: 9, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E4F2EE", paddingHorizontal: 5, justifyContent: "center" },
+  phoneMetricRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
+  phoneMiniMetric: { color: authColors.greenDark, fontSize: 9, fontWeight: "700" },
+  shieldBubble: { position: "absolute", zIndex: 2, left: 4, top: 102, width: 82, height: 82, borderRadius: 41, backgroundColor: "#E8F8F3", alignItems: "center", justifyContent: "center", shadowColor: authColors.greenDark, shadowOpacity: 0.08, shadowRadius: 12, elevation: 2 },
+  chartBubble: { position: "absolute", right: 0, top: 42, width: 104, height: 100, borderRadius: 18, backgroundColor: "#fff", paddingHorizontal: 13, paddingTop: 13, shadowColor: authColors.greenDark, shadowOpacity: 0.1, shadowRadius: 16, elevation: 3 },
+  chartHeaderLong: { width: 46, height: 5, borderRadius: 3, backgroundColor: "#E8F6F2" },
+  chartHeaderShort: { width: 32, height: 4, borderRadius: 2, backgroundColor: "#EFF9F6", marginTop: 5 },
+  chartBars: { flex: 1, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingTop: 6, paddingBottom: 10 },
+  chartBar: { width: 11, borderRadius: 6, backgroundColor: authColors.greenLight },
+  chartBarOne: { height: 25 },
+  chartBarTwo: { height: 34 },
+  chartBarThree: { height: 29 },
+  chartBarFour: { height: 45 },
+  heartBubble: { position: "absolute", right: 30, bottom: 5, width: 78, height: 78, borderRadius: 39, backgroundColor: authColors.green, alignItems: "center", justifyContent: "center", shadowColor: authColors.greenDark, shadowOpacity: 0.12, shadowRadius: 13, elevation: 3 },
+  welcomeActions: { gap: 10, marginTop: "auto" },
+  safetyLine: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 9 },
+  safetyText: { color: "#53617A", fontSize: 11, lineHeight: 16, flexShrink: 1, textAlign: "center" },
   authTopRow: { minHeight: 122, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   topSpacer: { width: 38 },
   authTabs: { height: 49, flexDirection: "row", borderWidth: 1.5, borderColor: authColors.green, borderRadius: 25, marginBottom: 28, overflow: "hidden" },
