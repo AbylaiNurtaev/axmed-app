@@ -5,7 +5,6 @@ import { Gender } from "./types";
 import {
   AuthScaffold,
   InfoBanner,
-  LinkButton,
   PageTitle,
   PrimaryButton,
   SecondaryButton,
@@ -44,7 +43,7 @@ export function AboutScreen({
 
   return (
     <AuthScaffold>
-      <StepHeader current={1} onBack={onBack} />
+      <StepHeader current={1} labelTotal={3} onBack={onBack} />
       <PageTitle
         title="О вас"
         subtitle="Эти данные помогут нам точнее анализировать ваши показатели и давать персональные рекомендации."
@@ -70,7 +69,7 @@ export function AboutScreen({
         )}
       </View>
       {!!error && <Text style={styles.error}>{error}</Text>}
-      <Text style={styles.helper}>Вам должно быть 18 лет или больше</Text>
+      <Text style={styles.helper}>Вы должны быть старше 18 лет</Text>
 
       <Text style={[styles.fieldLabel, styles.genderLabel]}>Пол при рождении</Text>
       <View style={styles.genderRow}>
@@ -174,8 +173,8 @@ const consentItems: {
   }
 ];
 
-export function ConsentsScreen({ onBack, onContinue, onExit }: { onBack: () => void; onContinue: () => void; onExit: () => void }) {
-  const [checked, setChecked] = useState<Record<ConsentKey, boolean>>({ terms: false, privacy: false, health: false });
+export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onContinue: () => void; onExit: () => void }) {
+  const [checked, setChecked] = useState<Record<ConsentKey, boolean>>({ terms: true, privacy: true, health: true });
   const allChecked = consentItems.every((item) => checked[item.key]);
 
   const toggle = (key: ConsentKey) => setChecked((current) => ({ ...current, [key]: !current[key] }));
@@ -184,10 +183,12 @@ export function ConsentsScreen({ onBack, onContinue, onExit }: { onBack: () => v
   return (
     <AuthScaffold>
       <StepHeader current={2} onBack={onBack} />
-      <PageTitle
-        title="Согласия"
-        subtitle="Для работы AxMed необходимо ваше согласие на обработку данных и использование функций приложения."
-      />
+      <View style={styles.consentHeading}>
+        <PageTitle
+          title="Согласия"
+          subtitle="Для работы AxMed необходимо ваше согласие на обработку данных и использование функций приложения."
+        />
+      </View>
 
       <View style={styles.consentList}>
         {consentItems.map((item) => (
@@ -228,8 +229,7 @@ export function ConsentsScreen({ onBack, onContinue, onExit }: { onBack: () => v
       </Pressable>
 
       <View style={styles.consentActions}>
-        <PrimaryButton title="Принять и продолжить" disabled={!allChecked} onPress={onContinue} />
-        <LinkButton title="Выйти" onPress={onExit} />
+        <PrimaryButton title="Продолжить" disabled={!allChecked} onPress={onContinue} />
       </View>
     </AuthScaffold>
   );
@@ -267,15 +267,15 @@ function calculateAge(value: string) {
 }
 
 const styles = StyleSheet.create({
-  fieldLabel: { color: authColors.ink, fontSize: 18, fontWeight: "700", marginBottom: 12 },
+  fieldLabel: { color: authColors.ink, fontSize: 18, fontWeight: "700", marginBottom: 14 },
   dateField: { height: 58, borderWidth: 1.5, borderColor: authColors.line, borderRadius: 15, paddingHorizontal: 17, flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: "rgba(255,255,255,0.96)" },
   dateFieldError: { borderColor: authColors.danger },
   dateInput: { flex: 1, height: "100%", color: authColors.ink, fontSize: 20 },
   error: { color: authColors.danger, fontSize: 13, marginTop: 7 },
-  helper: { color: authColors.muted, fontSize: 14, marginTop: 10 },
-  genderLabel: { marginTop: 28 },
+  helper: { color: authColors.muted, fontSize: 14, marginTop: 12 },
+  genderLabel: { marginTop: 42 },
   genderRow: { flexDirection: "row", gap: 14 },
-  genderCard: { flex: 1, minHeight: 148, borderWidth: 1.5, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", gap: 10 },
+  genderCard: { flex: 1, minHeight: 138, borderWidth: 1.5, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", gap: 10 },
   genderCardSelected: { borderColor: authColors.green, backgroundColor: "#F2FBF8" },
   genderText: { color: "#565E6B", fontSize: 18 },
   genderTextSelected: { color: authColors.greenDark, fontWeight: "600" },
@@ -285,18 +285,19 @@ const styles = StyleSheet.create({
   restrictionMain: { alignItems: "stretch" },
   restrictionIcon: { width: 126, height: 126, borderRadius: 63, backgroundColor: authColors.dangerSoft, alignSelf: "center", alignItems: "center", justifyContent: "center", marginBottom: 30 },
   restrictionActions: { gap: 14 },
-  consentList: { gap: 7, marginBottom: 11 },
+  consentHeading: { marginBottom: -12 },
+  consentList: { gap: 10, marginBottom: 14 },
   consentCard: { padding: 10 },
   consentTop: { flexDirection: "row", alignItems: "center", gap: 8 },
   consentIcon: { width: 35, height: 35, borderRadius: 10, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
   consentCopy: { flex: 1 },
-  consentTitle: { color: authColors.ink, fontSize: 13, lineHeight: 16, fontWeight: "700" },
-  consentDescription: { color: authColors.text, fontSize: 11, lineHeight: 14, marginTop: 2 },
-  consentDivider: { height: 1, backgroundColor: authColors.line, marginVertical: 6 },
-  consentLink: { color: authColors.greenDark, fontSize: 11.5, lineHeight: 15, fontWeight: "600" },
+  consentTitle: { color: authColors.ink, fontSize: 13, lineHeight: 17, fontWeight: "700" },
+  consentDescription: { color: authColors.text, fontSize: 11.2, lineHeight: 15, marginTop: 3 },
+  consentDivider: { height: 1, backgroundColor: authColors.line, marginVertical: 8 },
+  consentLink: { color: authColors.greenDark, fontSize: 12, lineHeight: 16, fontWeight: "600" },
   checkbox: { width: 24, height: 24, borderRadius: 5, borderWidth: 1.5, borderColor: "#AEB6C1", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   checkboxChecked: { backgroundColor: authColors.greenDark, borderColor: authColors.greenDark },
-  acceptAll: { flexDirection: "row", alignItems: "flex-start", gap: 11, marginTop: 14, marginBottom: 13, paddingHorizontal: 2 },
-  acceptAllText: { flex: 1, color: authColors.ink, fontSize: 12.5, lineHeight: 17, fontWeight: "600" },
+  acceptAll: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 18, marginBottom: 16, paddingHorizontal: 2 },
+  acceptAllText: { flex: 1, color: authColors.ink, fontSize: 13, lineHeight: 19, fontWeight: "600" },
   consentActions: { gap: 6 }
 });

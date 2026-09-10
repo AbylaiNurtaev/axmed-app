@@ -116,7 +116,17 @@ export function BackButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-export function StepHeader({ current, total = 4, onBack }: { current: number; total?: number; onBack: () => void }) {
+export function StepHeader({
+  current,
+  total = 4,
+  labelTotal = total,
+  onBack
+}: {
+  current: number;
+  total?: number;
+  labelTotal?: number;
+  onBack: () => void;
+}) {
   return (
     <View style={styles.stepHeader}>
       <BackButton onPress={onBack} />
@@ -125,7 +135,7 @@ export function StepHeader({ current, total = 4, onBack }: { current: number; to
           <View key={index} style={[styles.step, index < current && styles.stepActive]} />
         ))}
       </View>
-      <Text style={styles.stepText}>Шаг {current} из {total}</Text>
+      <Text style={styles.stepText}>Шаг {current} из {labelTotal}</Text>
     </View>
   );
 }
@@ -160,14 +170,20 @@ export function PrimaryButton({
   onPress: () => void;
   disabled?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
-  variant?: "default" | "welcome";
+  variant?: "default" | "welcome" | "entry";
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.primaryButton, variant === "welcome" && styles.welcomeButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+      style={({ pressed }) => [
+        styles.primaryButton,
+        variant === "welcome" && styles.welcomeButton,
+        variant === "entry" && styles.entryButton,
+        disabled && styles.disabled,
+        pressed && !disabled && styles.pressed
+      ]}
     >
       <LinearGradient
         colors={["#009F78", "#04B98A", "#35D0A6"]}
@@ -176,7 +192,7 @@ export function PrimaryButton({
         style={styles.buttonGradient}
       />
       {!!icon && <Ionicons name={icon} size={24} color="#fff" />}
-      <Text style={[styles.primaryButtonText, variant === "welcome" && styles.welcomeButtonText]}>{title}</Text>
+      <Text style={[styles.primaryButtonText, variant === "welcome" && styles.welcomeButtonText, variant === "entry" && styles.entryButtonText]}>{title}</Text>
     </Pressable>
   );
 }
@@ -192,16 +208,26 @@ export function SecondaryButton({
   onPress: () => void;
   icon?: keyof typeof Ionicons.glyphMap;
   darkText?: boolean;
-  variant?: "default" | "welcome";
+  variant?: "default" | "welcome" | "entry";
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.secondaryButton, variant === "welcome" && styles.welcomeButton, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.secondaryButton,
+        variant === "welcome" && styles.welcomeButton,
+        variant === "entry" && styles.entryButton,
+        pressed && styles.pressed
+      ]}
     >
       {!!icon && <Ionicons name={icon} size={24} color={darkText ? authColors.ink : authColors.green} />}
-      <Text style={[styles.secondaryButtonText, variant === "welcome" && styles.welcomeButtonText, darkText && styles.secondaryDark]}>{title}</Text>
+      <Text style={[
+        styles.secondaryButtonText,
+        variant === "welcome" && styles.welcomeButtonText,
+        variant === "entry" && styles.entryButtonText,
+        darkText && styles.secondaryDark
+      ]}>{title}</Text>
     </Pressable>
   );
 }
@@ -263,7 +289,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: authColors.white, overflow: "hidden" },
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1 },
-  content: { width: "100%", maxWidth: 560, alignSelf: "center", flexGrow: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 34 },
+  content: { width: "100%", maxWidth: 430, alignSelf: "center", flexGrow: 1, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 32 },
   ringOne: { position: "absolute", width: 420, height: 420, borderRadius: 210, borderWidth: 1, borderColor: "#E9F7F3", top: -230, alignSelf: "center" },
   ringTwo: { position: "absolute", width: 280, height: 280, borderRadius: 140, borderWidth: 1, borderColor: "#ECF8F5", top: -160, alignSelf: "center" },
   welcomeRingOuter: { position: "absolute", width: 520, height: 520, borderRadius: 260, borderWidth: 1, borderColor: "#E9F7F3", top: 22, alignSelf: "center" },
@@ -292,39 +318,41 @@ const styles = StyleSheet.create({
   logoTextCompact: { fontSize: 35, lineHeight: 39 },
   logoTextHero: { fontSize: 38, lineHeight: 40, letterSpacing: -1.2 },
   backButton: { width: 38, height: 44, justifyContent: "center", alignItems: "flex-start" },
-  stepHeader: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 22 },
+  stepHeader: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 24 },
   steps: { flex: 1, flexDirection: "row", gap: 7 },
   step: { flex: 1, height: 5, borderRadius: 4, backgroundColor: "#E7E9EC" },
   stepActive: { backgroundColor: authColors.greenDark },
   stepText: { color: authColors.text, fontSize: 14, minWidth: 82, textAlign: "right" },
-  pageHeading: { marginBottom: 22 },
-  pageHeadingCompact: { marginBottom: 17 },
+  pageHeading: { marginBottom: 28 },
+  pageHeadingCompact: { marginBottom: 20 },
   centered: { width: "100%", alignItems: "center" },
-  pageTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", letterSpacing: -0.7 },
-  pageTitleCompact: { fontSize: 26, lineHeight: 32, letterSpacing: -0.55 },
-  pageSubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, marginTop: 8 },
-  pageSubtitleCompact: { fontSize: 14, lineHeight: 20, marginTop: 7 },
+  pageTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", letterSpacing: -0.8 },
+  pageTitleCompact: { fontSize: 26, lineHeight: 32, letterSpacing: -0.6 },
+  pageSubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, marginTop: 12 },
+  pageSubtitleCompact: { fontSize: 14, lineHeight: 20, marginTop: 9 },
   textCentered: { textAlign: "center" },
   primaryButton: { minHeight: 58, borderRadius: 15, paddingHorizontal: 20, backgroundColor: authColors.green, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", shadowColor: authColors.greenDark, shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 4 },
   buttonGradient: { position: "absolute", inset: 0, borderRadius: 15 },
   primaryButtonText: { color: authColors.white, fontSize: 19, fontWeight: "700", textAlign: "center" },
   secondaryButton: { minHeight: 58, borderRadius: 15, borderWidth: 1.5, borderColor: authColors.green, paddingHorizontal: 18, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.88)" },
   secondaryButtonText: { color: authColors.green, fontSize: 18, fontWeight: "700", textAlign: "center" },
-  welcomeButton: { minHeight: 52, borderRadius: 14 },
+  welcomeButton: { minHeight: 50, borderRadius: 14 },
   welcomeButtonText: { fontSize: 17 },
+  entryButton: { minHeight: 48, borderRadius: 14 },
+  entryButtonText: { fontSize: 17 },
   secondaryDark: { color: authColors.ink },
   linkButton: { minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 10 },
   linkButtonText: { color: authColors.greenDark, fontSize: 17, fontWeight: "600", textAlign: "center" },
   pressed: { opacity: 0.78, transform: [{ scale: 0.995 }] },
   disabled: { opacity: 0.42, shadowOpacity: 0 },
-  formField: { height: 60, borderWidth: 1.5, borderColor: authColors.green, borderRadius: 15, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, backgroundColor: "rgba(255,255,255,0.9)" },
+  formField: { height: 54, borderWidth: 1.5, borderColor: authColors.green, borderRadius: 15, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, backgroundColor: "rgba(255,255,255,0.9)" },
   formFieldError: { borderColor: authColors.danger },
   input: { flex: 1, height: "100%", color: authColors.ink, fontSize: 18 },
   errorText: { color: authColors.danger, fontSize: 13, marginTop: 7, marginLeft: 4 },
-  infoBanner: { borderRadius: 17, backgroundColor: authColors.soft, padding: 13, flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  infoBanner: { borderRadius: 17, backgroundColor: authColors.soft, padding: 12, flexDirection: "row", alignItems: "flex-start", gap: 12 },
   infoBannerDanger: { backgroundColor: authColors.dangerSoft },
   infoCopy: { flex: 1 },
   infoTitle: { fontSize: 16, lineHeight: 21, fontWeight: "700", marginBottom: 4 },
-  infoText: { color: authColors.text, fontSize: 13, lineHeight: 19 },
+  infoText: { color: authColors.text, fontSize: 13, lineHeight: 18 },
   surface: { borderWidth: 1, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.94)", shadowColor: authColors.ink, shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 3 }
 });

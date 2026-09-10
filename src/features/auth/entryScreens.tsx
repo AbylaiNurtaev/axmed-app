@@ -8,6 +8,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
+  ImageSourcePropType,
   Platform,
   Pressable,
   StyleSheet,
@@ -31,9 +33,11 @@ import {
   authColors
 } from "./ui";
 
+const healthHero = require("../../../assets/auth-health-hero.png") as ImageSourcePropType;
+
 export function WelcomeScreen({ onCreateAccount, onSignIn }: { onCreateAccount: () => void; onSignIn: () => void }) {
   const { height } = useWindowDimensions();
-  const isCompact = height < 760;
+  const isCompact = height < 650;
 
   return (
     <AuthScaffold
@@ -64,43 +68,12 @@ export function WelcomeScreen({ onCreateAccount, onSignIn }: { onCreateAccount: 
 
 function HealthIllustration({ compact }: { compact: boolean }) {
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.illustration, compact && styles.illustrationCompact]}>
-      <View style={styles.illustrationGlow} />
-      <View style={styles.shieldBubble}>
-        <MaterialCommunityIcons name="shield-check-outline" size={55} color={authColors.green} />
-      </View>
-      <View style={styles.phone}>
-        <View style={styles.phoneSpeaker} />
-        <View style={styles.phonePulse}>
-          <MaterialCommunityIcons name="heart-pulse" size={31} color={authColors.green} />
-        </View>
-        <View style={styles.phoneMetric}>
-          <Text style={styles.phoneMetricValue}>120/80</Text>
-          <Text style={styles.phoneMetricUnit}>мм рт. ст.</Text>
-        </View>
-        <View style={styles.phoneGraph}>
-          <Svg width="100%" height="34" viewBox="0 0 104 34">
-            <Path d="M2 23 C10 23 12 12 21 14 C29 16 31 8 39 9 C47 10 48 24 58 22 C67 20 69 14 77 17 C86 21 91 7 102 8" stroke={authColors.green} strokeWidth="2.2" fill="none" strokeLinecap="round" />
-          </Svg>
-        </View>
-        <View style={styles.phoneMetricRow}>
-          <Text style={styles.phoneMiniMetric}>98% SpO₂</Text>
-          <Text style={styles.phoneMiniMetric}>♥ 72</Text>
-        </View>
-      </View>
-      <View style={styles.chartBubble}>
-        <View style={styles.chartHeaderLong} />
-        <View style={styles.chartHeaderShort} />
-        <View style={styles.chartBars}>
-          <View style={[styles.chartBar, styles.chartBarOne]} />
-          <View style={[styles.chartBar, styles.chartBarTwo]} />
-          <View style={[styles.chartBar, styles.chartBarThree]} />
-          <View style={[styles.chartBar, styles.chartBarFour]} />
-        </View>
-      </View>
-      <View style={styles.heartBubble}>
-        <MaterialCommunityIcons name="heart-pulse" size={62} color="#fff" />
-      </View>
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.illustration, compact && styles.illustrationCompact]}
+    >
+      <Image resizeMode="contain" source={healthHero} style={styles.healthHeroImage} />
     </View>
   );
 }
@@ -117,7 +90,7 @@ export function AuthChoiceScreen({
   onSocialContinue: (mode: AuthMode, provider: SocialProvider) => Promise<void>;
 }) {
   const { height } = useWindowDimensions();
-  const isCompact = height < 760;
+  const isCompact = height < 650;
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -190,8 +163,9 @@ export function AuthChoiceScreen({
           value={email}
         />
         <PrimaryButton
-          title={isSignUp ? "Продолжить с email" : "Получить код по email"}
+          title={isSignUp ? "Продолжить с Email" : "Получить код по Email"}
           onPress={continueWithEmail}
+          variant="entry"
         />
       </Surface>
 
@@ -271,9 +245,22 @@ function SocialButton({
     >
       {loading
         ? <ActivityIndicator size="small" color={authColors.greenDark} />
-        : <Ionicons name={provider === "Google" ? "logo-google" : "logo-apple"} size={28} color={provider === "Google" ? "#4285F4" : "#111"} />}
+        : provider === "Google"
+          ? <GoogleMark />
+          : <Ionicons name="logo-apple" size={28} color="#111" />}
       <Text style={styles.socialButtonText}>{title}</Text>
     </Pressable>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <Svg accessibilityLabel="Google" width={27} height={27} viewBox="0 0 24 24">
+      <Path d="M21.6 12.227c0-.709-.064-1.391-.182-2.045H12v3.868h5.382a4.6 4.6 0 0 1-1.995 3.018v2.509h3.232c1.891-1.741 2.981-4.305 2.981-7.35Z" fill="#4285F4" />
+      <Path d="M12 22c2.7 0 4.968-.895 6.618-2.423l-3.232-2.509c-.895.6-2.041.955-3.386.955-2.605 0-4.809-1.759-5.595-4.123H3.064v2.591A9.997 9.997 0 0 0 12 22Z" fill="#34A853" />
+      <Path d="M6.405 13.9A6.018 6.018 0 0 1 6.091 12c0-.659.114-1.3.314-1.9V7.509H3.064A9.997 9.997 0 0 0 2 12c0 1.614.386 3.141 1.064 4.491L6.405 13.9Z" fill="#FBBC05" />
+      <Path d="M12 5.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C16.964 2.995 14.695 2 12 2a9.997 9.997 0 0 0-8.936 5.509L6.405 10.1C7.191 7.736 9.395 5.977 12 5.977Z" fill="#EA4335" />
+    </Svg>
   );
 }
 
@@ -291,7 +278,7 @@ export function VerificationScreen({
   onConfirm: () => void;
 }) {
   const { height } = useWindowDimensions();
-  const isCompact = height < 760;
+  const isCompact = height < 650;
   const [code, setCode] = useState("");
   const [seconds, setSeconds] = useState(32);
   const inputRef = useRef<TextInput>(null);
@@ -317,9 +304,9 @@ export function VerificationScreen({
     >
       <View style={styles.entryLogo}><AxMedLogo compact /></View>
 
-      <Text style={styles.verifyTitle}>Подтверждение email</Text>
+      <Text style={styles.verifyTitle}>Подтверждение Email</Text>
       <Text style={styles.verifySubtitle}>
-        Мы отправили одноразовый код для {mode === "signUp" ? "регистрации" : "входа"}
+        Мы отправили одноразовый код для входа или регистрации
       </Text>
       <Text style={styles.maskedEmail}>{maskEmail(email)}</Text>
 
@@ -351,7 +338,7 @@ export function VerificationScreen({
       </Surface>
 
       <View style={styles.verifyActions}>
-        <PrimaryButton title={mode === "signUp" ? "Подтвердить" : "Войти"} disabled={code.length !== 6} onPress={onConfirm} />
+        <PrimaryButton title={mode === "signUp" ? "Подтвердить" : "Войти"} disabled={code.length !== 6} onPress={onConfirm} variant="entry" />
         <LinkButton title="Отправить код снова" icon="refresh-outline" onPress={resend} />
         <LinkButton title="Изменить email" icon="mail-outline" onPress={onChangeEmail} />
         <LinkButton title="Назад" onPress={onBack} />
@@ -373,59 +360,39 @@ function maskEmail(email: string) {
 }
 
 const styles = StyleSheet.create({
-  welcomeContent: { paddingHorizontal: 40, paddingTop: 104, paddingBottom: 64 },
-  welcomeContentCompact: { paddingTop: 66, paddingBottom: 18 },
+  welcomeContent: { paddingHorizontal: 40, paddingTop: 86, paddingBottom: 84 },
+  welcomeContentCompact: { paddingTop: 54, paddingBottom: 18 },
   welcomeTop: { alignItems: "center", marginHorizontal: -16 },
-  welcomeTitle: { color: authColors.ink, fontSize: 28, lineHeight: 34, fontWeight: "800", letterSpacing: -1, textAlign: "center", marginTop: 24 },
-  welcomeSubtitle: { color: "#53617A", fontSize: 15, lineHeight: 23, textAlign: "center", marginTop: 12, maxWidth: 330, alignSelf: "center" },
-  illustration: { height: 240, marginTop: 10, marginBottom: 14, alignItems: "center", justifyContent: "center" },
-  illustrationCompact: { height: 190, marginTop: 6, marginBottom: 4, transform: [{ scale: 0.86 }] },
-  illustrationGlow: { position: "absolute", width: 280, height: 194, borderRadius: 140, backgroundColor: "rgba(222,246,239,0.56)" },
-  phone: { width: 132, height: 222, borderRadius: 26, borderWidth: 6, borderColor: "#D7EDE7", backgroundColor: "#F9FFFD", padding: 13, transform: [{ rotate: "5deg" }], shadowColor: authColors.greenDark, shadowOpacity: 0.14, shadowRadius: 18, shadowOffset: { width: 0, height: 9 }, elevation: 4 },
-  phoneSpeaker: { width: 32, height: 4, borderRadius: 3, backgroundColor: "#C8E6DE", alignSelf: "center", marginBottom: 10 },
-  phonePulse: { height: 42, borderRadius: 11, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
-  phoneMetric: { marginTop: 9, borderRadius: 10, backgroundColor: "#fff", paddingHorizontal: 9, paddingVertical: 7, borderWidth: 1, borderColor: "#E4F2EE" },
-  phoneMetricValue: { color: authColors.ink, fontSize: 16, fontWeight: "800" },
-  phoneMetricUnit: { color: authColors.greenDark, fontSize: 10 },
-  phoneGraph: { height: 36, marginTop: 7, borderRadius: 9, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E4F2EE", paddingHorizontal: 5, justifyContent: "center" },
-  phoneMetricRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
-  phoneMiniMetric: { color: authColors.greenDark, fontSize: 9, fontWeight: "700" },
-  shieldBubble: { position: "absolute", zIndex: 2, left: 4, top: 102, width: 82, height: 82, borderRadius: 41, backgroundColor: "#E8F8F3", alignItems: "center", justifyContent: "center", shadowColor: authColors.greenDark, shadowOpacity: 0.08, shadowRadius: 12, elevation: 2 },
-  chartBubble: { position: "absolute", right: 0, top: 42, width: 104, height: 100, borderRadius: 18, backgroundColor: "#fff", paddingHorizontal: 13, paddingTop: 13, shadowColor: authColors.greenDark, shadowOpacity: 0.1, shadowRadius: 16, elevation: 3 },
-  chartHeaderLong: { width: 46, height: 5, borderRadius: 3, backgroundColor: "#E8F6F2" },
-  chartHeaderShort: { width: 32, height: 4, borderRadius: 2, backgroundColor: "#EFF9F6", marginTop: 5 },
-  chartBars: { flex: 1, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingTop: 6, paddingBottom: 10 },
-  chartBar: { width: 11, borderRadius: 6, backgroundColor: authColors.greenLight },
-  chartBarOne: { height: 25 },
-  chartBarTwo: { height: 34 },
-  chartBarThree: { height: 29 },
-  chartBarFour: { height: 45 },
-  heartBubble: { position: "absolute", right: 30, bottom: 5, width: 78, height: 78, borderRadius: 39, backgroundColor: authColors.green, alignItems: "center", justifyContent: "center", shadowColor: authColors.greenDark, shadowOpacity: 0.12, shadowRadius: 13, elevation: 3 },
+  welcomeTitle: { color: authColors.ink, fontSize: 29, lineHeight: 35, fontWeight: "800", letterSpacing: -1, textAlign: "center", marginTop: 22 },
+  welcomeSubtitle: { color: "#53617A", fontSize: 15, lineHeight: 21, textAlign: "center", marginTop: 11, maxWidth: 326, alignSelf: "center" },
+  illustration: { height: 246, marginHorizontal: -31, marginTop: 6, marginBottom: -8, alignItems: "center", justifyContent: "center" },
+  illustrationCompact: { height: 194, marginTop: 1, marginBottom: 2 },
+  healthHeroImage: { width: "100%", height: "100%" },
   welcomeActions: { gap: 10, marginTop: "auto" },
   safetyLine: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 9 },
   safetyText: { color: "#53617A", fontSize: 11, lineHeight: 16, flexShrink: 1, textAlign: "center" },
-  entryContent: { paddingHorizontal: 32, paddingTop: 44, paddingBottom: 28 },
-  entryContentCompact: { paddingTop: 22, paddingBottom: 18 },
-  entryLogo: { minHeight: 122, alignItems: "center", justifyContent: "flex-start" },
-  authTabs: { width: "84%", maxWidth: 310, alignSelf: "center", height: 44, flexDirection: "row", borderWidth: 1.5, borderColor: authColors.green, borderRadius: 23, marginBottom: 23, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.88)" },
+  entryContent: { paddingHorizontal: 32, paddingTop: 62, paddingBottom: 22 },
+  entryContentCompact: { paddingTop: 18, paddingBottom: 14 },
+  entryLogo: { minHeight: 126, alignItems: "center", justifyContent: "flex-start" },
+  authTabs: { width: "84%", maxWidth: 310, alignSelf: "center", height: 32, flexDirection: "row", borderWidth: 1.5, borderColor: authColors.green, borderRadius: 17, marginBottom: 14, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.88)" },
   authTab: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: 24 },
   authTabActive: { backgroundColor: authColors.soft, borderWidth: 1, borderColor: authColors.green },
   authTabText: { color: authColors.muted, fontSize: 15, fontWeight: "600" },
   authTabTextActive: { color: authColors.greenDark, fontWeight: "700" },
   authTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center", letterSpacing: -0.6 },
-  authSubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 8, marginBottom: 22, paddingHorizontal: 8 },
-  emailCard: { gap: 14, padding: 16 },
-  divider: { flexDirection: "row", alignItems: "center", gap: 14, marginVertical: 20, paddingHorizontal: 34 },
+  authSubtitle: { color: authColors.text, fontSize: 15, lineHeight: 21, textAlign: "center", marginTop: 2, marginBottom: 10, paddingHorizontal: 8 },
+  emailCard: { gap: 10, padding: 12 },
+  divider: { flexDirection: "row", alignItems: "center", gap: 14, marginVertical: 12, paddingHorizontal: 34 },
   dividerLine: { flex: 1, height: 1, backgroundColor: "#9BDCCB" },
   dividerText: { color: authColors.greenDark, fontSize: 17, fontWeight: "600" },
   socialButtons: { gap: 11 },
-  socialButton: { minHeight: 54, borderRadius: 14, borderWidth: 1.5, borderColor: authColors.green, backgroundColor: "rgba(255,255,255,0.92)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 18 },
+  socialButton: { minHeight: 44, borderRadius: 14, borderWidth: 1.5, borderColor: authColors.green, backgroundColor: "rgba(255,255,255,0.92)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 18 },
   socialButtonText: { color: authColors.ink, fontSize: 16, fontWeight: "700" },
-  appleButtonContainer: { width: "100%", height: 54 },
-  appleButton: { width: "100%", height: 54 },
+  appleButtonContainer: { width: "100%", height: 44 },
+  appleButton: { width: "100%", height: 44 },
   appleLoading: { position: "absolute", inset: 0, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center" },
   socialError: { color: "#B42318", fontSize: 12, lineHeight: 17, textAlign: "center", paddingHorizontal: 8 },
-  switchMode: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 18, minHeight: 34 },
+  switchMode: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 10, minHeight: 26 },
   switchModeMuted: { color: authColors.text, fontSize: 14 },
   switchModeLink: { color: authColors.greenDark, fontSize: 14, fontWeight: "700" },
   secureFooter: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 8 },
@@ -433,16 +400,16 @@ const styles = StyleSheet.create({
   buttonPressed: { opacity: 0.76 },
   buttonDisabled: { opacity: 0.62 },
   verifyTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center" },
-  verifySubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 10, paddingHorizontal: 18 },
-  maskedEmail: { color: authColors.greenDark, fontSize: 17, fontWeight: "700", textAlign: "center", marginTop: 12, marginBottom: 21 },
+  verifySubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 4, paddingHorizontal: 18 },
+  maskedEmail: { color: authColors.greenDark, fontSize: 17, fontWeight: "700", textAlign: "center", marginTop: 9, marginBottom: 11 },
   codeCard: { padding: 18 },
   codeBoxes: { flexDirection: "row", gap: 9, justifyContent: "center", position: "relative" },
-  codeBox: { flex: 1, maxWidth: 58, aspectRatio: 0.76, borderRadius: 13, borderWidth: 1.5, borderColor: "#B8E7DB", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+  codeBox: { flex: 1, maxWidth: 58, aspectRatio: 0.82, borderRadius: 13, borderWidth: 1.5, borderColor: "#B8E7DB", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   codeBoxActive: { borderColor: authColors.green, borderWidth: 2 },
   codeDigit: { color: authColors.greenDark, fontSize: 28, fontWeight: "700" },
   hiddenCodeInput: { position: "absolute", width: 1, height: 1, opacity: 0 },
   codeHint: { color: authColors.greenDark, fontSize: 15, textAlign: "center", marginTop: 16 },
-  codeSeparator: { height: 1, backgroundColor: "#D1EDE6", marginVertical: 15 },
+  codeSeparator: { height: 1, backgroundColor: "#D1EDE6", marginVertical: 11 },
   resendTimer: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   resendTimerText: { color: authColors.greenDark, fontSize: 14, textAlign: "center" },
   verifyActions: { gap: 2, marginTop: 20 }
