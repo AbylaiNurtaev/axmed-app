@@ -94,6 +94,8 @@ export function AuthChoiceScreen({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [error, setError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
@@ -198,7 +200,10 @@ export function AuthChoiceScreen({
           onSubmitEditing={isSignUp ? undefined : continueWithEmail}
           placeholder={isSignUp ? "Придумайте пароль" : "Введите пароль"}
           returnKeyType={isSignUp ? "next" : "go"}
-          secureTextEntry
+          rightIcon={passwordVisible ? "eye-off-outline" : "eye-outline"}
+          rightIconAccessibilityLabel={passwordVisible ? "Скрыть пароль" : "Показать пароль"}
+          onRightIconPress={() => setPasswordVisible((visible) => !visible)}
+          secureTextEntry={!passwordVisible}
           value={password}
         />
         {isSignUp ? (
@@ -215,7 +220,10 @@ export function AuthChoiceScreen({
             onSubmitEditing={continueWithEmail}
             placeholder="Повторите пароль"
             returnKeyType="go"
-            secureTextEntry
+            rightIcon={confirmPasswordVisible ? "eye-off-outline" : "eye-outline"}
+            rightIconAccessibilityLabel={confirmPasswordVisible ? "Скрыть повтор пароля" : "Показать повтор пароля"}
+            onRightIconPress={() => setConfirmPasswordVisible((visible) => !visible)}
+            secureTextEntry={!confirmPasswordVisible}
             value={confirmPassword}
           />
         ) : null}
@@ -259,6 +267,8 @@ export function AuthChoiceScreen({
           setError("");
           setPasswordError("");
           setConfirmPasswordError("");
+          setPasswordVisible(false);
+          setConfirmPasswordVisible(false);
           setSubmitError("");
         }}
       >

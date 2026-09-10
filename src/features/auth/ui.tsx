@@ -241,7 +241,20 @@ export function LinkButton({ title, onPress, icon }: { title: string; onPress: (
   );
 }
 
-export function FormField({ icon, error, ...props }: TextInputProps & { icon: keyof typeof Ionicons.glyphMap; error?: string }) {
+export function FormField({
+  icon,
+  error,
+  rightIcon,
+  rightIconAccessibilityLabel,
+  onRightIconPress,
+  ...props
+}: TextInputProps & {
+  icon: keyof typeof Ionicons.glyphMap;
+  error?: string;
+  rightIcon?: keyof typeof Ionicons.glyphMap;
+  rightIconAccessibilityLabel?: string;
+  onRightIconPress?: () => void;
+}) {
   return (
     <View>
       <View style={[styles.formField, !!error && styles.formFieldError]}>
@@ -251,6 +264,17 @@ export function FormField({ icon, error, ...props }: TextInputProps & { icon: ke
           placeholderTextColor="#A6AEBA"
           style={[styles.input, props.style]}
         />
+        {rightIcon && onRightIconPress ? (
+          <Pressable
+            accessibilityLabel={rightIconAccessibilityLabel}
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={onRightIconPress}
+            style={({ pressed }) => [styles.fieldIconButton, pressed && styles.pressed]}
+          >
+            <Ionicons name={rightIcon} size={24} color={authColors.greenDark} />
+          </Pressable>
+        ) : null}
       </View>
       {!!error && <Text style={styles.errorText}>{error}</Text>}
     </View>
@@ -348,6 +372,7 @@ const styles = StyleSheet.create({
   formField: { height: 54, borderWidth: 1.5, borderColor: authColors.green, borderRadius: 15, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, backgroundColor: "rgba(255,255,255,0.9)" },
   formFieldError: { borderColor: authColors.danger },
   input: { flex: 1, height: "100%", color: authColors.ink, fontSize: 18 },
+  fieldIconButton: { width: 32, height: 40, alignItems: "center", justifyContent: "center", marginRight: -7 },
   errorText: { color: authColors.danger, fontSize: 13, marginTop: 7, marginLeft: 4 },
   infoBanner: { borderRadius: 17, backgroundColor: authColors.soft, padding: 12, flexDirection: "row", alignItems: "flex-start", gap: 12 },
   infoBannerDanger: { backgroundColor: authColors.dangerSoft },
