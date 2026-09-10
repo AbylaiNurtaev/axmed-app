@@ -141,9 +141,6 @@ export function AuthChoiceScreen({
       </View>
 
       <Text style={styles.authTitle}>Регистрация / Вход</Text>
-      <Text style={styles.authSubtitle}>
-        Выберите удобный способ, чтобы создать аккаунт или войти в AxMed.
-      </Text>
 
       <Surface style={styles.emailCard}>
         <FormField
@@ -370,8 +367,7 @@ const styles = StyleSheet.create({
   authTabText: { color: authColors.muted, fontSize: 15, fontWeight: "600" },
   authTabTextActive: { color: authColors.greenDark, fontWeight: "700" },
   authTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center", letterSpacing: -0.6 },
-  authSubtitle: { color: authColors.text, fontSize: 15, lineHeight: 21, textAlign: "center", marginTop: 2, marginBottom: 10, paddingHorizontal: 8 },
-  emailCard: { gap: 10, padding: 12 },
+  emailCard: { gap: 10, padding: 12, marginTop: 20 },
   divider: { flexDirection: "row", alignItems: "center", gap: 14, marginVertical: 12, paddingHorizontal: 34 },
   dividerLine: { flex: 1, height: 1, backgroundColor: "#9BDCCB" },
   dividerText: { color: authColors.greenDark, fontSize: 17, fontWeight: "600" },
