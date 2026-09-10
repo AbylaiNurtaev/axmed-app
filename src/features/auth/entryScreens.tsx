@@ -35,6 +35,7 @@ import {
 } from "./ui";
 
 const healthHero = require("../../../assets/auth-health-hero.png") as ImageSourcePropType;
+const emailPattern = /^(?=.{3,254}$)(?=.{1,64}@)[a-z0-9]+(?:[._%+-][a-z0-9]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 
 export function WelcomeScreen({ onCreateAccount, onSignIn }: { onCreateAccount: () => void; onSignIn: () => void }) {
   const { height } = useWindowDimensions();
@@ -100,7 +101,7 @@ export function AuthChoiceScreen({
 
   const continueWithEmail = async () => {
     const normalizedEmail = email.trim().toLowerCase();
-    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+    if (!emailPattern.test(normalizedEmail)) {
       setError("Введите корректный email");
       return;
     }
