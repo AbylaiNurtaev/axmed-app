@@ -25,6 +25,7 @@ import { AuthMode } from "./types";
 import {
   AuthScaffold,
   AxMedLogo,
+  BackButton,
   FormField,
   LinkButton,
   PrimaryButton,
@@ -129,7 +130,10 @@ export function AuthChoiceScreen({
       contentStyle={[styles.entryContent, isCompact && styles.entryContentCompact]}
       decorVariant="entry"
     >
-      <View style={styles.entryLogo}><AxMedLogo compact /></View>
+      <View style={styles.entryLogo}>
+        <View style={styles.entryBack}><BackButton onPress={onBack} /></View>
+        <AxMedLogo compact />
+      </View>
 
       <Text style={styles.authTitle}>{isSignUp ? "Регистрация" : "Вход"}</Text>
 
@@ -182,7 +186,6 @@ export function AuthChoiceScreen({
         <Text style={styles.switchModeLink}>{isSignUp ? "Войти" : "Зарегистрироваться"}</Text>
       </Pressable>
 
-      <LinkButton title="Назад" onPress={onBack} />
     </AuthScaffold>
   );
 }
@@ -282,7 +285,10 @@ export function VerificationScreen({
       contentStyle={[styles.entryContent, isCompact && styles.entryContentCompact]}
       decorVariant="entry"
     >
-      <View style={styles.entryLogo}><AxMedLogo compact /></View>
+      <View style={styles.entryLogo}>
+        <View style={styles.entryBack}><BackButton onPress={onBack} /></View>
+        <AxMedLogo compact />
+      </View>
 
       <Text style={styles.verifyTitle}>Подтверждение Email</Text>
       <Text style={styles.verifySubtitle}>
@@ -321,7 +327,6 @@ export function VerificationScreen({
         <PrimaryButton title={mode === "signUp" ? "Подтвердить" : "Войти"} disabled={code.length !== 6} onPress={onConfirm} variant="entry" />
         <LinkButton title="Отправить код снова" icon="refresh-outline" onPress={resend} />
         <LinkButton title="Изменить email" icon="mail-outline" onPress={onChangeEmail} />
-        <LinkButton title="Назад" onPress={onBack} />
       </View>
 
       <View style={styles.secureFooter}>
@@ -352,6 +357,7 @@ const styles = StyleSheet.create({
   entryContent: { paddingHorizontal: 32, paddingTop: 62, paddingBottom: 22 },
   entryContentCompact: { paddingTop: 18, paddingBottom: 14 },
   entryLogo: { minHeight: 150, alignItems: "center", justifyContent: "flex-start" },
+  entryBack: { position: "absolute", left: 0, top: 4, zIndex: 2 },
   authTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center", letterSpacing: -0.6 },
   emailCard: { gap: 10, padding: 12, marginTop: 20 },
   divider: { flexDirection: "row", alignItems: "center", gap: 14, marginVertical: 12, paddingHorizontal: 34 },
