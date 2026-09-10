@@ -195,10 +195,6 @@ export function AuthChoiceScreen({
       </Pressable>
 
       <LinkButton title="Назад" onPress={onBack} />
-      <View style={styles.secureFooter}>
-        <MaterialCommunityIcons name="shield-lock-outline" size={27} color={authColors.greenDark} />
-        <Text style={styles.secureFooterText}>Безопасный вход. Ваши данные защищены.</Text>
-      </View>
     </AuthScaffold>
   );
 }
