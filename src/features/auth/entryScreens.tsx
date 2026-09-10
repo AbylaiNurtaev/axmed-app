@@ -131,16 +131,7 @@ export function AuthChoiceScreen({
     >
       <View style={styles.entryLogo}><AxMedLogo compact /></View>
 
-      <View style={styles.authTabs}>
-        <Pressable onPress={() => { setMode("signUp"); setError(""); }} style={[styles.authTab, isSignUp && styles.authTabActive]}>
-          <Text style={[styles.authTabText, isSignUp && styles.authTabTextActive]}>Регистрация</Text>
-        </Pressable>
-        <Pressable onPress={() => { setMode("signIn"); setError(""); }} style={[styles.authTab, !isSignUp && styles.authTabActive]}>
-          <Text style={[styles.authTabText, !isSignUp && styles.authTabTextActive]}>Вход</Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.authTitle}>Регистрация / Вход</Text>
+      <Text style={styles.authTitle}>{isSignUp ? "Регистрация" : "Вход"}</Text>
 
       <Surface style={styles.emailCard}>
         <FormField
@@ -171,14 +162,14 @@ export function AuthChoiceScreen({
       <View style={styles.socialButtons}>
         <SocialButton
           provider="Google"
-          title="Продолжить с Google"
+          title={isSignUp ? "Продолжить с Google" : "Войти с Google"}
           loading={socialLoading === "Google"}
           disabled={socialLoading !== null}
           onPress={() => continueWithSocial("Google")}
         />
         <SocialButton
           provider="Apple"
-          title="Продолжить с Apple"
+          title={isSignUp ? "Продолжить с Apple" : "Войти с Apple"}
           loading={socialLoading === "Apple"}
           disabled={socialLoading !== null}
           onPress={() => continueWithSocial("Apple")}
@@ -188,7 +179,7 @@ export function AuthChoiceScreen({
 
       <Pressable style={styles.switchMode} onPress={() => setMode(isSignUp ? "signIn" : "signUp")}>
         <Text style={styles.switchModeMuted}>{isSignUp ? "Уже есть аккаунт?" : "Нет аккаунта?"} </Text>
-        <Text style={styles.switchModeLink}>{isSignUp ? "Войти" : "Создать аккаунт"}</Text>
+        <Text style={styles.switchModeLink}>{isSignUp ? "Войти" : "Зарегистрироваться"}</Text>
       </Pressable>
 
       <LinkButton title="Назад" onPress={onBack} />
@@ -360,12 +351,7 @@ const styles = StyleSheet.create({
   welcomeActions: { gap: 10, marginTop: "auto" },
   entryContent: { paddingHorizontal: 32, paddingTop: 62, paddingBottom: 22 },
   entryContentCompact: { paddingTop: 18, paddingBottom: 14 },
-  entryLogo: { minHeight: 126, alignItems: "center", justifyContent: "flex-start" },
-  authTabs: { width: "84%", maxWidth: 310, alignSelf: "center", height: 32, flexDirection: "row", borderWidth: 1.5, borderColor: authColors.green, borderRadius: 17, marginBottom: 14, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.88)" },
-  authTab: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: 24 },
-  authTabActive: { backgroundColor: authColors.soft, borderWidth: 1, borderColor: authColors.green },
-  authTabText: { color: authColors.muted, fontSize: 15, fontWeight: "600" },
-  authTabTextActive: { color: authColors.greenDark, fontWeight: "700" },
+  entryLogo: { minHeight: 150, alignItems: "center", justifyContent: "flex-start" },
   authTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center", letterSpacing: -0.6 },
   emailCard: { gap: 10, padding: 12, marginTop: 20 },
   divider: { flexDirection: "row", alignItems: "center", gap: 14, marginVertical: 12, paddingHorizontal: 34 },
