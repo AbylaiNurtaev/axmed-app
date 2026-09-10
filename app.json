@@ -10,7 +10,9 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.axmed.mobile"
+      "bundleIdentifier": "com.anonymous.pochka2new",
+      "appleTeamId": "SAZ93YMRD7",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.axmed.mobile",
@@ -19,7 +21,8 @@
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-apple-authentication"
     ]
   }
 }

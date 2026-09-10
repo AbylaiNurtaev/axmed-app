@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Alert } from "react-native";
 import { AuthChoiceScreen, VerificationScreen, WelcomeScreen } from "./entryScreens";
 import { AboutScreen, AgeRestrictionScreen, ConsentsScreen } from "./profileScreens";
 import { BodyDataScreen, ConnectionErrorScreen, DataSourceScreen, FirstResultScreen } from "./setupScreens";
+import { signInWithSocialProvider } from "./socialAuth";
+import type { SocialAuthCredential, SocialProvider } from "./socialAuth";
 import { AuthMode, AuthRoute, BodyMeasurements } from "./types";
 
 const initialMeasurements: BodyMeasurements = {
@@ -15,16 +16,25 @@ const initialMeasurements: BodyMeasurements = {
   calf: "37.0"
 };
 
-export function AuthFlow({ onComplete }: { onComplete: () => void }) {
+type AuthFlowProps = {
+  onComplete: () => void;
+  onSocialAuthenticated?: (credential: SocialAuthCredential, mode: AuthMode) => Promise<void> | void;
+};
+
+export function AuthFlow({ onComplete, onSocialAuthenticated }: AuthFlowProps) {
   const [route, setRoute] = useState<AuthRoute>({ name: "welcome" });
   const [measurements, setMeasurements] = useState<BodyMeasurements>(initialMeasurements);
 
   const openAuth = (mode: AuthMode) => setRoute({ name: "auth", mode });
-  const requestSocialConfiguration = (_mode: AuthMode, provider: "Google" | "Apple") => {
-    Alert.alert(
-      `${provider}: нужна конфигурация`,
-      "Экран готов. Для безопасного входа осталось добавить OAuth-данные проекта и endpoint backend, который проверит токен и создаст сессию AxMed."
-    );
+  const continueWithSocial = async (mode: AuthMode, provider: SocialProvider) => {
+    const credential = await signInWithSocialProvider(provider);
+    await onSocialAuthenticated?.(credential, mode);
+
+    if (mode === "signUp") {
+      setRoute({ name: "about" });
+    } else {
+      onComplete();
+    }
   };
 
   if (route.name === "welcome") {
@@ -37,7 +47,7 @@ export function AuthFlow({ onComplete }: { onComplete: () => void }) {
         initialMode={route.mode}
         onBack={() => setRoute({ name: "welcome" })}
         onContinueEmail={(email, mode) => setRoute({ name: "verification", email, mode })}
-        onSocialContinue={requestSocialConfiguration}
+        onSocialContinue={continueWithSocial}
       />
     );
   }

@@ -1,7 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  AppleAuthenticationButton,
+  AppleAuthenticationButtonStyle,
+  AppleAuthenticationButtonType
+} from "expo-apple-authentication";
 import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +17,8 @@ import {
   View
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { SocialAuthError } from "./socialAuth";
+import type { SocialProvider } from "./socialAuth";
 import { AuthMode } from "./types";
 import {
   AuthScaffold,
@@ -105,13 +114,15 @@ export function AuthChoiceScreen({
   initialMode: AuthMode;
   onBack: () => void;
   onContinueEmail: (email: string, mode: AuthMode) => void;
-  onSocialContinue: (mode: AuthMode, provider: "Google" | "Apple") => void;
+  onSocialContinue: (mode: AuthMode, provider: SocialProvider) => Promise<void>;
 }) {
   const { height } = useWindowDimensions();
   const isCompact = height < 760;
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [socialError, setSocialError] = useState("");
+  const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
 
   const continueWithEmail = () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -124,6 +135,25 @@ export function AuthChoiceScreen({
   };
 
   const isSignUp = mode === "signUp";
+
+  const continueWithSocial = async (provider: SocialProvider) => {
+    if (socialLoading) return;
+    setSocialError("");
+    setSocialLoading(provider);
+
+    try {
+      await onSocialContinue(mode, provider);
+    } catch (socialAuthError) {
+      if (socialAuthError instanceof SocialAuthError && socialAuthError.code === "cancelled") return;
+      setSocialError(
+        socialAuthError instanceof SocialAuthError
+          ? socialAuthError.userMessage
+          : `Не удалось войти с ${provider}. Попробуйте ещё раз.`
+      );
+    } finally {
+      setSocialLoading(null);
+    }
+  };
 
   return (
     <AuthScaffold
@@ -172,8 +202,21 @@ export function AuthChoiceScreen({
       </View>
 
       <View style={styles.socialButtons}>
-        <SocialButton provider="Google" title="Продолжить с Google" onPress={() => onSocialContinue(mode, "Google")} />
-        <SocialButton provider="Apple" title="Продолжить с Apple" onPress={() => onSocialContinue(mode, "Apple")} />
+        <SocialButton
+          provider="Google"
+          title="Продолжить с Google"
+          loading={socialLoading === "Google"}
+          disabled={socialLoading !== null}
+          onPress={() => continueWithSocial("Google")}
+        />
+        <SocialButton
+          provider="Apple"
+          title="Продолжить с Apple"
+          loading={socialLoading === "Apple"}
+          disabled={socialLoading !== null}
+          onPress={() => continueWithSocial("Apple")}
+        />
+        {socialError ? <Text accessibilityRole="alert" style={styles.socialError}>{socialError}</Text> : null}
       </View>
 
       <Pressable style={styles.switchMode} onPress={() => setMode(isSignUp ? "signIn" : "signUp")}>
@@ -190,10 +233,45 @@ export function AuthChoiceScreen({
   );
 }
 
-function SocialButton({ provider, title, onPress }: { provider: "Google" | "Apple"; title: string; onPress: () => void }) {
+function SocialButton({
+  provider,
+  title,
+  loading,
+  disabled,
+  onPress
+}: {
+  provider: SocialProvider;
+  title: string;
+  loading: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  if (provider === "Apple" && Platform.OS === "ios") {
+    return (
+      <View pointerEvents={disabled ? "none" : "auto"} style={[styles.appleButtonContainer, disabled && styles.buttonDisabled]}>
+        <AppleAuthenticationButton
+          buttonType={AppleAuthenticationButtonType.CONTINUE}
+          buttonStyle={AppleAuthenticationButtonStyle.WHITE_OUTLINE}
+          cornerRadius={14}
+          onPress={onPress}
+          style={styles.appleButton}
+        />
+        {loading ? <View style={styles.appleLoading}><ActivityIndicator size="small" color="#111" /></View> : null}
+      </View>
+    );
+  }
+
   return (
-    <Pressable accessibilityRole="button" style={({ pressed }) => [styles.socialButton, pressed && styles.buttonPressed]} onPress={onPress}>
-      <Ionicons name={provider === "Google" ? "logo-google" : "logo-apple"} size={28} color={provider === "Google" ? "#4285F4" : "#111"} />
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ busy: loading, disabled }}
+      disabled={disabled}
+      style={({ pressed }) => [styles.socialButton, pressed && styles.buttonPressed, disabled && styles.buttonDisabled]}
+      onPress={onPress}
+    >
+      {loading
+        ? <ActivityIndicator size="small" color={authColors.greenDark} />
+        : <Ionicons name={provider === "Google" ? "logo-google" : "logo-apple"} size={28} color={provider === "Google" ? "#4285F4" : "#111"} />}
       <Text style={styles.socialButtonText}>{title}</Text>
     </Pressable>
   );
@@ -343,12 +421,17 @@ const styles = StyleSheet.create({
   socialButtons: { gap: 11 },
   socialButton: { minHeight: 54, borderRadius: 14, borderWidth: 1.5, borderColor: authColors.green, backgroundColor: "rgba(255,255,255,0.92)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 18 },
   socialButtonText: { color: authColors.ink, fontSize: 16, fontWeight: "700" },
+  appleButtonContainer: { width: "100%", height: 54 },
+  appleButton: { width: "100%", height: 54 },
+  appleLoading: { position: "absolute", inset: 0, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center" },
+  socialError: { color: "#B42318", fontSize: 12, lineHeight: 17, textAlign: "center", paddingHorizontal: 8 },
   switchMode: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 18, minHeight: 34 },
   switchModeMuted: { color: authColors.text, fontSize: 14 },
   switchModeLink: { color: authColors.greenDark, fontSize: 14, fontWeight: "700" },
   secureFooter: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 8 },
   secureFooterText: { color: authColors.text, fontSize: 12, flexShrink: 1, textAlign: "center" },
   buttonPressed: { opacity: 0.76 },
+  buttonDisabled: { opacity: 0.62 },
   verifyTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center" },
   verifySubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 10, paddingHorizontal: 18 },
   maskedEmail: { color: authColors.greenDark, fontSize: 17, fontWeight: "700", textAlign: "center", marginTop: 12, marginBottom: 21 },
