@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { ReactNode, useRef, useState } from "react";
+import { PanResponder, StyleSheet, View } from "react-native";
 import { AuthChoiceScreen, VerificationScreen, WelcomeScreen } from "./entryScreens";
 import { AboutScreen, AgeRestrictionScreen, ConsentsScreen } from "./profileScreens";
 import { BodyDataScreen, ConnectionErrorScreen, DataSourceScreen, FirstResultScreen } from "./setupScreens";
@@ -18,14 +19,22 @@ const initialMeasurements: BodyMeasurements = {
 
 type AuthFlowProps = {
   onComplete: () => void;
+  onEmailSignIn?: (credentials: { email: string; password: string }) => Promise<void> | void;
   onSocialAuthenticated?: (credential: SocialAuthCredential, mode: AuthMode) => Promise<void> | void;
 };
 
-export function AuthFlow({ onComplete, onSocialAuthenticated }: AuthFlowProps) {
+export function AuthFlow({ onComplete, onEmailSignIn, onSocialAuthenticated }: AuthFlowProps) {
   const [route, setRoute] = useState<AuthRoute>({ name: "welcome" });
   const [measurements, setMeasurements] = useState<BodyMeasurements>(initialMeasurements);
 
   const openAuth = (mode: AuthMode) => setRoute({ name: "auth", mode });
+  const previousRoute = getPreviousRoute(route);
+  const goBack = () => {
+    if (previousRoute) setRoute(previousRoute);
+  };
+  const withSwipeBack = (screen: ReactNode) => (
+    <SwipeBackGesture onBack={goBack}>{screen}</SwipeBackGesture>
+  );
   const continueWithSocial = async (mode: AuthMode, provider: SocialProvider) => {
     const credential = await signInWithSocialProvider(provider);
     await onSocialAuthenticated?.(credential, mode);
@@ -36,28 +45,37 @@ export function AuthFlow({ onComplete, onSocialAuthenticated }: AuthFlowProps) {
       onComplete();
     }
   };
+  const continueWithEmail = async (email: string, mode: AuthMode, password: string) => {
+    if (mode === "signUp") {
+      setRoute({ name: "verification", email, mode });
+      return;
+    }
+
+    await onEmailSignIn?.({ email, password });
+    onComplete();
+  };
 
   if (route.name === "welcome") {
     return <WelcomeScreen onCreateAccount={() => openAuth("signUp")} onSignIn={() => openAuth("signIn")} />;
   }
 
   if (route.name === "auth") {
-    return (
+    return withSwipeBack(
       <AuthChoiceScreen
         initialMode={route.mode}
-        onBack={() => setRoute({ name: "welcome" })}
-        onContinueEmail={(email, mode) => setRoute({ name: "verification", email, mode })}
+        onBack={goBack}
+        onContinueEmail={continueWithEmail}
         onSocialContinue={continueWithSocial}
       />
     );
   }
 
   if (route.name === "verification") {
-    return (
+    return withSwipeBack(
       <VerificationScreen
         email={route.email}
         mode={route.mode}
-        onBack={() => setRoute({ name: "auth", mode: route.mode })}
+        onBack={goBack}
         onChangeEmail={() => setRoute({ name: "auth", mode: route.mode })}
         onConfirm={() => route.mode === "signUp" ? setRoute({ name: "about" }) : onComplete()}
       />
@@ -65,9 +83,9 @@ export function AuthFlow({ onComplete, onSocialAuthenticated }: AuthFlowProps) {
   }
 
   if (route.name === "about") {
-    return (
+    return withSwipeBack(
       <AboutScreen
-        onBack={() => openAuth("signUp")}
+        onBack={goBack}
         onContinue={() => setRoute({ name: "consents" })}
         onUnderAge={() => setRoute({ name: "ageRestriction" })}
       />
@@ -75,7 +93,7 @@ export function AuthFlow({ onComplete, onSocialAuthenticated }: AuthFlowProps) {
   }
 
   if (route.name === "ageRestriction") {
-    return (
+    return withSwipeBack(
       <AgeRestrictionScreen
         onFixDate={() => setRoute({ name: "about" })}
         onExit={() => setRoute({ name: "welcome" })}
@@ -84,9 +102,9 @@ export function AuthFlow({ onComplete, onSocialAuthenticated }: AuthFlowProps) {
   }
 
   if (route.name === "consents") {
-    return (
+    return withSwipeBack(
       <ConsentsScreen
-        onBack={() => setRoute({ name: "about" })}
+        onBack={goBack}
         onContinue={() => setRoute({ name: "bodyData" })}
         onExit={() => setRoute({ name: "welcome" })}
       />
@@ -94,20 +112,20 @@ export function AuthFlow({ onComplete, onSocialAuthenticated }: AuthFlowProps) {
   }
 
   if (route.name === "bodyData") {
-    return (
+    return withSwipeBack(
       <BodyDataScreen
         values={measurements}
         onChange={setMeasurements}
-        onBack={() => setRoute({ name: "consents" })}
+        onBack={goBack}
         onContinue={() => setRoute({ name: "dataSource" })}
       />
     );
   }
 
   if (route.name === "dataSource") {
-    return (
+    return withSwipeBack(
       <DataSourceScreen
-        onBack={() => setRoute({ name: "bodyData" })}
+        onBack={goBack}
         onConnect={(source) => source.id === "bia"
           ? setRoute({ name: "connectionError", source: source.title })
           : setRoute({ name: "firstResult" })}
@@ -118,10 +136,10 @@ export function AuthFlow({ onComplete, onSocialAuthenticated }: AuthFlowProps) {
   }
 
   if (route.name === "connectionError") {
-    return (
+    return withSwipeBack(
       <ConnectionErrorScreen
         source={route.source}
-        onBack={() => setRoute({ name: "dataSource" })}
+        onBack={goBack}
         onRetry={() => setRoute({ name: "dataSource" })}
         onManual={() => setRoute({ name: "firstResult" })}
       />
@@ -130,3 +148,56 @@ export function AuthFlow({ onComplete, onSocialAuthenticated }: AuthFlowProps) {
 
   return <FirstResultScreen measurements={measurements} onComplete={onComplete} />;
 }
+
+function SwipeBackGesture({ children, onBack }: { children: ReactNode; onBack: () => void }) {
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_, gesture) => (
+        gesture.x0 <= 32
+        && gesture.dx > 12
+        && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.35
+      ),
+      onPanResponderRelease: (_, gesture) => {
+        const completedByDistance = gesture.dx >= 72 && Math.abs(gesture.dy) <= 90;
+        const completedByVelocity = gesture.dx >= 36 && gesture.vx >= 0.55;
+        if (completedByDistance || completedByVelocity) onBackRef.current();
+      },
+      onPanResponderTerminationRequest: () => false
+    })
+  ).current;
+
+  return (
+    <View style={styles.swipeBackArea} {...panResponder.panHandlers}>
+      {children}
+    </View>
+  );
+}
+
+function getPreviousRoute(route: AuthRoute): AuthRoute | null {
+  switch (route.name) {
+    case "auth":
+      return { name: "welcome" };
+    case "verification":
+      return { name: "auth", mode: route.mode };
+    case "about":
+      return { name: "auth", mode: "signUp" };
+    case "ageRestriction":
+    case "consents":
+      return { name: "about" };
+    case "bodyData":
+      return { name: "consents" };
+    case "dataSource":
+      return { name: "bodyData" };
+    case "connectionError":
+      return { name: "dataSource" };
+    default:
+      return null;
+  }
+}
+
+const styles = StyleSheet.create({
+  swipeBackArea: { flex: 1 }
+});

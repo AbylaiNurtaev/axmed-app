@@ -83,25 +83,42 @@ export function AuthChoiceScreen({
 }: {
   initialMode: AuthMode;
   onBack: () => void;
-  onContinueEmail: (email: string, mode: AuthMode) => void;
+  onContinueEmail: (email: string, mode: AuthMode, password: string) => Promise<void> | void;
   onSocialContinue: (mode: AuthMode, provider: SocialProvider) => Promise<void>;
 }) {
   const { height } = useWindowDimensions();
   const isCompact = height < 650;
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
   const [socialError, setSocialError] = useState("");
   const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
 
-  const continueWithEmail = () => {
+  const continueWithEmail = async () => {
     const normalizedEmail = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
       setError("Введите корректный email");
       return;
     }
+    if (!isSignUp && password.length === 0) {
+      setPasswordError("Введите пароль");
+      return;
+    }
     setError("");
-    onContinueEmail(normalizedEmail, mode);
+    setPasswordError("");
+    setSubmitError("");
+    setEmailLoading(true);
+    try {
+      await onContinueEmail(normalizedEmail, mode, password);
+    } catch {
+      setSubmitError("Неверный email или пароль. Проверьте данные и попробуйте снова.");
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   const isSignUp = mode === "signUp";
@@ -150,11 +167,31 @@ export function AuthChoiceScreen({
           returnKeyType="go"
           value={email}
         />
+        {!isSignUp ? (
+          <FormField
+            autoCapitalize="none"
+            autoComplete="current-password"
+            error={passwordError}
+            icon="lock-closed-outline"
+            onChangeText={(value) => {
+              setPassword(value);
+              if (passwordError) setPasswordError("");
+              if (submitError) setSubmitError("");
+            }}
+            onSubmitEditing={continueWithEmail}
+            placeholder="Введите пароль"
+            returnKeyType="go"
+            secureTextEntry
+            value={password}
+          />
+        ) : null}
         <PrimaryButton
-          title={isSignUp ? "Продолжить с Email" : "Получить код по Email"}
+          title={emailLoading ? "Входим…" : isSignUp ? "Продолжить с Email" : "Войти"}
+          disabled={emailLoading}
           onPress={continueWithEmail}
           variant="entry"
         />
+        {submitError ? <Text accessibilityRole="alert" style={styles.submitError}>{submitError}</Text> : null}
       </Surface>
 
       <View style={styles.divider}>
@@ -181,7 +218,15 @@ export function AuthChoiceScreen({
         {socialError ? <Text accessibilityRole="alert" style={styles.socialError}>{socialError}</Text> : null}
       </View>
 
-      <Pressable style={styles.switchMode} onPress={() => setMode(isSignUp ? "signIn" : "signUp")}>
+      <Pressable
+        style={styles.switchMode}
+        onPress={() => {
+          setMode(isSignUp ? "signIn" : "signUp");
+          setError("");
+          setPasswordError("");
+          setSubmitError("");
+        }}
+      >
         <Text style={styles.switchModeMuted}>{isSignUp ? "Уже есть аккаунт?" : "Нет аккаунта?"} </Text>
         <Text style={styles.switchModeLink}>{isSignUp ? "Войти" : "Зарегистрироваться"}</Text>
       </Pressable>
@@ -360,6 +405,7 @@ const styles = StyleSheet.create({
   entryBack: { position: "absolute", left: 0, top: 4, zIndex: 2 },
   authTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center", letterSpacing: -0.6 },
   emailCard: { gap: 10, padding: 12, marginTop: 20 },
+  submitError: { color: "#B42318", fontSize: 12, lineHeight: 17, textAlign: "center", paddingHorizontal: 4 },
   divider: { flexDirection: "row", alignItems: "center", gap: 14, marginVertical: 12, paddingHorizontal: 34 },
   dividerLine: { flex: 1, height: 1, backgroundColor: "#9BDCCB" },
   dividerText: { color: authColors.greenDark, fontSize: 17, fontWeight: "600" },
