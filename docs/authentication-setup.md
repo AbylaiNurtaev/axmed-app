@@ -10,7 +10,7 @@
 
 ## Google OAuth
 
-После создания OAuth-клиентов в Google Cloud заполнить локальный `.env` по примеру `.env.example`:
+OAuth-клиенты уже существуют в Google Cloud проекте `Axmed project`. Их публичные Client ID добавлены в приложение как значения по умолчанию. При необходимости их можно переопределить в локальном `.env` по примеру `.env.example`:
 
 ```dotenv
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=...
@@ -19,18 +19,20 @@ EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=...
 
 Это публичные идентификаторы OAuth-клиентов. Client secret в мобильное приложение добавлять нельзя.
 
-Для iOS нужно также добавить config plugin с URL scheme, полученной из iOS Client ID:
+Для iOS config plugin уже добавлен с URL scheme, полученной из iOS Client ID:
 
 ```json
 [
   "@react-native-google-signin/google-signin",
   {
-    "iosUrlScheme": "com.googleusercontent.apps.<IOS_CLIENT_ID_PREFIX>"
+    "iosUrlScheme": "com.googleusercontent.apps.1067093205466-lt209nb5s2p05dovapkp9u7ac6qspu6l"
   }
 ]
 ```
 
 Нативный Google Sign In не работает внутри Expo Go. Для проверки нужен development build.
+
+Существующий Android OAuth-клиент использует package `com.anonymous.pochka2new`, а этот репозиторий — `com.axmed.mobile`. Перед Android-сборкой нужно согласовать окончательный package name и добавить OAuth-клиент с SHA-1 сертификата фактической development/production сборки. На iOS это расхождение не влияет.
 
 ## Контракт с backend
 

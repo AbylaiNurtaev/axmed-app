@@ -1,5 +1,8 @@
 import { Platform } from "react-native";
 
+const defaultGoogleWebClientId = "1067093205466-sts78mosd7tm2cafg1vsn9lkk0trj6bi.apps.googleusercontent.com";
+const defaultGoogleIosClientId = "1067093205466-lt209nb5s2p05dovapkp9u7ac6qspu6l.apps.googleusercontent.com";
+
 export type SocialProvider = "Google" | "Apple";
 
 export type SocialAuthCredential = {
@@ -97,8 +100,8 @@ async function signInWithGoogle(): Promise<SocialAuthCredential> {
     throw new SocialAuthError("unsupported", "Вход с Google доступен в мобильном приложении.");
   }
 
-  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? defaultGoogleWebClientId;
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? defaultGoogleIosClientId;
 
   if (!webClientId || (Platform.OS === "ios" && !iosClientId)) {
     throw new SocialAuthError(
