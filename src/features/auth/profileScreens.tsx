@@ -105,6 +105,7 @@ function GenderCard({
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
+      aria-checked={selected}
       onPress={onPress}
       style={[styles.genderCard, selected && styles.genderCardSelected]}
     >
@@ -155,21 +156,21 @@ const consentItems: {
     icon: "file-document-outline",
     title: "Условия сервиса",
     description: "Я принимаю Условия использования приложения AxMed.",
-    link: "Открыть условия сервиса"
+    link: "Читать Условия сервиса"
   },
   {
     key: "privacy",
     icon: "lock-outline",
     title: "Политика конфиденциальности",
     description: "Я ознакомлен и согласен с Политикой конфиденциальности.",
-    link: "Открыть политику конфиденциальности"
+    link: "Читать Политику конфиденциальности"
   },
   {
     key: "health",
     icon: "heart-pulse",
     title: "Обработка данных о здоровье",
     description: "Я даю согласие на обработку данных о здоровье для анализа и персональных рекомендаций.",
-    link: "Подробнее о данных и безопасности"
+    link: "Подробнее об обработке данных"
   }
 ];
 
@@ -194,6 +195,7 @@ export function ConsentsScreen({ onBack, onContinue, onExit }: { onBack: () => v
             <Pressable
               accessibilityRole="checkbox"
               accessibilityState={{ checked: checked[item.key] }}
+              aria-checked={checked[item.key]}
               onPress={() => toggle(item.key)}
               style={styles.consentTop}
             >
@@ -220,7 +222,7 @@ export function ConsentsScreen({ onBack, onContinue, onExit }: { onBack: () => v
         text="Мы используем современные методы шифрования и не передаём ваши данные без согласия."
       />
 
-      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: allChecked }} onPress={toggleAll} style={styles.acceptAll}>
+      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: allChecked }} aria-checked={allChecked} onPress={toggleAll} style={styles.acceptAll}>
         <Checkbox checked={allChecked} />
         <Text style={styles.acceptAllText}>Я прочитал и принимаю все указанные документы и даю согласие на обработку данных.</Text>
       </Pressable>
@@ -266,35 +268,35 @@ function calculateAge(value: string) {
 
 const styles = StyleSheet.create({
   fieldLabel: { color: authColors.ink, fontSize: 18, fontWeight: "700", marginBottom: 12 },
-  dateField: { height: 64, borderWidth: 1.5, borderColor: authColors.line, borderRadius: 16, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: "rgba(255,255,255,0.92)" },
+  dateField: { height: 58, borderWidth: 1.5, borderColor: authColors.line, borderRadius: 15, paddingHorizontal: 17, flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: "rgba(255,255,255,0.96)" },
   dateFieldError: { borderColor: authColors.danger },
   dateInput: { flex: 1, height: "100%", color: authColors.ink, fontSize: 20 },
   error: { color: authColors.danger, fontSize: 13, marginTop: 7 },
   helper: { color: authColors.muted, fontSize: 14, marginTop: 10 },
-  genderLabel: { marginTop: 34 },
+  genderLabel: { marginTop: 28 },
   genderRow: { flexDirection: "row", gap: 14 },
-  genderCard: { flex: 1, minHeight: 178, borderWidth: 1.5, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.9)", alignItems: "center", justifyContent: "center", gap: 12 },
+  genderCard: { flex: 1, minHeight: 148, borderWidth: 1.5, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", gap: 10 },
   genderCardSelected: { borderColor: authColors.green, backgroundColor: "#F2FBF8" },
   genderText: { color: "#565E6B", fontSize: 18 },
   genderTextSelected: { color: authColors.greenDark, fontWeight: "600" },
-  flexSpacer: { flex: 1, minHeight: 42 },
-  bottomAction: { marginTop: 26 },
+  flexSpacer: { flex: 1, minHeight: 28 },
+  bottomAction: { marginTop: 20 },
   restrictionContent: { justifyContent: "space-between", paddingTop: 72 },
   restrictionMain: { alignItems: "stretch" },
   restrictionIcon: { width: 126, height: 126, borderRadius: 63, backgroundColor: authColors.dangerSoft, alignSelf: "center", alignItems: "center", justifyContent: "center", marginBottom: 30 },
   restrictionActions: { gap: 14 },
-  consentList: { gap: 12, marginBottom: 18 },
-  consentCard: { padding: 16 },
-  consentTop: { flexDirection: "row", alignItems: "center", gap: 11 },
-  consentIcon: { width: 45, height: 45, borderRadius: 13, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
+  consentList: { gap: 7, marginBottom: 11 },
+  consentCard: { padding: 10 },
+  consentTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+  consentIcon: { width: 35, height: 35, borderRadius: 10, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
   consentCopy: { flex: 1 },
-  consentTitle: { color: authColors.ink, fontSize: 16, lineHeight: 21, fontWeight: "700" },
-  consentDescription: { color: authColors.text, fontSize: 14, lineHeight: 20, marginTop: 4 },
-  consentDivider: { height: 1, backgroundColor: authColors.line, marginVertical: 14 },
-  consentLink: { color: authColors.greenDark, fontSize: 14, fontWeight: "600" },
-  checkbox: { width: 25, height: 25, borderRadius: 5, borderWidth: 1.5, borderColor: "#AEB6C1", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+  consentTitle: { color: authColors.ink, fontSize: 13, lineHeight: 16, fontWeight: "700" },
+  consentDescription: { color: authColors.text, fontSize: 11, lineHeight: 14, marginTop: 2 },
+  consentDivider: { height: 1, backgroundColor: authColors.line, marginVertical: 6 },
+  consentLink: { color: authColors.greenDark, fontSize: 11.5, lineHeight: 15, fontWeight: "600" },
+  checkbox: { width: 24, height: 24, borderRadius: 5, borderWidth: 1.5, borderColor: "#AEB6C1", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   checkboxChecked: { backgroundColor: authColors.greenDark, borderColor: authColors.greenDark },
-  acceptAll: { flexDirection: "row", alignItems: "flex-start", gap: 13, marginTop: 22, marginBottom: 18, paddingHorizontal: 2 },
-  acceptAllText: { flex: 1, color: authColors.ink, fontSize: 15, lineHeight: 22, fontWeight: "600" },
+  acceptAll: { flexDirection: "row", alignItems: "flex-start", gap: 11, marginTop: 14, marginBottom: 13, paddingHorizontal: 2 },
+  acceptAllText: { flex: 1, color: authColors.ink, fontSize: 12.5, lineHeight: 17, fontWeight: "600" },
   consentActions: { gap: 6 }
 });

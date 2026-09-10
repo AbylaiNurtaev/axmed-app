@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert } from "react-native";
 import { AuthChoiceScreen, VerificationScreen, WelcomeScreen } from "./entryScreens";
 import { AboutScreen, AgeRestrictionScreen, ConsentsScreen } from "./profileScreens";
 import { BodyDataScreen, ConnectionErrorScreen, DataSourceScreen, FirstResultScreen } from "./setupScreens";
@@ -19,6 +20,12 @@ export function AuthFlow({ onComplete }: { onComplete: () => void }) {
   const [measurements, setMeasurements] = useState<BodyMeasurements>(initialMeasurements);
 
   const openAuth = (mode: AuthMode) => setRoute({ name: "auth", mode });
+  const requestSocialConfiguration = (_mode: AuthMode, provider: "Google" | "Apple") => {
+    Alert.alert(
+      `${provider}: нужна конфигурация`,
+      "Экран готов. Для безопасного входа осталось добавить OAuth-данные проекта и endpoint backend, который проверит токен и создаст сессию AxMed."
+    );
+  };
 
   if (route.name === "welcome") {
     return <WelcomeScreen onCreateAccount={() => openAuth("signUp")} onSignIn={() => openAuth("signIn")} />;
@@ -30,7 +37,7 @@ export function AuthFlow({ onComplete }: { onComplete: () => void }) {
         initialMode={route.mode}
         onBack={() => setRoute({ name: "welcome" })}
         onContinueEmail={(email, mode) => setRoute({ name: "verification", email, mode })}
-        onSocialContinue={(mode) => mode === "signUp" ? setRoute({ name: "about" }) : onComplete()}
+        onSocialContinue={requestSocialConfiguration}
       />
     );
   }
@@ -113,4 +120,3 @@ export function AuthFlow({ onComplete }: { onComplete: () => void }) {
 
   return <FirstResultScreen measurements={measurements} onComplete={onComplete} />;
 }
-

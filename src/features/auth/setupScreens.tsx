@@ -3,8 +3,6 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-nativ
 import { BodyMeasurements } from "./types";
 import {
   AuthScaffold,
-  InfoBanner,
-  LinkButton,
   PageTitle,
   PrimaryButton,
   SecondaryButton,
@@ -18,15 +16,14 @@ const bodyFields: {
   label: string;
   unit: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  required?: boolean;
 }[] = [
-  { key: "height", label: "Рост", unit: "см", icon: "human-male-height", required: true },
-  { key: "weight", label: "Вес", unit: "кг", icon: "scale-bathroom", required: true },
+  { key: "height", label: "Рост", unit: "см", icon: "human-male-height" },
+  { key: "weight", label: "Вес", unit: "кг", icon: "scale-bathroom" },
   { key: "waist", label: "Талия", unit: "см", icon: "tape-measure" },
   { key: "hips", label: "Бёдра", unit: "см", icon: "tape-measure" },
   { key: "chest", label: "Грудь", unit: "см", icon: "tape-measure" },
   { key: "arm", label: "Плечо (в бицепсе)", unit: "см", icon: "tape-measure" },
-  { key: "calf", label: "Икра", unit: "см", icon: "tape-measure" }
+  { key: "calf", label: "Икра (в самом широком месте)", unit: "см", icon: "tape-measure" }
 ];
 
 export function BodyDataScreen({
@@ -47,6 +44,7 @@ export function BodyDataScreen({
     <AuthScaffold>
       <StepHeader current={3} onBack={onBack} />
       <PageTitle
+        compact
         title="Первые данные тела"
         subtitle="Эти данные помогут рассчитать ваши показатели и сравнивать изменения со временем."
       />
@@ -58,7 +56,6 @@ export function BodyDataScreen({
             key={field.key}
             icon={field.icon}
             label={field.label}
-            required={field.required}
             unit={field.unit}
             value={values[field.key]}
             onChange={(value) => onChange({ ...values, [field.key]: value })}
@@ -68,7 +65,6 @@ export function BodyDataScreen({
 
       <View style={styles.sectionHeadingRow}>
         <Text style={styles.sectionTitle}>Обхваты и измерения</Text>
-        <Text style={styles.optionalLabel}>необязательно</Text>
       </View>
       <View style={styles.fields}>
         {bodyFields.slice(2).map((field) => (
@@ -76,7 +72,6 @@ export function BodyDataScreen({
             key={field.key}
             icon={field.icon}
             label={field.label}
-            required={field.required}
             unit={field.unit}
             value={values[field.key]}
             onChange={(value) => onChange({ ...values, [field.key]: value })}
@@ -98,10 +93,10 @@ export function BodyDataScreen({
 
       <View style={styles.calculationNote}>
         <Ionicons name="information-circle-outline" size={19} color={authColors.muted} />
-        <Text style={styles.calculationNoteText}>Показатели рассчитаны на основе введённых данных. Оценку диапазонов предоставит backend AxMed.</Text>
+        <Text style={styles.calculationNoteText}>Показатели рассчитаны на основе введённых данных.</Text>
       </View>
 
-      <PrimaryButton title="Рассчитать профиль" disabled={!canContinue} onPress={onContinue} />
+      <PrimaryButton title="Продолжить" disabled={!canContinue} onPress={onContinue} />
     </AuthScaffold>
   );
 }
@@ -111,20 +106,18 @@ function MeasurementField({
   unit,
   icon,
   value,
-  required,
   onChange
 }: {
   label: string;
   unit: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   value: string;
-  required?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
     <View style={styles.measurementField}>
-      <MaterialCommunityIcons name={icon} size={24} color={authColors.greenDark} />
-      <Text style={styles.measurementLabel}>{label}{required ? " *" : ""}</Text>
+      <MaterialCommunityIcons name={icon} size={22} color={authColors.greenDark} />
+      <Text numberOfLines={1} style={styles.measurementLabel}>{label}</Text>
       <Text style={styles.measurementUnit}>{unit}</Text>
       <TextInput
         accessibilityLabel={`${label}, ${unit}`}
@@ -160,9 +153,9 @@ type SourceItem = {
 };
 
 const sources: SourceItem[] = [
-  { id: "bia", title: "BIA-весы", description: "Вес, жир, мышцы, вода и другие показатели состава тела.", icon: "scale-bathroom", recommended: true },
-  { id: "watch", title: "Умные часы", description: "Пульс, активность, сон, ВСР и другие показатели.", icon: "watch" },
-  { id: "band", title: "Фитнес-браслет", description: "Шаги, пульс, сон и SpO₂ при поддержке устройства.", icon: "watch-variant" },
+  { id: "bia", title: "BIA-весы", description: "Анализ состава тела: вес, жир, мышцы, вода и др.", icon: "scale-bathroom", recommended: true },
+  { id: "watch", title: "Умные часы", description: "Пульс, активность, сон, HRV и другие показатели.", icon: "watch" },
+  { id: "band", title: "Фитнес-браслет", description: "Шаги, пульс, сон, SpO₂ и уровень стресса.", icon: "watch-variant" },
   { id: "healthkit", title: "Apple Health (HealthKit)", description: "Импорт данных из приложения «Здоровье» на iPhone.", icon: "heart", accent: "#FF3B68" },
   { id: "healthconnect", title: "Health Connect", description: "Импорт данных из приложений и сервисов на Android.", icon: "link-variant", accent: "#467BEF" }
 ];
@@ -182,16 +175,17 @@ export function DataSourceScreen({
     <AuthScaffold>
       <StepHeader current={4} onBack={onBack} />
       <PageTitle
+        compact
         title="Подключение источника"
-        subtitle="Подключите устройства и сервисы, чтобы автоматически собирать данные. Этот шаг можно пропустить."
+        subtitle="Подключите устройства и сервисы, чтобы автоматически собирать ваши данные и получать более точные рекомендации."
       />
 
-      <Text style={styles.sectionTitle}>Рекомендуемые источники</Text>
+      <Text style={[styles.sectionTitle, styles.sourceSectionTitle]}>Рекомендуемые источники</Text>
       <View style={styles.sourceList}>
         {sources.map((source) => (
           <Surface key={source.id} style={styles.sourceCard}>
             <View style={[styles.sourceIcon, { backgroundColor: `${source.accent ?? authColors.green}12` }]}>
-              <MaterialCommunityIcons name={source.icon} size={34} color={source.accent ?? authColors.greenDark} />
+              <MaterialCommunityIcons name={source.icon} size={30} color={source.accent ?? authColors.greenDark} />
             </View>
             <View style={styles.sourceCopy}>
               <View style={styles.sourceTitleRow}>
@@ -199,11 +193,13 @@ export function DataSourceScreen({
                 {source.recommended && <Text style={styles.recommended}>Рекомендуем</Text>}
               </View>
               <Text style={styles.sourceDescription}>{source.description}</Text>
-              <Text style={styles.permissionText}>Доступ запрашивается только к указанным показателям</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={`Подключить ${source.title}`} onPress={() => onConnect(source)} style={styles.connectButton}>
-              <Text style={styles.connectButtonText}>Подключить</Text>
-            </Pressable>
+            <View style={styles.connectActions}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Подключить ${source.title}`} onPress={() => onConnect(source)} style={styles.connectButton}>
+                <Text style={styles.connectButtonText}>Подключить</Text>
+              </Pressable>
+              <Ionicons name="chevron-forward" size={20} color={authColors.text} />
+            </View>
           </Surface>
         ))}
       </View>
@@ -214,19 +210,23 @@ export function DataSourceScreen({
         </View>
         <View style={styles.sourceCopy}>
           <Text style={styles.sourceTitle}>Ввести данные вручную</Text>
-          <Text style={styles.sourceDescription}>Вы сможете пользоваться AxMed без подключения устройства.</Text>
+          <Text style={styles.sourceDescription}>Вы сможете добавить данные вручную, если не подключите устройства сейчас.</Text>
         </View>
         <Ionicons name="chevron-forward" size={24} color={authColors.ink} />
       </Pressable>
 
-      <InfoBanner
-        title="Ваши данные защищены"
-        text="Перед подключением мы покажем, какие данные будут считываться и какие разрешения потребуются."
-      />
+      <View style={styles.privacyRow}>
+        <View style={styles.privacyIcon}>
+          <MaterialCommunityIcons name="lock" size={22} color={authColors.greenDark} />
+        </View>
+        <View style={styles.sourceCopy}>
+          <Text style={styles.privacyTitle}>Ваши данные защищены</Text>
+          <Text style={styles.privacyText}>Мы используем шифрование и не передаём данные третьим лицам без вашего согласия.</Text>
+        </View>
+      </View>
 
       <View style={styles.sourceActions}>
         <PrimaryButton title="Продолжить" onPress={onContinue} />
-        <LinkButton title="Пропустить и продолжить вручную" onPress={onManual} />
       </View>
     </AuthScaffold>
   );
@@ -248,9 +248,9 @@ export function ConnectionErrorScreen({
       <StepHeader current={4} onBack={onBack} />
       <View style={styles.errorMain}>
         <View style={styles.connectionErrorIcon}>
-          <MaterialCommunityIcons name="wifi-off" size={68} color={authColors.danger} />
+          <MaterialCommunityIcons name="wifi-off" size={52} color={authColors.danger} />
         </View>
-        <PageTitle centered title="Не удалось подключиться" subtitle="Приложение не может установить соединение с вашим устройством." />
+        <PageTitle compact centered title="Не удалось подключиться" subtitle="Приложение не может установить соединение с вашим устройством." />
 
         <Surface style={styles.failedDevice}>
           <View style={styles.failedDeviceIcon}>
@@ -314,7 +314,7 @@ export function FirstResultScreen({
 
       <View style={styles.resultHero}>
         <View style={styles.successIcon}>
-          <Ionicons name="checkmark" size={54} color="#fff" />
+          <Ionicons name="checkmark" size={40} color="#fff" />
         </View>
         <View style={styles.resultHeroCopy}>
           <Text style={styles.resultTitle}>Первый результат</Text>
@@ -410,85 +410,89 @@ function numberValue(value: string) {
 }
 
 const styles = StyleSheet.create({
-  sectionTitle: { color: authColors.ink, fontSize: 17, fontWeight: "700", marginBottom: 12 },
-  sectionHeadingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 27 },
-  optionalLabel: { color: authColors.muted, fontSize: 12, marginBottom: 12 },
-  fields: { gap: 9 },
-  measurementField: { minHeight: 60, borderRadius: 15, borderWidth: 1, borderColor: authColors.line, backgroundColor: "rgba(255,255,255,0.92)", flexDirection: "row", alignItems: "center", paddingHorizontal: 16, gap: 11 },
-  measurementLabel: { flex: 1, color: authColors.ink, fontSize: 16, fontWeight: "600" },
-  measurementUnit: { color: authColors.muted, fontSize: 15 },
-  measurementInput: { width: 76, color: authColors.ink, fontSize: 18, textAlign: "right", paddingVertical: 12 },
-  calculationCard: { marginTop: 24, marginBottom: 13, padding: 18, backgroundColor: "#F2FBF8" },
-  calculationHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
+  sectionTitle: { color: authColors.ink, fontSize: 17, fontWeight: "700", marginBottom: 2 },
+  sourceSectionTitle: { marginBottom: 6 },
+  sectionHeadingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14, marginBottom: 2 },
+  fields: { gap: 4 },
+  measurementField: { minHeight: 44, borderRadius: 13, borderWidth: 1, borderColor: authColors.line, backgroundColor: "rgba(255,255,255,0.96)", flexDirection: "row", alignItems: "center", paddingHorizontal: 13, gap: 7 },
+  measurementLabel: { flex: 1, color: authColors.ink, fontSize: 13, fontWeight: "600" },
+  measurementUnit: { color: authColors.muted, fontSize: 13 },
+  measurementInput: { width: 55, color: authColors.ink, fontSize: 15, textAlign: "right", paddingVertical: 8 },
+  calculationCard: { marginTop: 13, marginBottom: 9, padding: 12, backgroundColor: "#F2FBF8" },
+  calculationHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   calculationTitle: { color: authColors.greenDark, fontSize: 16, fontWeight: "700" },
   metricsRow: { flexDirection: "row" },
   metric: { flex: 1, alignItems: "center", paddingHorizontal: 6 },
   metricBorder: { borderRightWidth: 1, borderRightColor: "#D8E8E3" },
   metricLabel: { color: authColors.text, fontSize: 15 },
-  metricValue: { color: authColors.ink, fontSize: 27, lineHeight: 34, fontWeight: "700", marginTop: 8 },
-  metricStatus: { color: authColors.greenDark, fontSize: 11, marginTop: 4, textAlign: "center" },
-  calculationNote: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 24 },
+  metricValue: { color: authColors.ink, fontSize: 23, lineHeight: 28, fontWeight: "700", marginTop: 4 },
+  metricStatus: { color: authColors.greenDark, fontSize: 10, marginTop: 3, textAlign: "center" },
+  calculationNote: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 16 },
   calculationNoteText: { flex: 1, color: authColors.muted, fontSize: 12, lineHeight: 17 },
-  sourceList: { gap: 10 },
-  sourceCard: { minHeight: 112, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 },
-  sourceIcon: { width: 60, height: 60, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  sourceList: { gap: 2 },
+  sourceCard: { minHeight: 76, padding: 10, flexDirection: "row", alignItems: "center", gap: 9 },
+  sourceIcon: { width: 46, height: 46, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   sourceCopy: { flex: 1 },
-  sourceTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-  sourceTitle: { color: authColors.ink, fontSize: 16, lineHeight: 21, fontWeight: "700" },
-  recommended: { color: authColors.greenDark, fontSize: 10, fontWeight: "700", backgroundColor: "#DDF6EF", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
-  sourceDescription: { color: authColors.text, fontSize: 13, lineHeight: 18, marginTop: 4 },
-  permissionText: { color: authColors.muted, fontSize: 10.5, lineHeight: 14, marginTop: 5 },
-  connectButton: { minHeight: 40, borderRadius: 11, backgroundColor: authColors.greenDark, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
-  connectButtonText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  manualCard: { borderRadius: 17, backgroundColor: authColors.soft, padding: 16, flexDirection: "row", alignItems: "center", gap: 13, marginVertical: 18 },
+  sourceTitleRow: { flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" },
+  sourceTitle: { color: authColors.ink, fontSize: 13, lineHeight: 16, fontWeight: "700" },
+  recommended: { color: authColors.greenDark, fontSize: 8.5, fontWeight: "700", backgroundColor: "#DDF6EF", paddingHorizontal: 6, paddingVertical: 3, borderRadius: 9 },
+  sourceDescription: { color: authColors.text, fontSize: 10.5, lineHeight: 14, marginTop: 2 },
+  connectActions: { alignItems: "center", flexDirection: "row", gap: 4 },
+  connectButton: { minHeight: 32, borderRadius: 9, backgroundColor: authColors.greenDark, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  connectButtonText: { color: "#fff", fontSize: 9.5, fontWeight: "700" },
+  manualCard: { borderRadius: 17, backgroundColor: authColors.soft, padding: 13, flexDirection: "row", alignItems: "center", gap: 11, marginVertical: 14 },
   manualIcon: { width: 48, height: 48, borderRadius: 13, backgroundColor: "#DDF6EF", alignItems: "center", justifyContent: "center" },
-  sourceActions: { marginTop: 22, gap: 5 },
+  privacyRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 5 },
+  privacyIcon: { width: 45, height: 45, borderRadius: 23, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
+  privacyTitle: { color: authColors.ink, fontSize: 14, lineHeight: 18, fontWeight: "700" },
+  privacyText: { color: authColors.text, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
+  sourceActions: { marginTop: 16, gap: 4 },
   errorContent: { justifyContent: "space-between" },
   errorMain: { alignItems: "stretch" },
-  connectionErrorIcon: { width: 132, height: 132, borderRadius: 66, backgroundColor: authColors.dangerSoft, alignItems: "center", justifyContent: "center", alignSelf: "center", marginTop: 10, marginBottom: 28 },
-  failedDevice: { padding: 18, flexDirection: "row", alignItems: "center", gap: 18 },
-  failedDeviceIcon: { width: 94, height: 94, borderRadius: 18, backgroundColor: "#F5F6F7", alignItems: "center", justifyContent: "center" },
-  failedDeviceTitle: { color: authColors.ink, fontSize: 20, fontWeight: "700", marginBottom: 8 },
-  failedDeviceText: { color: authColors.text, fontSize: 15, lineHeight: 22 },
-  tipsCard: { borderRadius: 17, borderWidth: 1, borderColor: "#CBEAE2", backgroundColor: "#F4FBF9", padding: 18, marginTop: 18 },
+  connectionErrorIcon: { width: 98, height: 98, borderRadius: 49, backgroundColor: authColors.dangerSoft, alignItems: "center", justifyContent: "center", alignSelf: "center", marginTop: 8, marginBottom: 20 },
+  failedDevice: { padding: 16, flexDirection: "row", alignItems: "center", gap: 16 },
+  failedDeviceIcon: { width: 82, height: 82, borderRadius: 17, backgroundColor: "#F5F6F7", alignItems: "center", justifyContent: "center" },
+  failedDeviceTitle: { color: authColors.ink, fontSize: 18, fontWeight: "700", marginBottom: 6 },
+  failedDeviceText: { color: authColors.text, fontSize: 14, lineHeight: 20 },
+  tipsCard: { borderRadius: 17, borderWidth: 1, borderColor: "#CBEAE2", backgroundColor: "#F4FBF9", padding: 15, marginTop: 15 },
   tipHeading: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 9 },
-  tipTitle: { color: authColors.greenDark, fontSize: 17, fontWeight: "700" },
-  tip: { color: authColors.text, fontSize: 14, lineHeight: 23, paddingLeft: 5 },
-  errorActions: { gap: 13, marginTop: 30 },
+  tipTitle: { color: authColors.greenDark, fontSize: 16, fontWeight: "700" },
+  tip: { color: authColors.text, fontSize: 11.5, lineHeight: 19, paddingLeft: 5 },
+  errorActions: { gap: 12, marginTop: 24 },
   laterText: { color: authColors.muted, fontSize: 12, lineHeight: 18, textAlign: "center", paddingHorizontal: 35 },
-  completeSteps: { minHeight: 50, flexDirection: "row", alignItems: "center", gap: 18, paddingLeft: 95, marginBottom: 22 },
+  completeSteps: { minHeight: 42, flexDirection: "row", alignItems: "center", gap: 16, paddingLeft: 58, marginBottom: 15 },
   stepsOnly: { flex: 1, flexDirection: "row", gap: 7 },
   completeStep: { flex: 1, height: 5, borderRadius: 4, backgroundColor: authColors.greenDark },
   completeStepText: { color: authColors.greenDark, fontSize: 14, minWidth: 83, textAlign: "right" },
-  resultHero: { flexDirection: "row", alignItems: "center", gap: 22, marginBottom: 22 },
-  successIcon: { width: 98, height: 98, borderRadius: 49, backgroundColor: authColors.green, alignItems: "center", justifyContent: "center", borderWidth: 10, borderColor: "#DCF6EF" },
+  resultHero: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 16 },
+  successIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: authColors.green, alignItems: "center", justifyContent: "center", borderWidth: 6, borderColor: "#DCF6EF" },
   resultHeroCopy: { flex: 1 },
-  resultTitle: { color: authColors.ink, fontSize: 32, lineHeight: 39, fontWeight: "800" },
-  resultSubtitle: { color: authColors.text, fontSize: 16, lineHeight: 23, marginTop: 7 },
-  resultCard: { padding: 18, marginBottom: 16 },
-  resultCardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 19 },
-  resultCardTitle: { color: authColors.ink, fontSize: 18, lineHeight: 24, fontWeight: "700" },
-  updatedBadge: { color: authColors.greenDark, fontSize: 11, backgroundColor: authColors.soft, borderRadius: 9, paddingHorizontal: 9, paddingVertical: 6 },
+  resultTitle: { color: authColors.ink, fontSize: 25, lineHeight: 31, fontWeight: "800" },
+  resultSubtitle: { color: authColors.text, fontSize: 14, lineHeight: 20, marginTop: 5 },
+  resultCard: { padding: 14, marginBottom: 12 },
+  resultCardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 },
+  resultCardTitle: { color: authColors.ink, fontSize: 16, lineHeight: 21, fontWeight: "700" },
+  updatedBadge: { color: authColors.greenDark, fontSize: 9.5, backgroundColor: authColors.soft, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 5 },
   resultMetrics: { flexDirection: "row" },
   resultMetric: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
   resultMetricBorder: { borderRightWidth: 1, borderRightColor: authColors.line },
-  resultMetricLabel: { color: authColors.text, fontSize: 12, marginTop: 6, textAlign: "center" },
-  resultMetricValue: { color: authColors.ink, fontSize: 20, lineHeight: 27, fontWeight: "700", marginTop: 6 },
-  resultMetricUnit: { color: authColors.muted, fontSize: 10, textAlign: "center" },
-  profileCard: { padding: 18, marginBottom: 16 },
+  resultMetricLabel: { color: authColors.text, fontSize: 10.5, marginTop: 4, textAlign: "center" },
+  resultMetricValue: { color: authColors.ink, fontSize: 18, lineHeight: 23, fontWeight: "700", marginTop: 4 },
+  resultMetricUnit: { color: authColors.muted, fontSize: 8.5, textAlign: "center" },
+  profileCard: { padding: 14, marginBottom: 12 },
   profileTop: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
-  profileIcon: { width: 58, height: 58, borderRadius: 29, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
-  profileText: { color: authColors.text, fontSize: 14, lineHeight: 20, marginTop: 6 },
-  qualityRow: { minHeight: 76, borderRadius: 13, backgroundColor: authColors.soft, flexDirection: "row", alignItems: "center", marginTop: 17, padding: 13 },
+  profileIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
+  profileText: { color: authColors.text, fontSize: 12, lineHeight: 17, marginTop: 4 },
+  qualityRow: { minHeight: 58, borderRadius: 13, backgroundColor: authColors.soft, flexDirection: "row", alignItems: "center", marginTop: 12, padding: 10 },
   qualityItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 9 },
   qualityDivider: { width: 1, alignSelf: "stretch", backgroundColor: "#D1E7E1", marginHorizontal: 11 },
-  qualityLabel: { color: authColors.text, fontSize: 11 },
-  qualityValue: { color: authColors.greenDark, fontSize: 13, fontWeight: "700", marginTop: 3 },
-  nextStepCard: { borderRadius: 18, borderWidth: 1.5, borderColor: authColors.greenDark, backgroundColor: "#F4FBF9", padding: 17 },
-  nextStepEyebrow: { color: authColors.greenDark, fontSize: 15, fontWeight: "600", marginBottom: 12 },
+  qualityLabel: { color: authColors.text, fontSize: 9.5 },
+  qualityValue: { color: authColors.greenDark, fontSize: 11.5, fontWeight: "700", marginTop: 2 },
+  nextStepCard: { borderRadius: 18, borderWidth: 1.5, borderColor: authColors.greenDark, backgroundColor: "#F4FBF9", padding: 14 },
+  nextStepEyebrow: { color: authColors.greenDark, fontSize: 13, fontWeight: "600", marginBottom: 9 },
   nextStepRow: { flexDirection: "row", alignItems: "center", gap: 13 },
-  nextStepIcon: { width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: authColors.line, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  nextStepTitle: { color: authColors.ink, fontSize: 18, fontWeight: "700" },
-  nextStepText: { color: authColors.text, fontSize: 12, lineHeight: 17, marginTop: 4 },
-  resultActions: { marginTop: 22, gap: 13 }
+  nextStepIcon: { width: 50, height: 50, borderRadius: 25, borderWidth: 1, borderColor: authColors.line, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+  nextStepTitle: { color: authColors.ink, fontSize: 16, fontWeight: "700" },
+  nextStepText: { color: authColors.text, fontSize: 10.5, lineHeight: 14, marginTop: 3 },
+  resultActions: { marginTop: 14, gap: 10 }
 });

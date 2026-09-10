@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { ReactNode } from "react";
 import {
@@ -34,12 +35,12 @@ export const authColors = {
 export function AuthScaffold({
   children,
   contentStyle,
-  decorVariant = "default",
+  decorVariant = "none",
   noScroll = false
 }: {
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
-  decorVariant?: "default" | "welcome";
+  decorVariant?: "none" | "entry" | "welcome";
   noScroll?: boolean;
 }) {
   const content = <View style={[styles.content, contentStyle]}>{children}</View>;
@@ -70,7 +71,9 @@ export function AuthScaffold({
   );
 }
 
-function BackgroundDecor({ variant }: { variant: "default" | "welcome" }) {
+function BackgroundDecor({ variant }: { variant: "none" | "entry" | "welcome" }) {
+  if (variant === "none") return null;
+
   const isWelcome = variant === "welcome";
 
   return (
@@ -127,11 +130,21 @@ export function StepHeader({ current, total = 4, onBack }: { current: number; to
   );
 }
 
-export function PageTitle({ title, subtitle, centered = false }: { title: string; subtitle?: string; centered?: boolean }) {
+export function PageTitle({
+  title,
+  subtitle,
+  centered = false,
+  compact = false
+}: {
+  title: string;
+  subtitle?: string;
+  centered?: boolean;
+  compact?: boolean;
+}) {
   return (
-    <View style={[styles.pageHeading, centered && styles.centered]}>
-      <Text style={[styles.pageTitle, centered && styles.textCentered]}>{title}</Text>
-      {!!subtitle && <Text style={[styles.pageSubtitle, centered && styles.textCentered]}>{subtitle}</Text>}
+    <View style={[styles.pageHeading, compact && styles.pageHeadingCompact, centered && styles.centered]}>
+      <Text style={[styles.pageTitle, compact && styles.pageTitleCompact, centered && styles.textCentered]}>{title}</Text>
+      {!!subtitle && <Text style={[styles.pageSubtitle, compact && styles.pageSubtitleCompact, centered && styles.textCentered]}>{subtitle}</Text>}
     </View>
   );
 }
@@ -156,6 +169,12 @@ export function PrimaryButton({
       onPress={onPress}
       style={({ pressed }) => [styles.primaryButton, variant === "welcome" && styles.welcomeButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
     >
+      <LinearGradient
+        colors={["#009F78", "#04B98A", "#35D0A6"]}
+        end={{ x: 1, y: 0 }}
+        start={{ x: 0, y: 0 }}
+        style={styles.buttonGradient}
+      />
       {!!icon && <Ionicons name={icon} size={24} color="#fff" />}
       <Text style={[styles.primaryButtonText, variant === "welcome" && styles.welcomeButtonText]}>{title}</Text>
     </Pressable>
@@ -226,7 +245,7 @@ export function InfoBanner({
   const color = danger ? authColors.danger : authColors.greenDark;
   return (
     <View style={[styles.infoBanner, danger && styles.infoBannerDanger]}>
-      <MaterialCommunityIcons name={icon} size={34} color={color} />
+      <MaterialCommunityIcons name={icon} size={30} color={color} />
       <View style={styles.infoCopy}>
         <Text style={[styles.infoTitle, { color }]}>{title}</Text>
         <Text style={styles.infoText}>{text}</Text>
@@ -244,7 +263,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: authColors.white, overflow: "hidden" },
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1 },
-  content: { width: "100%", maxWidth: 560, alignSelf: "center", flexGrow: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 54 },
+  content: { width: "100%", maxWidth: 560, alignSelf: "center", flexGrow: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 34 },
   ringOne: { position: "absolute", width: 420, height: 420, borderRadius: 210, borderWidth: 1, borderColor: "#E9F7F3", top: -230, alignSelf: "center" },
   ringTwo: { position: "absolute", width: 280, height: 280, borderRadius: 140, borderWidth: 1, borderColor: "#ECF8F5", top: -160, alignSelf: "center" },
   welcomeRingOuter: { position: "absolute", width: 520, height: 520, borderRadius: 260, borderWidth: 1, borderColor: "#E9F7F3", top: 22, alignSelf: "center" },
@@ -273,17 +292,21 @@ const styles = StyleSheet.create({
   logoTextCompact: { fontSize: 35, lineHeight: 39 },
   logoTextHero: { fontSize: 38, lineHeight: 40, letterSpacing: -1.2 },
   backButton: { width: 38, height: 44, justifyContent: "center", alignItems: "flex-start" },
-  stepHeader: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 28 },
+  stepHeader: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 22 },
   steps: { flex: 1, flexDirection: "row", gap: 7 },
   step: { flex: 1, height: 5, borderRadius: 4, backgroundColor: "#E7E9EC" },
   stepActive: { backgroundColor: authColors.greenDark },
   stepText: { color: authColors.text, fontSize: 14, minWidth: 82, textAlign: "right" },
-  pageHeading: { marginBottom: 28 },
-  centered: { alignItems: "center" },
-  pageTitle: { color: authColors.ink, fontSize: 34, lineHeight: 41, fontWeight: "800", letterSpacing: -0.8 },
-  pageSubtitle: { color: authColors.text, fontSize: 17, lineHeight: 26, marginTop: 10 },
+  pageHeading: { marginBottom: 22 },
+  pageHeadingCompact: { marginBottom: 17 },
+  centered: { width: "100%", alignItems: "center" },
+  pageTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", letterSpacing: -0.7 },
+  pageTitleCompact: { fontSize: 26, lineHeight: 32, letterSpacing: -0.55 },
+  pageSubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, marginTop: 8 },
+  pageSubtitleCompact: { fontSize: 14, lineHeight: 20, marginTop: 7 },
   textCentered: { textAlign: "center" },
-  primaryButton: { minHeight: 58, borderRadius: 15, paddingHorizontal: 20, backgroundColor: authColors.green, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", shadowColor: authColors.greenDark, shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 4 },
+  primaryButton: { minHeight: 58, borderRadius: 15, paddingHorizontal: 20, backgroundColor: authColors.green, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", shadowColor: authColors.greenDark, shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 4 },
+  buttonGradient: { position: "absolute", inset: 0, borderRadius: 15 },
   primaryButtonText: { color: authColors.white, fontSize: 19, fontWeight: "700", textAlign: "center" },
   secondaryButton: { minHeight: 58, borderRadius: 15, borderWidth: 1.5, borderColor: authColors.green, paddingHorizontal: 18, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.88)" },
   secondaryButtonText: { color: authColors.green, fontSize: 18, fontWeight: "700", textAlign: "center" },
@@ -298,10 +321,10 @@ const styles = StyleSheet.create({
   formFieldError: { borderColor: authColors.danger },
   input: { flex: 1, height: "100%", color: authColors.ink, fontSize: 18 },
   errorText: { color: authColors.danger, fontSize: 13, marginTop: 7, marginLeft: 4 },
-  infoBanner: { borderRadius: 17, backgroundColor: authColors.soft, padding: 18, flexDirection: "row", alignItems: "flex-start", gap: 14 },
+  infoBanner: { borderRadius: 17, backgroundColor: authColors.soft, padding: 13, flexDirection: "row", alignItems: "flex-start", gap: 12 },
   infoBannerDanger: { backgroundColor: authColors.dangerSoft },
   infoCopy: { flex: 1 },
-  infoTitle: { fontSize: 17, lineHeight: 22, fontWeight: "700", marginBottom: 5 },
-  infoText: { color: authColors.text, fontSize: 15, lineHeight: 22 },
+  infoTitle: { fontSize: 16, lineHeight: 21, fontWeight: "700", marginBottom: 4 },
+  infoText: { color: authColors.text, fontSize: 13, lineHeight: 19 },
   surface: { borderWidth: 1, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.94)", shadowColor: authColors.ink, shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 3 }
 });

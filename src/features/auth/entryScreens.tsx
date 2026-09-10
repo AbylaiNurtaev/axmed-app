@@ -14,7 +14,6 @@ import { AuthMode } from "./types";
 import {
   AuthScaffold,
   AxMedLogo,
-  BackButton,
   FormField,
   LinkButton,
   PrimaryButton,
@@ -108,6 +107,8 @@ export function AuthChoiceScreen({
   onContinueEmail: (email: string, mode: AuthMode) => void;
   onSocialContinue: (mode: AuthMode, provider: "Google" | "Apple") => void;
 }) {
+  const { height } = useWindowDimensions();
+  const isCompact = height < 760;
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -125,12 +126,11 @@ export function AuthChoiceScreen({
   const isSignUp = mode === "signUp";
 
   return (
-    <AuthScaffold>
-      <View style={styles.authTopRow}>
-        <BackButton onPress={onBack} />
-        <AxMedLogo compact />
-        <View style={styles.topSpacer} />
-      </View>
+    <AuthScaffold
+      contentStyle={[styles.entryContent, isCompact && styles.entryContentCompact]}
+      decorVariant="entry"
+    >
+      <View style={styles.entryLogo}><AxMedLogo compact /></View>
 
       <View style={styles.authTabs}>
         <Pressable onPress={() => { setMode("signUp"); setError(""); }} style={[styles.authTab, isSignUp && styles.authTabActive]}>
@@ -141,11 +141,9 @@ export function AuthChoiceScreen({
         </Pressable>
       </View>
 
-      <Text style={styles.authTitle}>{isSignUp ? "Регистрация" : "Вход"}</Text>
+      <Text style={styles.authTitle}>Регистрация / Вход</Text>
       <Text style={styles.authSubtitle}>
-        {isSignUp
-          ? "Выберите удобный способ, чтобы создать аккаунт в AxMed."
-          : "Войдите в AxMed удобным способом, чтобы продолжить."}
+        Выберите удобный способ, чтобы создать аккаунт или войти в AxMed.
       </Text>
 
       <Surface style={styles.emailCard}>
@@ -174,8 +172,8 @@ export function AuthChoiceScreen({
       </View>
 
       <View style={styles.socialButtons}>
-        <SocialButton provider="Google" title={`${isSignUp ? "Продолжить" : "Войти"} с Google`} onPress={() => onSocialContinue(mode, "Google")} />
-        <SocialButton provider="Apple" title={`${isSignUp ? "Продолжить" : "Войти"} с Apple`} onPress={() => onSocialContinue(mode, "Apple")} />
+        <SocialButton provider="Google" title="Продолжить с Google" onPress={() => onSocialContinue(mode, "Google")} />
+        <SocialButton provider="Apple" title="Продолжить с Apple" onPress={() => onSocialContinue(mode, "Apple")} />
       </View>
 
       <Pressable style={styles.switchMode} onPress={() => setMode(isSignUp ? "signIn" : "signUp")}>
@@ -214,6 +212,8 @@ export function VerificationScreen({
   onChangeEmail: () => void;
   onConfirm: () => void;
 }) {
+  const { height } = useWindowDimensions();
+  const isCompact = height < 760;
   const [code, setCode] = useState("");
   const [seconds, setSeconds] = useState(32);
   const inputRef = useRef<TextInput>(null);
@@ -233,12 +233,11 @@ export function VerificationScreen({
   };
 
   return (
-    <AuthScaffold>
-      <View style={styles.authTopRow}>
-        <BackButton onPress={onBack} />
-        <AxMedLogo compact />
-        <View style={styles.topSpacer} />
-      </View>
+    <AuthScaffold
+      contentStyle={[styles.entryContent, isCompact && styles.entryContentCompact]}
+      decorVariant="entry"
+    >
+      <View style={styles.entryLogo}><AxMedLogo compact /></View>
 
       <Text style={styles.verifyTitle}>Подтверждение email</Text>
       <Text style={styles.verifySubtitle}>
@@ -327,40 +326,41 @@ const styles = StyleSheet.create({
   welcomeActions: { gap: 10, marginTop: "auto" },
   safetyLine: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 9 },
   safetyText: { color: "#53617A", fontSize: 11, lineHeight: 16, flexShrink: 1, textAlign: "center" },
-  authTopRow: { minHeight: 122, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
-  topSpacer: { width: 38 },
-  authTabs: { height: 49, flexDirection: "row", borderWidth: 1.5, borderColor: authColors.green, borderRadius: 25, marginBottom: 28, overflow: "hidden" },
+  entryContent: { paddingHorizontal: 32, paddingTop: 44, paddingBottom: 28 },
+  entryContentCompact: { paddingTop: 22, paddingBottom: 18 },
+  entryLogo: { minHeight: 122, alignItems: "center", justifyContent: "flex-start" },
+  authTabs: { width: "84%", maxWidth: 310, alignSelf: "center", height: 44, flexDirection: "row", borderWidth: 1.5, borderColor: authColors.green, borderRadius: 23, marginBottom: 23, overflow: "hidden", backgroundColor: "rgba(255,255,255,0.88)" },
   authTab: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: 24 },
   authTabActive: { backgroundColor: authColors.soft, borderWidth: 1, borderColor: authColors.green },
-  authTabText: { color: authColors.muted, fontSize: 16, fontWeight: "600" },
+  authTabText: { color: authColors.muted, fontSize: 15, fontWeight: "600" },
   authTabTextActive: { color: authColors.greenDark, fontWeight: "700" },
-  authTitle: { color: authColors.ink, fontSize: 34, lineHeight: 41, fontWeight: "800", textAlign: "center" },
-  authSubtitle: { color: authColors.text, fontSize: 17, lineHeight: 25, textAlign: "center", marginTop: 10, marginBottom: 25, paddingHorizontal: 8 },
-  emailCard: { gap: 18, padding: 20 },
-  divider: { flexDirection: "row", alignItems: "center", gap: 16, marginVertical: 24, paddingHorizontal: 34 },
+  authTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center", letterSpacing: -0.6 },
+  authSubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 8, marginBottom: 22, paddingHorizontal: 8 },
+  emailCard: { gap: 14, padding: 16 },
+  divider: { flexDirection: "row", alignItems: "center", gap: 14, marginVertical: 20, paddingHorizontal: 34 },
   dividerLine: { flex: 1, height: 1, backgroundColor: "#9BDCCB" },
   dividerText: { color: authColors.greenDark, fontSize: 17, fontWeight: "600" },
-  socialButtons: { gap: 13 },
-  socialButton: { minHeight: 58, borderRadius: 15, borderWidth: 1.5, borderColor: authColors.green, backgroundColor: "rgba(255,255,255,0.9)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, paddingHorizontal: 18 },
-  socialButtonText: { color: authColors.ink, fontSize: 18, fontWeight: "700" },
-  switchMode: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 24, minHeight: 36 },
-  switchModeMuted: { color: authColors.text, fontSize: 16 },
-  switchModeLink: { color: authColors.greenDark, fontSize: 16, fontWeight: "700" },
-  secureFooter: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 9, marginTop: 12 },
-  secureFooterText: { color: authColors.text, fontSize: 13, flexShrink: 1 },
+  socialButtons: { gap: 11 },
+  socialButton: { minHeight: 54, borderRadius: 14, borderWidth: 1.5, borderColor: authColors.green, backgroundColor: "rgba(255,255,255,0.92)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 18 },
+  socialButtonText: { color: authColors.ink, fontSize: 16, fontWeight: "700" },
+  switchMode: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 18, minHeight: 34 },
+  switchModeMuted: { color: authColors.text, fontSize: 14 },
+  switchModeLink: { color: authColors.greenDark, fontSize: 14, fontWeight: "700" },
+  secureFooter: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 8 },
+  secureFooterText: { color: authColors.text, fontSize: 12, flexShrink: 1, textAlign: "center" },
   buttonPressed: { opacity: 0.76 },
-  verifyTitle: { color: authColors.ink, fontSize: 34, lineHeight: 41, fontWeight: "800", textAlign: "center", marginTop: 10 },
-  verifySubtitle: { color: authColors.text, fontSize: 17, lineHeight: 25, textAlign: "center", marginTop: 14, paddingHorizontal: 30 },
-  maskedEmail: { color: authColors.greenDark, fontSize: 18, fontWeight: "700", textAlign: "center", marginTop: 16, marginBottom: 24 },
-  codeCard: { padding: 22 },
+  verifyTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center" },
+  verifySubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 10, paddingHorizontal: 18 },
+  maskedEmail: { color: authColors.greenDark, fontSize: 17, fontWeight: "700", textAlign: "center", marginTop: 12, marginBottom: 21 },
+  codeCard: { padding: 18 },
   codeBoxes: { flexDirection: "row", gap: 9, justifyContent: "center", position: "relative" },
   codeBox: { flex: 1, maxWidth: 58, aspectRatio: 0.76, borderRadius: 13, borderWidth: 1.5, borderColor: "#B8E7DB", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   codeBoxActive: { borderColor: authColors.green, borderWidth: 2 },
   codeDigit: { color: authColors.greenDark, fontSize: 28, fontWeight: "700" },
   hiddenCodeInput: { position: "absolute", width: 1, height: 1, opacity: 0 },
-  codeHint: { color: authColors.greenDark, fontSize: 16, textAlign: "center", marginTop: 19 },
-  codeSeparator: { height: 1, backgroundColor: "#D1EDE6", marginVertical: 18 },
+  codeHint: { color: authColors.greenDark, fontSize: 15, textAlign: "center", marginTop: 16 },
+  codeSeparator: { height: 1, backgroundColor: "#D1EDE6", marginVertical: 15 },
   resendTimer: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   resendTimerText: { color: authColors.greenDark, fontSize: 14, textAlign: "center" },
-  verifyActions: { gap: 4, marginTop: 24 }
+  verifyActions: { gap: 2, marginTop: 20 }
 });
