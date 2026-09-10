@@ -57,10 +57,6 @@ export function WelcomeScreen({ onCreateAccount, onSignIn }: { onCreateAccount: 
       <View style={styles.welcomeActions}>
         <PrimaryButton title="Создать аккаунт" onPress={onCreateAccount} variant="welcome" />
         <SecondaryButton title="Войти" onPress={onSignIn} variant="welcome" />
-        <View style={styles.safetyLine}>
-          <Ionicons name="lock-closed-outline" size={20} color={authColors.greenDark} />
-          <Text style={styles.safetyText}>Безопасно. Конфиденциально. Для пользователей 18+</Text>
-        </View>
       </View>
     </AuthScaffold>
   );
@@ -369,8 +365,6 @@ const styles = StyleSheet.create({
   illustrationCompact: { height: 194, marginTop: 1, marginBottom: 2 },
   healthHeroImage: { width: "100%", height: "100%" },
   welcomeActions: { gap: 10, marginTop: "auto" },
-  safetyLine: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 9 },
-  safetyText: { color: "#53617A", fontSize: 11, lineHeight: 16, flexShrink: 1, textAlign: "center" },
   entryContent: { paddingHorizontal: 32, paddingTop: 62, paddingBottom: 22 },
   entryContentCompact: { paddingTop: 18, paddingBottom: 14 },
   entryLogo: { minHeight: 126, alignItems: "center", justifyContent: "flex-start" },
