@@ -7,7 +7,14 @@
     "ios": "expo start --ios",
     "android": "expo start --android",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "api:dev": "npm run dev --prefix server",
+    "api:start": "npm run start --prefix server",
+    "api:typecheck": "npm run typecheck --prefix server",
+    "api:test": "npm test --prefix server",
+    "api:test:integration": "npm run test:integration --prefix server",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +28,7 @@
     "expo-apple-authentication": "~57.0.1",
     "expo-font": "~57.0.3",
     "expo-linear-gradient": "~57.0.1",
+    "expo-secure-store": "~57.0.3",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",

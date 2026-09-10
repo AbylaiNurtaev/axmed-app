@@ -28,7 +28,8 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.1067093205466-lt209nb5s2p05dovapkp9u7ac6qspu6l"
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

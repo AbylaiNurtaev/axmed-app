@@ -5,7 +5,7 @@ export type Gender = "male" | "female";
 export type AuthRoute =
   | { name: "welcome" }
   | { name: "auth"; mode: AuthMode }
-  | { name: "verification"; mode: AuthMode; email: string }
+  | { name: "verification"; mode: AuthMode; email: string; developmentCode?: string }
   | { name: "about" }
   | { name: "ageRestriction" }
   | { name: "consents" }
@@ -23,4 +23,3 @@ export type BodyMeasurements = {
   arm: string;
   calf: string;
 };
-

@@ -21,6 +21,7 @@ import {
 import Svg, { Path } from "react-native-svg";
 import { SocialAuthError } from "./socialAuth";
 import type { SocialProvider } from "./socialAuth";
+import type { VerificationResult } from "./authApi";
 import { AuthMode } from "./types";
 import {
   AuthScaffold,
@@ -92,8 +93,10 @@ export function AuthChoiceScreen({
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
   const [socialError, setSocialError] = useState("");
@@ -105,18 +108,32 @@ export function AuthChoiceScreen({
       setError("Введите корректный email");
       return;
     }
-    if (!isSignUp && password.length === 0) {
+    if (password.length === 0) {
       setPasswordError("Введите пароль");
+      return;
+    }
+    if (isSignUp && (password.length < 8 || !/\p{L}/u.test(password) || !/\p{N}/u.test(password))) {
+      setPasswordError("Минимум 8 символов, одна буква и одна цифра");
+      return;
+    }
+    if (isSignUp && password !== confirmPassword) {
+      setConfirmPasswordError("Пароли не совпадают");
       return;
     }
     setError("");
     setPasswordError("");
+    setConfirmPasswordError("");
     setSubmitError("");
     setEmailLoading(true);
     try {
       await onContinueEmail(normalizedEmail, mode, password);
-    } catch {
-      setSubmitError("Неверный email или пароль. Проверьте данные и попробуйте снова.");
+    } catch (submitFailure) {
+      setSubmitError(getErrorMessage(
+        submitFailure,
+        isSignUp
+          ? "Не удалось создать аккаунт. Попробуйте снова."
+          : "Неверный email или пароль. Проверьте данные и попробуйте снова."
+      ));
     } finally {
       setEmailLoading(false);
     }
@@ -168,26 +185,42 @@ export function AuthChoiceScreen({
           returnKeyType="go"
           value={email}
         />
-        {!isSignUp ? (
+        <FormField
+          autoCapitalize="none"
+          autoComplete={isSignUp ? "new-password" : "current-password"}
+          error={passwordError}
+          icon="lock-closed-outline"
+          onChangeText={(value) => {
+            setPassword(value);
+            if (passwordError) setPasswordError("");
+            if (submitError) setSubmitError("");
+          }}
+          onSubmitEditing={isSignUp ? undefined : continueWithEmail}
+          placeholder={isSignUp ? "Придумайте пароль" : "Введите пароль"}
+          returnKeyType={isSignUp ? "next" : "go"}
+          secureTextEntry
+          value={password}
+        />
+        {isSignUp ? (
           <FormField
             autoCapitalize="none"
-            autoComplete="current-password"
-            error={passwordError}
-            icon="lock-closed-outline"
+            autoComplete="new-password"
+            error={confirmPasswordError}
+            icon="shield-checkmark-outline"
             onChangeText={(value) => {
-              setPassword(value);
-              if (passwordError) setPasswordError("");
+              setConfirmPassword(value);
+              if (confirmPasswordError) setConfirmPasswordError("");
               if (submitError) setSubmitError("");
             }}
             onSubmitEditing={continueWithEmail}
-            placeholder="Введите пароль"
+            placeholder="Повторите пароль"
             returnKeyType="go"
             secureTextEntry
-            value={password}
+            value={confirmPassword}
           />
         ) : null}
         <PrimaryButton
-          title={emailLoading ? "Входим…" : isSignUp ? "Продолжить с Email" : "Войти"}
+          title={emailLoading ? (isSignUp ? "Создаём…" : "Входим…") : isSignUp ? "Продолжить с Email" : "Войти"}
           disabled={emailLoading}
           onPress={continueWithEmail}
           variant="entry"
@@ -225,6 +258,7 @@ export function AuthChoiceScreen({
           setMode(isSignUp ? "signIn" : "signUp");
           setError("");
           setPasswordError("");
+          setConfirmPasswordError("");
           setSubmitError("");
         }}
       >
@@ -296,20 +330,28 @@ function GoogleMark() {
 export function VerificationScreen({
   email,
   mode,
+  developmentCode,
   onBack,
   onChangeEmail,
-  onConfirm
+  onConfirm,
+  onResend
 }: {
   email: string;
   mode: AuthMode;
+  developmentCode?: string;
   onBack: () => void;
   onChangeEmail: () => void;
-  onConfirm: () => void;
+  onConfirm: (code: string) => Promise<void>;
+  onResend: () => Promise<VerificationResult>;
 }) {
   const { height } = useWindowDimensions();
   const isCompact = height < 650;
   const [code, setCode] = useState("");
   const [seconds, setSeconds] = useState(32);
+  const [verificationError, setVerificationError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [localCode, setLocalCode] = useState(developmentCode);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -318,12 +360,35 @@ export function VerificationScreen({
     return () => clearInterval(timer);
   }, [seconds]);
 
-  const resend = () => {
+  const resend = async () => {
     if (seconds > 0) return;
-    setCode("");
-    setSeconds(32);
-    Alert.alert("Код отправлен", `Новый код отправлен на ${maskEmail(email)}`);
-    inputRef.current?.focus();
+    setResending(true);
+    setVerificationError("");
+    try {
+      const result = await onResend();
+      setLocalCode(result.verificationCode);
+      setCode("");
+      setSeconds(32);
+      Alert.alert("Код отправлен", `Новый код отправлен на ${maskEmail(email)}`);
+      inputRef.current?.focus();
+    } catch (resendFailure) {
+      setVerificationError(getErrorMessage(resendFailure, "Не удалось отправить новый код."));
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const confirm = async () => {
+    if (code.length !== 6 || loading) return;
+    setLoading(true);
+    setVerificationError("");
+    try {
+      await onConfirm(code);
+    } catch (confirmationFailure) {
+      setVerificationError(getErrorMessage(confirmationFailure, "Не удалось подтвердить код."));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -354,12 +419,17 @@ export function VerificationScreen({
             autoComplete="one-time-code"
             keyboardType="number-pad"
             maxLength={6}
-            onChangeText={(value) => setCode(value.replace(/\D/g, ""))}
+            onChangeText={(value) => {
+              setCode(value.replace(/\D/g, ""));
+              if (verificationError) setVerificationError("");
+            }}
             style={styles.hiddenCodeInput}
             value={code}
           />
         </Pressable>
         <Text style={styles.codeHint}>Введите код из письма</Text>
+        {localCode ? <Text style={styles.developmentCode}>Локальный код: {localCode}</Text> : null}
+        {verificationError ? <Text accessibilityRole="alert" style={styles.submitError}>{verificationError}</Text> : null}
         <View style={styles.codeSeparator} />
         <View style={styles.resendTimer}>
           <Ionicons name="time-outline" size={22} color={authColors.greenDark} />
@@ -370,8 +440,8 @@ export function VerificationScreen({
       </Surface>
 
       <View style={styles.verifyActions}>
-        <PrimaryButton title={mode === "signUp" ? "Подтвердить" : "Войти"} disabled={code.length !== 6} onPress={onConfirm} variant="entry" />
-        <LinkButton title="Отправить код снова" icon="refresh-outline" onPress={resend} />
+        <PrimaryButton title={loading ? "Проверяем…" : mode === "signUp" ? "Подтвердить" : "Войти"} disabled={code.length !== 6 || loading} onPress={confirm} variant="entry" />
+        <LinkButton title={resending ? "Отправляем…" : "Отправить код снова"} icon="refresh-outline" onPress={resend} />
         <LinkButton title="Изменить email" icon="mail-outline" onPress={onChangeEmail} />
       </View>
 
@@ -388,6 +458,10 @@ function maskEmail(email: string) {
   if (!domain) return email;
   const visible = name.slice(0, Math.min(3, name.length));
   return `${visible}***@${domain}`;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 const styles = StyleSheet.create({
@@ -434,6 +508,7 @@ const styles = StyleSheet.create({
   codeDigit: { color: authColors.greenDark, fontSize: 28, fontWeight: "700" },
   hiddenCodeInput: { position: "absolute", width: 1, height: 1, opacity: 0 },
   codeHint: { color: authColors.greenDark, fontSize: 15, textAlign: "center", marginTop: 16 },
+  developmentCode: { color: authColors.muted, fontSize: 12, fontWeight: "700", textAlign: "center", marginTop: 6 },
   codeSeparator: { height: 1, backgroundColor: "#D1EDE6", marginVertical: 11 },
   resendTimer: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   resendTimerText: { color: authColors.greenDark, fontSize: 14, textAlign: "center" },

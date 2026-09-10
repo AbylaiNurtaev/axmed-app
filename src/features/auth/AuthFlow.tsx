@@ -6,6 +6,7 @@ import { BodyDataScreen, ConnectionErrorScreen, DataSourceScreen, FirstResultScr
 import { signInWithSocialProvider } from "./socialAuth";
 import type { SocialAuthCredential, SocialProvider } from "./socialAuth";
 import { AuthMode, AuthRoute, BodyMeasurements } from "./types";
+import type { VerificationResult } from "./authApi";
 
 const initialMeasurements: BodyMeasurements = {
   height: "178",
@@ -19,18 +20,44 @@ const initialMeasurements: BodyMeasurements = {
 
 type AuthFlowProps = {
   onComplete: () => void;
-  onEmailSignIn?: (credentials: { email: string; password: string }) => Promise<void> | void;
-  onSocialAuthenticated?: (credential: SocialAuthCredential, mode: AuthMode) => Promise<void> | void;
+  onEmailRegister: (credentials: { email: string; password: string }) => Promise<VerificationResult>;
+  onEmailSignIn: (credentials: { email: string; password: string }) => Promise<unknown>;
+  onLogout: () => Promise<void>;
+  onVerifyEmail: (input: { email: string; code: string }) => Promise<unknown>;
+  onResendVerification: (email: string) => Promise<VerificationResult>;
+  onSocialAuthenticated: (credential: SocialAuthCredential, mode: AuthMode) => Promise<unknown>;
 };
 
-export function AuthFlow({ onComplete, onEmailSignIn, onSocialAuthenticated }: AuthFlowProps) {
+export function AuthFlow({
+  onComplete,
+  onEmailRegister,
+  onEmailSignIn,
+  onLogout,
+  onVerifyEmail,
+  onResendVerification,
+  onSocialAuthenticated
+}: AuthFlowProps) {
   const [route, setRoute] = useState<AuthRoute>({ name: "welcome" });
   const [measurements, setMeasurements] = useState<BodyMeasurements>(initialMeasurements);
+  const [sessionCreated, setSessionCreated] = useState(false);
 
   const openAuth = (mode: AuthMode) => setRoute({ name: "auth", mode });
   const previousRoute = getPreviousRoute(route);
   const goBack = () => {
-    if (previousRoute) setRoute(previousRoute);
+    if (!previousRoute) return;
+    if (route.name === "auth" && sessionCreated) {
+      void onLogout().finally(() => {
+        setSessionCreated(false);
+        setRoute(previousRoute);
+      });
+      return;
+    }
+    setRoute(previousRoute);
+  };
+  const exitAccount = async () => {
+    await onLogout();
+    setSessionCreated(false);
+    setRoute({ name: "welcome" });
   };
   const withSwipeBack = (screen: ReactNode) => (
     <SwipeBackGesture onBack={goBack}>{screen}</SwipeBackGesture>
@@ -40,6 +67,7 @@ export function AuthFlow({ onComplete, onEmailSignIn, onSocialAuthenticated }: A
     await onSocialAuthenticated?.(credential, mode);
 
     if (mode === "signUp") {
+      setSessionCreated(true);
       setRoute({ name: "about" });
     } else {
       onComplete();
@@ -47,11 +75,12 @@ export function AuthFlow({ onComplete, onEmailSignIn, onSocialAuthenticated }: A
   };
   const continueWithEmail = async (email: string, mode: AuthMode, password: string) => {
     if (mode === "signUp") {
-      setRoute({ name: "verification", email, mode });
+      const result = await onEmailRegister({ email, password });
+      setRoute({ name: "verification", email, mode, developmentCode: result.verificationCode });
       return;
     }
 
-    await onEmailSignIn?.({ email, password });
+    await onEmailSignIn({ email, password });
     onComplete();
   };
 
@@ -75,9 +104,15 @@ export function AuthFlow({ onComplete, onEmailSignIn, onSocialAuthenticated }: A
       <VerificationScreen
         email={route.email}
         mode={route.mode}
+        developmentCode={route.developmentCode}
         onBack={goBack}
         onChangeEmail={() => setRoute({ name: "auth", mode: route.mode })}
-        onConfirm={() => route.mode === "signUp" ? setRoute({ name: "about" }) : onComplete()}
+        onConfirm={async (code) => {
+          await onVerifyEmail({ email: route.email, code });
+          setSessionCreated(true);
+          setRoute({ name: "about" });
+        }}
+        onResend={() => onResendVerification(route.email)}
       />
     );
   }
@@ -96,7 +131,7 @@ export function AuthFlow({ onComplete, onEmailSignIn, onSocialAuthenticated }: A
     return withSwipeBack(
       <AgeRestrictionScreen
         onFixDate={() => setRoute({ name: "about" })}
-        onExit={() => setRoute({ name: "welcome" })}
+        onExit={() => void exitAccount()}
       />
     );
   }
@@ -106,7 +141,7 @@ export function AuthFlow({ onComplete, onEmailSignIn, onSocialAuthenticated }: A
       <ConsentsScreen
         onBack={goBack}
         onContinue={() => setRoute({ name: "bodyData" })}
-        onExit={() => setRoute({ name: "welcome" })}
+        onExit={() => void exitAccount()}
       />
     );
   }
