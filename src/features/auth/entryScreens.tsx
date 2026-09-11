@@ -457,7 +457,6 @@ export function VerificationScreen({
 
       <View style={styles.secureFooter}>
         <MaterialCommunityIcons name="shield-lock-outline" size={27} color={authColors.greenDark} />
-        <Text style={styles.secureFooterText}>Безопасное подтверждение. Ваши данные защищены.</Text>
       </View>
     </AuthScaffold>
   );
@@ -505,7 +504,6 @@ const styles = StyleSheet.create({
   switchModeMuted: { color: authColors.text, fontSize: 14 },
   switchModeLink: { color: authColors.greenDark, fontSize: 14, fontWeight: "700" },
   secureFooter: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 8 },
-  secureFooterText: { color: authColors.text, fontSize: 12, flexShrink: 1, textAlign: "center" },
   buttonPressed: { opacity: 0.76 },
   buttonDisabled: { opacity: 0.62 },
   verifyTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center" },
