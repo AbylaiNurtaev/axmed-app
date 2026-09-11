@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Gender } from "./types";
 import {
   AuthScaffold,
@@ -145,36 +145,42 @@ const consentItems: {
   title: string;
   description: string;
   link: string;
+  documentText: string;
 }[] = [
   {
     key: "terms",
     icon: "file-document-outline",
     title: "Условия сервиса",
     description: "Правила использования AxMed",
-    link: "Условия сервиса"
+    link: "Условия сервиса",
+    documentText: "AxMed помогает отслеживать показатели здоровья и получать персональные рекомендации.\n\nИспользуя приложение, вы соглашаетесь предоставлять данные, необходимые для работы сервиса, и использовать его только в законных целях.\n\nНе передавайте доступ к аккаунту другим людям. Условия могут обновляться — о важных изменениях мы сообщим в приложении."
   },
   {
     key: "privacy",
     icon: "lock-outline",
     title: "Политика конфиденциальности",
     description: "Как мы защищаем ваши данные",
-    link: "Политика конфиденциальности"
+    link: "Политика конфиденциальности",
+    documentText: "Мы собираем данные, которые вы указываете в приложении, чтобы сохранять профиль, анализировать показатели и показывать рекомендации.\n\nМы не продаём персональные данные и не передаём их третьим лицам без законного основания или вашего согласия. Доступ к данным ограничен и защищён.\n\nВы можете запросить исправление или удаление своих данных через службу поддержки."
   },
   {
     key: "health",
     icon: "heart-pulse",
     title: "Обработка данных о здоровье",
     description: "Согласие на анализ данных о здоровье",
-    link: "Обработка данных о здоровье"
+    link: "Обработка данных о здоровье",
+    documentText: "Вы разрешаете AxMed обрабатывать сведения о самочувствии, измерениях и ответах в анкете для анализа динамики и подготовки персональных рекомендаций.\n\nРекомендации приложения не заменяют консультацию врача. При плохом самочувствии или резком ухудшении состояния обратитесь к медицинскому специалисту.\n\nСогласие можно отозвать через настройки профиля или службу поддержки."
   }
 ];
 
 export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onContinue: () => void; onExit: () => void }) {
   const [checked, setChecked] = useState<Record<ConsentKey, boolean>>({ terms: true, privacy: true, health: true });
+  const [activeDocument, setActiveDocument] = useState<(typeof consentItems)[number] | null>(null);
   const allChecked = consentItems.every((item) => checked[item.key]);
 
   const toggle = (key: ConsentKey) => setChecked((current) => ({ ...current, [key]: !current[key] }));
   const toggleAll = () => setChecked({ terms: !allChecked, privacy: !allChecked, health: !allChecked });
+  const openDocument = (item: (typeof consentItems)[number]) => setActiveDocument(item);
 
   return (
     <AuthScaffold>
@@ -190,28 +196,38 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
         {consentItems.map((item) => (
           <Surface key={item.key} style={styles.consentCard}>
             <View style={styles.consentRow}>
-              <Pressable
-                accessibilityLabel={`${item.title}. ${item.description}`}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: checked[item.key] }}
-                aria-checked={checked[item.key]}
-                onPress={() => toggle(item.key)}
-                style={styles.consentToggle}
-              >
-                <View style={styles.consentIcon}>
-                  <MaterialCommunityIcons name={item.icon} size={25} color={authColors.greenDark} />
-                </View>
-                <View style={styles.consentCopy}>
-                  <Text style={styles.consentTitle}>{item.title}</Text>
-                  <Text style={styles.consentDescription}>{item.description}</Text>
-                </View>
-                <Checkbox checked={checked[item.key]} />
-              </Pressable>
+              <View style={styles.consentToggle}>
+                <Pressable
+                  accessibilityLabel={`Открыть документ: ${item.title}`}
+                  accessibilityRole="link"
+                  onPress={() => openDocument(item)}
+                  style={styles.consentDocument}
+                >
+                  <View style={styles.consentIcon}>
+                    <MaterialCommunityIcons name={item.icon} size={25} color={authColors.greenDark} />
+                  </View>
+                  <View style={styles.consentCopy}>
+                    <Text style={styles.consentTitle}>{item.title}</Text>
+                    <Text style={styles.consentDescription}>{item.description}</Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Согласие: ${item.title}`}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: checked[item.key] }}
+                  aria-checked={checked[item.key]}
+                  hitSlop={8}
+                  onPress={() => toggle(item.key)}
+                  style={styles.checkboxButton}
+                >
+                  <Checkbox checked={checked[item.key]} />
+                </Pressable>
+              </View>
               <Pressable
                 accessibilityLabel={`Открыть документ: ${item.link}`}
                 accessibilityRole="link"
                 hitSlop={8}
-                onPress={() => Alert.alert(item.title, "Документ будет загружен с сервера перед production-релизом.")}
+                onPress={() => openDocument(item)}
                 style={styles.consentDetails}
               >
                 <Ionicons name="chevron-forward" size={22} color={authColors.text} />
@@ -229,6 +245,41 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
       <View style={styles.consentActions}>
         <PrimaryButton title="Продолжить" disabled={!allChecked} onPress={onContinue} />
       </View>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setActiveDocument(null)}
+        transparent
+        visible={!!activeDocument}
+      >
+        <View style={styles.documentOverlay}>
+          <Pressable
+            accessibilityLabel="Закрыть документ"
+            onPress={() => setActiveDocument(null)}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={styles.documentSheet}>
+            <View style={styles.documentHandle} />
+            <View style={styles.documentHeader}>
+              <Text style={styles.documentTitle}>{activeDocument?.title}</Text>
+              <Pressable
+                accessibilityLabel="Закрыть"
+                hitSlop={10}
+                onPress={() => setActiveDocument(null)}
+                style={styles.documentClose}
+              >
+                <Ionicons name="close" size={25} color={authColors.ink} />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.documentBody}>{activeDocument?.documentText}</Text>
+            </ScrollView>
+            <View style={styles.documentAction}>
+              <PrimaryButton title="Понятно" onPress={() => setActiveDocument(null)} />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </AuthScaffold>
   );
 }
@@ -287,15 +338,25 @@ const styles = StyleSheet.create({
   consentList: { gap: 8, marginBottom: 14 },
   consentCard: { padding: 12, borderRadius: 16 },
   consentRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  consentToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  consentToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
+  consentDocument: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   consentIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
   consentCopy: { flex: 1, minWidth: 0 },
   consentTitle: { color: authColors.ink, fontSize: 14, lineHeight: 18, fontWeight: "700" },
   consentDescription: { color: authColors.text, fontSize: 12, lineHeight: 16, marginTop: 2 },
+  checkboxButton: { width: 32, height: 42, alignItems: "center", justifyContent: "center" },
   consentDetails: { width: 28, height: 42, alignItems: "center", justifyContent: "center", marginRight: -5 },
   checkbox: { width: 24, height: 24, borderRadius: 5, borderWidth: 1.5, borderColor: "#AEB6C1", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   checkboxChecked: { backgroundColor: authColors.greenDark, borderColor: authColors.greenDark },
   acceptAll: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 18, marginBottom: 16, paddingHorizontal: 2 },
   acceptAllText: { flex: 1, color: authColors.ink, fontSize: 13, lineHeight: 19, fontWeight: "600" },
-  consentActions: { gap: 6 }
+  consentActions: { gap: 6 },
+  documentOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(7,18,37,0.35)" },
+  documentSheet: { maxHeight: "82%", borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: authColors.white, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 24 },
+  documentHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: "#D6DCE2", alignSelf: "center", marginBottom: 16 },
+  documentHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 },
+  documentTitle: { flex: 1, color: authColors.ink, fontSize: 22, lineHeight: 28, fontWeight: "800" },
+  documentClose: { width: 40, height: 40, borderRadius: 20, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
+  documentBody: { color: authColors.text, fontSize: 15, lineHeight: 23, paddingBottom: 4 },
+  documentAction: { marginTop: 16 }
 });
