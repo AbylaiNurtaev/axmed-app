@@ -95,11 +95,6 @@ export function BodyDataScreen({
         </View>
       </Surface>
 
-      <View style={styles.calculationNote}>
-        <Ionicons name="information-circle-outline" size={19} color={authColors.muted} />
-        <Text style={styles.calculationNoteText}>Показатели рассчитаны на основе введённых данных.</Text>
-      </View>
-
       <PrimaryButton title="Продолжить" disabled={!canContinue} onPress={onContinue} />
     </AuthScaffold>
   );
@@ -465,8 +460,6 @@ const styles = StyleSheet.create({
   metricLabel: { color: authColors.text, fontSize: 15 },
   metricValue: { color: authColors.ink, fontSize: 23, lineHeight: 28, fontWeight: "700", marginTop: 4 },
   metricStatus: { color: authColors.greenDark, fontSize: 10, marginTop: 3, textAlign: "center" },
-  calculationNote: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 16 },
-  calculationNoteText: { flex: 1, color: authColors.muted, fontSize: 12, lineHeight: 17 },
   sourceList: { gap: 0 },
   sourceCard: { minHeight: 78, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 10 },
   sourceIcon: { width: 58, height: 58, borderRadius: 13, backgroundColor: "#F3F8F7", overflow: "hidden", alignItems: "center", justifyContent: "center" },
