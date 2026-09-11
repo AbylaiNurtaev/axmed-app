@@ -379,7 +379,7 @@ export function VerificationScreen({
       setLocalCode(result.verificationCode);
       setCode("");
       setSeconds(32);
-      Alert.alert("Код отправлен", `Новый код отправлен на ${maskEmail(email)}`);
+      Alert.alert("Код отправлен", `Новый код отправлен на ${email}`);
       inputRef.current?.focus();
     } catch (resendFailure) {
       setVerificationError(getErrorMessage(resendFailure, "Не удалось отправить новый код."));
@@ -415,7 +415,7 @@ export function VerificationScreen({
       <Text style={styles.verifySubtitle}>
         Мы отправили одноразовый код для входа или регистрации
       </Text>
-      <Text style={styles.maskedEmail}>{maskEmail(email)}</Text>
+      <Text selectable numberOfLines={2} style={styles.verificationEmail}>{email}</Text>
 
       <Surface style={styles.codeCard}>
         <Pressable accessibilityRole="button" accessibilityLabel="Введите шестизначный код" onPress={() => inputRef.current?.focus()} style={styles.codeBoxes}>
@@ -462,13 +462,6 @@ export function VerificationScreen({
   );
 }
 
-function maskEmail(email: string) {
-  const [name, domain] = email.split("@");
-  if (!domain) return email;
-  const visible = name.slice(0, Math.min(3, name.length));
-  return `${visible}***@${domain}`;
-}
-
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
@@ -508,7 +501,7 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.62 },
   verifyTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center" },
   verifySubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 4, paddingHorizontal: 18 },
-  maskedEmail: { color: authColors.greenDark, fontSize: 17, fontWeight: "700", textAlign: "center", marginTop: 9, marginBottom: 11 },
+  verificationEmail: { color: authColors.greenDark, fontSize: 17, fontWeight: "700", textAlign: "center", marginTop: 9, marginBottom: 11, paddingHorizontal: 12 },
   codeCard: { padding: 18 },
   codeBoxes: { flexDirection: "row", gap: 9, justifyContent: "center", position: "relative" },
   codeBox: { flex: 1, maxWidth: 58, aspectRatio: 0.82, borderRadius: 13, borderWidth: 1.5, borderColor: "#B8E7DB", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
