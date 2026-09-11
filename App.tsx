@@ -1,7 +1,8 @@
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   ImageSourcePropType,
@@ -15,6 +16,18 @@ import {
   View
 } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
+import { AuthFlow } from "./src/features/auth/AuthFlow";
+import { DeviceSyncCard } from "./src/features/devices/DeviceSyncCard";
+import { ConnectedDevicesScreen } from "./src/features/devices/ConnectedDevicesScreen";
+import {
+  authenticateWithSocial,
+  loginWithEmail,
+  logout,
+  registerWithEmail,
+  resendVerificationCode,
+  restoreSession,
+  verifyEmail
+} from "./src/features/auth/authApi";
 
 const green = "#00a87e";
 const ink = "#071225";
@@ -59,21 +72,67 @@ function notify(title: string) {
 }
 
 export default function App() {
+  const [authComplete, setAuthComplete] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const handleLogout = useCallback(async () => {
+    await logout();
+    setAuthComplete(false);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    restoreSession()
+      .then((session) => {
+        if (active) setAuthComplete(Boolean(session));
+      })
+      .finally(() => {
+        if (active) setAuthReady(true);
+      });
+    return () => { active = false; };
+  }, []);
+
+  if (!authReady) {
+    return (
+      <View style={styles.authLoading}>
+        <StatusBar style="dark" />
+        <ActivityIndicator size="large" color={green} />
+      </View>
+    );
+  }
+
+  if (!authComplete) {
+    return (
+      <AuthFlow
+        onComplete={() => setAuthComplete(true)}
+        onEmailRegister={({ email, password }) => registerWithEmail(email, password)}
+        onEmailSignIn={({ email, password }) => loginWithEmail(email, password)}
+        onLogout={logout}
+        onResendVerification={resendVerificationCode}
+        onSocialAuthenticated={authenticateWithSocial}
+        onVerifyEmail={({ email, code }) => verifyEmail(email, code)}
+      />
+    );
+  }
+
+  return <MainApp onLogout={handleLogout} />;
+}
+
+function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   const [tab, setTab] = useState<Tab>("home");
   const [sheet, setSheet] = useState<string | null>(null);
   const [profileDetail, setProfileDetail] = useState<ProfileDetail>(null);
 
   const screen = useMemo(() => {
-    if (tab === "home") return <HomeScreen setTab={setTab} open={setSheet} />;
+    if (tab === "home") return <HomeScreen setTab={setTab} open={setSheet} onConnect={() => { setTab("profile"); setProfileDetail("devices"); }} />;
     if (tab === "metrics") return <MetricsScreen />;
     if (tab === "avatar") return <AvatarScreen />;
     if (tab === "knowledge") return <KnowledgeScreen open={setSheet} />;
     if (profileDetail === "medical") return <MedicalContextScreen back={() => setProfileDetail(null)} open={setSheet} />;
     if (profileDetail === "reports") return <ReportsScreen back={() => setProfileDetail(null)} open={setSheet} />;
-    if (profileDetail === "devices") return <DevicesScreen back={() => setProfileDetail(null)} open={setSheet} />;
-    if (profileDetail) return <ProfileDetailScreen type={profileDetail} back={() => setProfileDetail(null)} open={setSheet} />;
+    if (profileDetail === "devices" || profileDetail === "connectDevice") return <ConnectedDevicesScreen onBack={() => setProfileDetail(null)} startPairing={profileDetail === "connectDevice"} />;
+    if (profileDetail) return <ProfileDetailScreen type={profileDetail} back={() => setProfileDetail(null)} open={setSheet} onLogout={onLogout} />;
     return <ProfileScreen open={setSheet} openDetail={setProfileDetail} />;
-  }, [profileDetail, tab]);
+  }, [onLogout, profileDetail, tab]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -97,7 +156,7 @@ export default function App() {
   );
 }
 
-function HomeScreen({ setTab, open }: { setTab: (tab: Tab) => void; open: (title: string) => void }) {
+function HomeScreen({ setTab, open, onConnect }: { setTab: (tab: Tab) => void; open: (title: string) => void; onConnect: () => void }) {
   return (
     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
       <View style={styles.headerRow}>
@@ -107,6 +166,7 @@ function HomeScreen({ setTab, open }: { setTab: (tab: Tab) => void; open: (title
         </View>
         <Image source={profileHead} style={styles.smallAvatar} />
       </View>
+      <DeviceSyncCard onConnect={onConnect} />
       <View style={styles.healthCard}>
         <View style={styles.healthCopy}>
           <Text style={styles.cardTitle}>Ваше состояние</Text>
@@ -273,7 +333,7 @@ function KnowledgeScreen({ open }: { open: (title: string) => void }) {
   );
 }
 
-function ProfileScreen({ openDetail }: { open: (title: string) => void; openDetail: (detail: ProfileDetail) => void }) {
+function ProfileScreen({ open, openDetail }: { open: (title: string) => void; openDetail: (detail: ProfileDetail) => void }) {
   return (
     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
       <View style={styles.headerRow}>
@@ -308,7 +368,17 @@ function ProfileScreen({ openDetail }: { open: (title: string) => void; openDeta
   );
 }
 
-function ProfileDetailScreen({ type, back, open }: { type: Exclude<ProfileDetail, "medical" | "reports" | "devices" | null>; back: () => void; open: (title: string) => void }) {
+function ProfileDetailScreen({
+  type,
+  back,
+  open,
+  onLogout
+}: {
+  type: Exclude<ProfileDetail, "medical" | "reports" | "devices" | null>;
+  back: () => void;
+  open: (title: string) => void;
+  onLogout: () => Promise<void>;
+}) {
   const config = {
     personal: {
       title: "Личные данные",
@@ -394,7 +464,11 @@ function ProfileDetailScreen({ type, back, open }: { type: Exclude<ProfileDetail
       <DetailHeader title={config.title} subtitle={config.subtitle} back={back} />
       <View style={styles.listCard}>
         {config.rows.map(([icon, title, sub, badge], index) => (
-          <Pressable key={title} style={[styles.settingLine, index === config.rows.length - 1 && styles.noBorder]} onPress={() => open(title)}>
+          <Pressable
+            key={title}
+            style={[styles.settingLine, index === config.rows.length - 1 && styles.noBorder]}
+            onPress={() => type === "logout" && title.includes("Выйти") ? void onLogout() : open(title)}
+          >
             <IconTile name={icon} color={title.includes("Выйти") ? "#f12f35" : green} compact />
             <View style={styles.trendInfo}>
               <Text style={styles.settingTitle}>{title}</Text>
@@ -794,6 +868,7 @@ function BigLineChart() {
 }
 
 const styles = StyleSheet.create({
+  authLoading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
   safe: { flex: 1, backgroundColor: "#fff" },
   app: { flex: 1, backgroundColor: "#fff" },
   scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === "android" ? 28 : 10, paddingBottom: 102 },

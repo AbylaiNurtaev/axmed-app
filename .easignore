@@ -1,0 +1,20 @@
+node_modules/
+.expo/
+dist/
+build/
+coverage/
+.git/
+figma/
+docs/
+server/
+.env
+.env.*
+**/.env
+**/.env.*
+*.log
+**/*.p12
+**/*.p8
+**/*.mobileprovision
+credentials.json
+# Vendor is intentionally included in the EAS archive, unlike .gitignore.
+# Run the SDK import and verification scripts before building.

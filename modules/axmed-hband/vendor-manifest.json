@@ -1,0 +1,13 @@
+{
+  "source": "HBandSDK/iOS_Ble_SDK — user-provided iOS_Ble_SDK-master demo",
+  "sdkVersion": "2.2.98.15",
+  "frameworks": {
+    "VeepooBleSDK": "b29c83a870d9514b8539722bb768fc3167332a1cf74b20cfa2198aa07be65b34",
+    "ABParTool": "585f084f6955f5da0abc7d57eacaa123c0a0342016238770119cab077a74e39b",
+    "DFUnits": "9fdd6bf728f2733051ccb1aeaf9c8035b8916556401b1e0c932d27e2673f0100",
+    "GRDFUSDK": "8a84fde46a0f9fdb36a8aa1150afa6f01ad054abf9621e74385de8fcf2ade499",
+    "JLDialUnit": "3bcd10c92d490187ff8b441bedbae9f7bb3ff32918d4130d6db7156be8737146",
+    "JL_BLEKit": "e35bb7b223f35f624af8323aa6ed39b8356e0694bfffd10ecd3925026ce4aa48",
+    "ZipZap": "a9fe0ba509e08b4bc13b7f41f7770596d1496fca297d1ff032d0d7e1e6cc51c2"
+  }
+}
