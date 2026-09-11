@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import {
   AppleAuthenticationButton,
   AppleAuthenticationButtonStyle,
@@ -455,9 +455,6 @@ export function VerificationScreen({
         <LinkButton title="Изменить email" icon="mail-outline" onPress={onChangeEmail} />
       </View>
 
-      <View style={styles.secureFooter}>
-        <MaterialCommunityIcons name="shield-lock-outline" size={27} color={authColors.greenDark} />
-      </View>
     </AuthScaffold>
   );
 }
@@ -496,7 +493,6 @@ const styles = StyleSheet.create({
   switchMode: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 10, minHeight: 26 },
   switchModeMuted: { color: authColors.text, fontSize: 14 },
   switchModeLink: { color: authColors.greenDark, fontSize: 14, fontWeight: "700" },
-  secureFooter: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 8 },
   buttonPressed: { opacity: 0.76 },
   buttonDisabled: { opacity: 0.62 },
   verifyTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center" },
