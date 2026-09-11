@@ -150,22 +150,22 @@ const consentItems: {
     key: "terms",
     icon: "file-document-outline",
     title: "Условия сервиса",
-    description: "Я принимаю Условия использования приложения AxMed.",
-    link: "Читать Условия сервиса"
+    description: "Правила использования AxMed",
+    link: "Условия сервиса"
   },
   {
     key: "privacy",
     icon: "lock-outline",
     title: "Политика конфиденциальности",
-    description: "Я ознакомлен и согласен с Политикой конфиденциальности.",
-    link: "Читать Политику конфиденциальности"
+    description: "Как мы защищаем ваши данные",
+    link: "Политика конфиденциальности"
   },
   {
     key: "health",
     icon: "heart-pulse",
     title: "Обработка данных о здоровье",
-    description: "Я даю согласие на обработку данных о здоровье для анализа и персональных рекомендаций.",
-    link: "Подробнее об обработке данных"
+    description: "Согласие на анализ данных о здоровье",
+    link: "Обработка данных о здоровье"
   }
 ];
 
@@ -182,46 +182,48 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
       <View style={styles.consentHeading}>
         <PageTitle
           title="Согласия"
-          subtitle="Для работы AxMed необходимо ваше согласие на обработку данных и использование функций приложения."
+          subtitle="Примите документы, чтобы продолжить."
         />
       </View>
 
       <View style={styles.consentList}>
         {consentItems.map((item) => (
           <Surface key={item.key} style={styles.consentCard}>
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: checked[item.key] }}
-              aria-checked={checked[item.key]}
-              onPress={() => toggle(item.key)}
-              style={styles.consentTop}
-            >
-              <View style={styles.consentIcon}>
-                <MaterialCommunityIcons name={item.icon} size={28} color={authColors.greenDark} />
-              </View>
-              <View style={styles.consentCopy}>
-                <Text style={styles.consentTitle}>{item.title}</Text>
-                <Text style={styles.consentDescription}>{item.description}</Text>
-              </View>
-              <Checkbox checked={checked[item.key]} />
-              <Ionicons name="chevron-forward" size={22} color={authColors.text} />
-            </Pressable>
-            <View style={styles.consentDivider} />
-            <Pressable accessibilityRole="link" onPress={() => Alert.alert(item.title, "Документ будет загружен с сервера перед production-релизом.")}>
-              <Text style={styles.consentLink}>{item.link}</Text>
-            </Pressable>
+            <View style={styles.consentRow}>
+              <Pressable
+                accessibilityLabel={`${item.title}. ${item.description}`}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: checked[item.key] }}
+                aria-checked={checked[item.key]}
+                onPress={() => toggle(item.key)}
+                style={styles.consentToggle}
+              >
+                <View style={styles.consentIcon}>
+                  <MaterialCommunityIcons name={item.icon} size={25} color={authColors.greenDark} />
+                </View>
+                <View style={styles.consentCopy}>
+                  <Text style={styles.consentTitle}>{item.title}</Text>
+                  <Text style={styles.consentDescription}>{item.description}</Text>
+                </View>
+                <Checkbox checked={checked[item.key]} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Открыть документ: ${item.link}`}
+                accessibilityRole="link"
+                hitSlop={8}
+                onPress={() => Alert.alert(item.title, "Документ будет загружен с сервера перед production-релизом.")}
+                style={styles.consentDetails}
+              >
+                <Ionicons name="chevron-forward" size={22} color={authColors.text} />
+              </Pressable>
+            </View>
           </Surface>
         ))}
       </View>
 
-      <InfoBanner
-        title="Ваши данные защищены"
-        text="Мы используем современные методы шифрования и не передаём ваши данные без согласия."
-      />
-
       <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: allChecked }} aria-checked={allChecked} onPress={toggleAll} style={styles.acceptAll}>
         <Checkbox checked={allChecked} />
-        <Text style={styles.acceptAllText}>Я прочитал и принимаю все указанные документы и даю согласие на обработку данных.</Text>
+        <Text style={styles.acceptAllText}>Я принимаю все документы и согласен на обработку данных.</Text>
       </Pressable>
 
       <View style={styles.consentActions}>
@@ -281,16 +283,16 @@ const styles = StyleSheet.create({
   restrictionMain: { alignItems: "stretch" },
   restrictionIcon: { width: 126, height: 126, borderRadius: 63, backgroundColor: authColors.dangerSoft, alignSelf: "center", alignItems: "center", justifyContent: "center", marginBottom: 30 },
   restrictionActions: { gap: 14 },
-  consentHeading: { marginBottom: -12 },
-  consentList: { gap: 10, marginBottom: 14 },
-  consentCard: { padding: 10 },
-  consentTop: { flexDirection: "row", alignItems: "center", gap: 8 },
-  consentIcon: { width: 35, height: 35, borderRadius: 10, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
-  consentCopy: { flex: 1 },
-  consentTitle: { color: authColors.ink, fontSize: 13, lineHeight: 17, fontWeight: "700" },
-  consentDescription: { color: authColors.text, fontSize: 11.2, lineHeight: 15, marginTop: 3 },
-  consentDivider: { height: 1, backgroundColor: authColors.line, marginVertical: 8 },
-  consentLink: { color: authColors.greenDark, fontSize: 12, lineHeight: 16, fontWeight: "600" },
+  consentHeading: { marginBottom: -6 },
+  consentList: { gap: 8, marginBottom: 14 },
+  consentCard: { padding: 12, borderRadius: 16 },
+  consentRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  consentToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  consentIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
+  consentCopy: { flex: 1, minWidth: 0 },
+  consentTitle: { color: authColors.ink, fontSize: 14, lineHeight: 18, fontWeight: "700" },
+  consentDescription: { color: authColors.text, fontSize: 12, lineHeight: 16, marginTop: 2 },
+  consentDetails: { width: 28, height: 42, alignItems: "center", justifyContent: "center", marginRight: -5 },
   checkbox: { width: 24, height: 24, borderRadius: 5, borderWidth: 1.5, borderColor: "#AEB6C1", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   checkboxChecked: { backgroundColor: authColors.greenDark, borderColor: authColors.greenDark },
   acceptAll: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 18, marginBottom: 16, paddingHorizontal: 2 },
