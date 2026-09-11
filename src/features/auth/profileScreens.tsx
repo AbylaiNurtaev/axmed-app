@@ -43,7 +43,7 @@ export function AboutScreen({
 
   return (
     <AuthScaffold>
-      <StepHeader current={1} labelTotal={3} onBack={onBack} />
+      <StepHeader current={1} labelTotal={4} onBack={onBack} />
       <PageTitle
         title="О вас"
         subtitle="Эти данные помогут нам точнее анализировать ваши показатели и давать персональные рекомендации."
@@ -78,10 +78,6 @@ export function AboutScreen({
       </View>
 
       <View style={styles.flexSpacer} />
-      <InfoBanner
-        title="Ваши данные под защитой"
-        text="Мы используем эти данные только для анализа вашего здоровья и не передаём третьим лицам без вашего согласия."
-      />
       <View style={styles.bottomAction}>
         <PrimaryButton title="Продолжить" onPress={continueFlow} />
       </View>
