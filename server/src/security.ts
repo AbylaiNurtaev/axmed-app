@@ -50,6 +50,9 @@ export async function verifyPassword(password: string, encoded: string): Promise
 }
 
 export function createVerificationCode() {
+  if (config.AUTH_FIXED_VERIFICATION_CODE && config.NODE_ENV !== "production") {
+    return config.AUTH_FIXED_VERIFICATION_CODE;
+  }
   return randomInt(100_000, 1_000_000).toString();
 }
 

@@ -37,4 +37,6 @@ API слушает `0.0.0.0:4000`, health check: `GET /health`. Таблицы �
 - Включены Helmet, ограничение размера JSON, rate limiting и `Cache-Control: no-store`.
 - Google и Apple ID tokens проверяются по официальным JWKS, issuer, audience и expiration.
 
+Для временной локальной проверки можно задать `AUTH_FIXED_VERIFICATION_CODE=111111` в `server/.env`; сервер игнорирует эту настройку при `NODE_ENV=production`.
+
 Для production обязательно замените `JWT_SECRET`, настройте HTTPS, SMTP, точный `CORS_ORIGIN` и отключите `AUTH_EXPOSE_DEV_CODE`.

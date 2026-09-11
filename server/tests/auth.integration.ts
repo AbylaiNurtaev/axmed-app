@@ -28,14 +28,15 @@ test("email registration, verification, login, refresh rotation and logout", asy
   const registration = await post("/api/auth/register", { email, password });
   assert.equal(registration.response.status, 201);
   assert.equal(registration.body.requiresVerification, true);
-  assert.match(registration.body.verificationCode, /^\d{6}$/);
+  const verificationCode = registration.body.verificationCode ?? process.env.AUTH_FIXED_VERIFICATION_CODE;
+  assert.match(verificationCode ?? "", /^\d{6}$/);
 
   const invalidCode = await post("/api/auth/verify-email", { email, code: "000000" });
   assert.equal(invalidCode.response.status, 400);
 
   const verification = await post("/api/auth/verify-email", {
     email,
-    code: registration.body.verificationCode
+    code: verificationCode
   });
   assert.equal(verification.response.status, 200);
   assert.equal(verification.body.user.emailVerified, true);
@@ -43,7 +44,7 @@ test("email registration, verification, login, refresh rotation and logout", asy
 
   const repeatedVerification = await post("/api/auth/verify-email", {
     email,
-    code: registration.body.verificationCode
+    code: verificationCode
   });
   assert.equal(repeatedVerification.response.status, 409);
 

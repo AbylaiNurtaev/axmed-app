@@ -18,6 +18,7 @@ const environmentSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   VERIFICATION_CODE_TTL_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
   AUTH_EXPOSE_DEV_CODE: booleanFromString,
+  AUTH_FIXED_VERIFICATION_CODE: z.string().regex(/^$|^\d{6}$/).default(""),
   CORS_ORIGIN: z.string().default("*"),
   GOOGLE_CLIENT_IDS: z.string().default(""),
   APPLE_CLIENT_ID: z.string().min(1).default("com.anonymous.pochka2new"),
