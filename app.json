@@ -1,7 +1,13 @@
 {
   "expo": {
     "name": "AxMed",
-    "slug": "axmed-mobile",
+    "slug": "axmed",
+    "owner": "axmed-project",
+    "extra": {
+      "eas": {
+        "projectId": "ca415684-7238-461a-bb54-0764d41b6672"
+      }
+    },
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -12,7 +18,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.pochka2new",
       "appleTeamId": "SAZ93YMRD7",
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "AxMed использует Bluetooth для поиска и подключения вашего фитнес-браслета."
+      }
     },
     "android": {
       "package": "com.axmed.mobile",
@@ -29,7 +38,8 @@
           "iosUrlScheme": "com.googleusercontent.apps.1067093205466-lt209nb5s2p05dovapkp9u7ac6qspu6l"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/with-fmdb-system-header"
     ]
   }
 }

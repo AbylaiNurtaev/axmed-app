@@ -5,6 +5,8 @@ import helmet from "helmet";
 import { config } from "./config.js";
 import { query } from "./database.js";
 import { errorHandler } from "./errors.js";
+import { deviceSyncSchema } from "./deviceSchemas.js";
+import { loadDeviceReadings, requireDeviceUser, saveDeviceReadings } from "./deviceService.js";
 import {
   authenticateSocial,
   loginWithEmail,
@@ -30,6 +32,12 @@ app.use(cors({
   origin: config.corsOrigins === "*" ? true : config.corsOrigins,
   credentials: false
 }));
+// Reject unauthenticated requests before allocating/parsing a large history body.
+app.use("/api/devices", rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false }));
+app.use("/api/devices", (request, _response, next) => {
+  void requireDeviceUser(request.get("authorization")).then(() => next()).catch(next);
+});
+app.use("/api/devices", express.json({ limit: "24mb" }));
 app.use(express.json({ limit: "16kb" }));
 app.use((_request, response, next) => {
   response.setHeader("Cache-Control", "no-store");
@@ -90,6 +98,16 @@ app.post("/api/auth/logout", asyncHandler(async (request, response) => {
   const { refreshToken } = refreshSchema.parse(request.body);
   await revokeRefreshToken(refreshToken);
   response.status(204).send();
+}));
+
+app.post("/api/devices/sync", asyncHandler(async (request, response) => {
+  const userId = await requireDeviceUser(request.get("authorization"));
+  const input = deviceSyncSchema.parse(request.body);
+  response.json(await saveDeviceReadings(userId, input));
+}));
+app.get("/api/devices/readings", asyncHandler(async (request, response) => {
+  const userId = await requireDeviceUser(request.get("authorization"));
+  response.json(await loadDeviceReadings(userId));
 }));
 
 app.use((_request, response) => {

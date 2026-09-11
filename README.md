@@ -2,6 +2,9 @@
 
 Мобильное приложение на React Native / Expo и API авторизации на Node.js / PostgreSQL.
 
+Инструкция второму разработчику: [запуск, совместная работа, секреты и SDK](docs/developer-handoff.md).
+Синхронизация G72: [поддерживаемые данные и ограничения](docs/wearables-sync.md).
+
 ## Локальный запуск
 
 Требования: Node.js 22+, npm и Docker Desktop.

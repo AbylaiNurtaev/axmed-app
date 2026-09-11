@@ -2,7 +2,9 @@ import { ReactNode, useRef, useState } from "react";
 import { PanResponder, StyleSheet, View } from "react-native";
 import { AuthChoiceScreen, VerificationScreen, WelcomeScreen } from "./entryScreens";
 import { AboutScreen, AgeRestrictionScreen, ConsentsScreen } from "./profileScreens";
-import { BodyDataScreen, ConnectionErrorScreen, DataSourceScreen, FirstResultScreen } from "./setupScreens";
+import { BodyDataScreen, ConnectionErrorScreen } from "./setupScreens";
+import { SetupCompleteScreen } from "./SetupCompleteScreen";
+import { BraceletConnectionScreen } from "./BraceletConnectionScreen";
 import { signInWithSocialProvider } from "./socialAuth";
 import type { SocialAuthCredential, SocialProvider } from "./socialAuth";
 import { AuthMode, AuthRoute, BodyMeasurements } from "./types";
@@ -159,12 +161,9 @@ export function AuthFlow({
 
   if (route.name === "dataSource") {
     return withSwipeBack(
-      <DataSourceScreen
+      <BraceletConnectionScreen
         onBack={goBack}
-        onConnect={(source) => source.id === "bia"
-          ? setRoute({ name: "connectionError", source: source.title })
-          : setRoute({ name: "firstResult" })}
-        onManual={() => setRoute({ name: "firstResult" })}
+        onSkip={() => setRoute({ name: "firstResult" })}
         onContinue={() => setRoute({ name: "firstResult" })}
       />
     );
@@ -181,7 +180,7 @@ export function AuthFlow({
     );
   }
 
-  return <FirstResultScreen measurements={measurements} onComplete={onComplete} />;
+  return <SetupCompleteScreen onComplete={onComplete} />;
 }
 
 function SwipeBackGesture({ children, onBack }: { children: ReactNode; onBack: () => void }) {

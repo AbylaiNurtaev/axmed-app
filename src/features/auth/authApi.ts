@@ -44,14 +44,26 @@ export class AuthApiError extends Error {
 }
 
 let currentSession: AuthSession | null = null;
+let sessionRevision = 0;
+const sessionListeners = new Set<() => void>();
+let refreshing: Promise<AuthSession | null> | undefined;
+let storageQueue: Promise<void> = Promise.resolve();
+
+export function getSessionUserId() { return currentSession?.user.id ?? null; }
+export function subscribeSession(listener: () => void) {
+  sessionListeners.add(listener);
+  return () => { sessionListeners.delete(listener); };
+}
+function emitSession() { sessionListeners.forEach(listener => listener()); }
 
 export async function registerWithEmail(email: string, password: string) {
   return request<VerificationResult>("/api/auth/register", { email, password });
 }
 
 export async function verifyEmail(email: string, code: string) {
+  const revision = sessionRevision;
   const session = await request<AuthSession>("/api/auth/verify-email", { email, code });
-  await saveSession(session);
+  if (!await saveSession(session, revision)) throw new AuthApiError("authRequired", "Сессия завершена. Войдите снова.", 401);
   return session;
 }
 
@@ -60,12 +72,14 @@ export async function resendVerificationCode(email: string) {
 }
 
 export async function loginWithEmail(email: string, password: string) {
+  const revision = sessionRevision;
   const session = await request<AuthSession>("/api/auth/login", { email, password });
-  await saveSession(session);
+  if (!await saveSession(session, revision)) throw new AuthApiError("authRequired", "Сессия завершена. Войдите снова.", 401);
   return session;
 }
 
 export async function authenticateWithSocial(credential: SocialAuthCredential, mode: AuthMode) {
+  const revision = sessionRevision;
   const session = await request<AuthSession>("/api/auth/social", {
     provider: credential.provider,
     mode,
@@ -77,31 +91,37 @@ export async function authenticateWithSocial(credential: SocialAuthCredential, m
       familyName: credential.profile.familyName
     }
   });
-  await saveSession(session);
+  if (!await saveSession(session, revision)) throw new AuthApiError("authRequired", "Сессия завершена. Войдите снова.", 401);
   return session;
 }
 
 export async function restoreSession(): Promise<AuthSession | null> {
+  const revision = sessionRevision;
   const refreshToken = await readRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken || revision !== sessionRevision) return null;
 
   try {
     const session = await request<AuthSession>("/api/auth/refresh", { refreshToken });
-    await saveSession(session);
+    if (revision !== sessionRevision) return null;
+    if (!await saveSession(session, revision)) return null;
     return session;
   } catch (error) {
+    if (revision !== sessionRevision) return null;
     if (error instanceof AuthApiError && error.status === 401) {
       await clearStoredSession();
     } else {
       currentSession = null;
+      emitSession();
     }
     return null;
   }
 }
 
 export async function logout() {
+  sessionRevision += 1;
   const refreshToken = currentSession?.refreshToken ?? await readRefreshToken();
   currentSession = null;
+  emitSession();
   await removeRefreshToken();
   if (!refreshToken) return;
 
@@ -117,14 +137,38 @@ export function getAccessToken() {
 }
 
 async function request<T>(path: string, body: unknown): Promise<T> {
+  return apiRequest<T>(path, { body });
+}
+
+export async function authenticatedRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST"; signal?: AbortSignal } = {}): Promise<T> {
+  const owner = getSessionUserId();
+  const revision = sessionRevision;
+  if (!owner || !currentSession) throw new AuthApiError("authRequired", "Войдите в аккаунт.", 401);
+  try {
+    return await apiRequest<T>(path, { ...options, accessToken: currentSession.accessToken });
+  } catch (error) {
+    if (!(error instanceof AuthApiError) || error.status !== 401 || options.signal?.aborted) throw error;
+    if (revision !== sessionRevision || getSessionUserId() !== owner) throw error;
+    if (!refreshing) refreshing = restoreSession().finally(() => { refreshing = undefined; });
+    const session = await refreshing;
+    if (!session || revision !== sessionRevision || session.user.id !== owner || options.signal?.aborted) throw error;
+    return apiRequest<T>(path, { ...options, accessToken: session.accessToken });
+  }
+}
+
+async function apiRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST"; signal?: AbortSignal; accessToken?: string }): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12_000);
+  const abort = () => controller.abort();
+  options.signal?.addEventListener("abort", abort, { once: true });
+  if (options.signal?.aborted) controller.abort();
+  const timeout = setTimeout(abort, 12_000);
 
   try {
     const response = await fetch(`${apiUrl}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body),
+      method: options.method ?? "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json",
+        ...(options.accessToken ? { Authorization: `Bearer ${options.accessToken}` } : {}) },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: controller.signal
     });
 
@@ -154,36 +198,47 @@ async function request<T>(path: string, body: unknown): Promise<T> {
     );
   } finally {
     clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", abort);
   }
 }
 
-async function saveSession(session: AuthSession) {
+async function saveSession(session: AuthSession, revision: number) {
+  if (revision !== sessionRevision) return false;
   currentSession = session;
   await writeRefreshToken(session.refreshToken);
+  if (revision !== sessionRevision) return false;
+  emitSession();
+  return true;
 }
 
 async function clearStoredSession() {
   currentSession = null;
+  emitSession();
   await removeRefreshToken();
 }
 
 async function readRefreshToken() {
+  await storageQueue;
   if (Platform.OS === "web") return globalThis.localStorage?.getItem(refreshTokenKey) ?? null;
   return SecureStore.getItemAsync(refreshTokenKey);
 }
 
 async function writeRefreshToken(value: string) {
-  if (Platform.OS === "web") {
-    globalThis.localStorage?.setItem(refreshTokenKey, value);
-    return;
-  }
-  await SecureStore.setItemAsync(refreshTokenKey, value);
+  await mutateStorage(async () => {
+    if (Platform.OS === "web") { globalThis.localStorage?.setItem(refreshTokenKey, value); return; }
+    await SecureStore.setItemAsync(refreshTokenKey, value);
+  });
 }
 
 async function removeRefreshToken() {
-  if (Platform.OS === "web") {
-    globalThis.localStorage?.removeItem(refreshTokenKey);
-    return;
-  }
-  await SecureStore.deleteItemAsync(refreshTokenKey);
+  await mutateStorage(async () => {
+    if (Platform.OS === "web") { globalThis.localStorage?.removeItem(refreshTokenKey); return; }
+    await SecureStore.deleteItemAsync(refreshTokenKey);
+  });
+}
+
+function mutateStorage(operation: () => Promise<void>) {
+  const next = storageQueue.then(operation);
+  storageQueue = next.catch(() => undefined);
+  return next;
 }

@@ -1,0 +1,7 @@
+{
+  "name": "axmed-hband",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AxMed foreground HBand connection adapter",
+  "license": "UNLICENSED"
+}

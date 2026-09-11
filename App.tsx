@@ -17,6 +17,8 @@ import {
 } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { AuthFlow } from "./src/features/auth/AuthFlow";
+import { DeviceSyncCard } from "./src/features/devices/DeviceSyncCard";
+import { ConnectedDevicesScreen } from "./src/features/devices/ConnectedDevicesScreen";
 import {
   authenticateWithSocial,
   loginWithEmail,
@@ -121,13 +123,13 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   const [profileDetail, setProfileDetail] = useState<ProfileDetail>(null);
 
   const screen = useMemo(() => {
-    if (tab === "home") return <HomeScreen setTab={setTab} open={setSheet} />;
+    if (tab === "home") return <HomeScreen setTab={setTab} open={setSheet} onConnect={() => { setTab("profile"); setProfileDetail("devices"); }} />;
     if (tab === "metrics") return <MetricsScreen />;
     if (tab === "avatar") return <AvatarScreen />;
     if (tab === "knowledge") return <KnowledgeScreen open={setSheet} />;
     if (profileDetail === "medical") return <MedicalContextScreen back={() => setProfileDetail(null)} open={setSheet} />;
     if (profileDetail === "reports") return <ReportsScreen back={() => setProfileDetail(null)} open={setSheet} />;
-    if (profileDetail === "devices") return <DevicesScreen back={() => setProfileDetail(null)} open={setSheet} />;
+    if (profileDetail === "devices" || profileDetail === "connectDevice") return <ConnectedDevicesScreen onBack={() => setProfileDetail(null)} startPairing={profileDetail === "connectDevice"} />;
     if (profileDetail) return <ProfileDetailScreen type={profileDetail} back={() => setProfileDetail(null)} open={setSheet} onLogout={onLogout} />;
     return <ProfileScreen open={setSheet} openDetail={setProfileDetail} />;
   }, [onLogout, profileDetail, tab]);
@@ -154,7 +156,7 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   );
 }
 
-function HomeScreen({ setTab, open }: { setTab: (tab: Tab) => void; open: (title: string) => void }) {
+function HomeScreen({ setTab, open, onConnect }: { setTab: (tab: Tab) => void; open: (title: string) => void; onConnect: () => void }) {
   return (
     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
       <View style={styles.headerRow}>
@@ -164,6 +166,7 @@ function HomeScreen({ setTab, open }: { setTab: (tab: Tab) => void; open: (title
         </View>
         <Image source={profileHead} style={styles.smallAvatar} />
       </View>
+      <DeviceSyncCard onConnect={onConnect} />
       <View style={styles.healthCard}>
         <View style={styles.healthCopy}>
           <Text style={styles.cardTitle}>Ваше состояние</Text>
@@ -330,7 +333,7 @@ function KnowledgeScreen({ open }: { open: (title: string) => void }) {
   );
 }
 
-function ProfileScreen({ openDetail }: { open: (title: string) => void; openDetail: (detail: ProfileDetail) => void }) {
+function ProfileScreen({ open, openDetail }: { open: (title: string) => void; openDetail: (detail: ProfileDetail) => void }) {
   return (
     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
       <View style={styles.headerRow}>
