@@ -44,7 +44,6 @@ export function BodyDataScreen({
   onContinue: () => void;
 }) {
   const [showCircumferences, setShowCircumferences] = useState(false);
-  const metrics = calculateBodyMetrics(values);
   const canContinue = numberValue(values.height) > 0 && numberValue(values.weight) > 0;
 
   return (
@@ -97,15 +96,6 @@ export function BodyDataScreen({
             ))}
           </View>
         )}
-      </View>
-
-      <View style={styles.calculationCard}>
-        <Text style={styles.calculationTitle}>Ваши показатели</Text>
-        <View style={styles.metricsRow}>
-          <Metric label="ИМТ" accessibilityLabel="Индекс массы тела" value={metrics.bmi} />
-          <Metric label="Талия / рост" value={metrics.whtr} />
-          <Metric label="Талия / бёдра" value={metrics.whr} last />
-        </View>
       </View>
 
       <View style={styles.bodyActions}>
@@ -173,15 +163,6 @@ function MeasurementField({
         <Text style={styles.measurementUnit}>{unit}</Text>
       </View>
     </Pressable>
-  );
-}
-
-function Metric({ label, accessibilityLabel = label, value, last = false }: { label: string; accessibilityLabel?: string; value: string; last?: boolean }) {
-  return (
-    <View accessible accessibilityLabel={`${accessibilityLabel}: ${value === "—" ? "нет данных" : value}`} style={[styles.metric, !last && styles.metricBorder]}>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-    </View>
   );
 }
 
@@ -509,13 +490,6 @@ const styles = StyleSheet.create({
   circumferencesSubtitle: { color: authColors.muted, fontSize: 13, lineHeight: 18, marginTop: 3 },
   circumferencesFields: { padding: 12, paddingTop: 0, gap: 8 },
   bodyPressed: { opacity: 0.65 },
-  calculationCard: { padding: 16, borderRadius: 18, backgroundColor: "#F0F8F5", marginBottom: 24 },
-  calculationTitle: { color: authColors.greenDark, fontSize: 14, lineHeight: 20, fontWeight: "600", marginBottom: 16 },
-  metricsRow: { flexDirection: "row" },
-  metric: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
-  metricBorder: { borderRightWidth: 1, borderRightColor: "#D8E8E3" },
-  metricLabel: { color: authColors.text, fontSize: 11, lineHeight: 16, textAlign: "center", marginTop: 4 },
-  metricValue: { color: authColors.ink, fontSize: 24, lineHeight: 30, fontWeight: "600", fontVariant: ["tabular-nums"] },
   bodyActions: { flexGrow: 1, justifyContent: "flex-end", paddingTop: 8 },
   sourceList: { gap: 0 },
   sourceCard: { minHeight: 78, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 10 },
