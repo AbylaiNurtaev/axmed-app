@@ -256,7 +256,7 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
           <Pressable
             accessibilityLabel="Закрыть документ"
             onPress={() => setActiveDocument(null)}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <View style={styles.documentSheet}>
             <View style={styles.documentHandle} />

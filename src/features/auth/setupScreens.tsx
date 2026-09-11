@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRef, useState } from "react";
 import { Alert, Image, ImageSourcePropType, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { BodyMeasurements } from "./types";
@@ -20,14 +21,15 @@ const bodyFields: {
   label: string;
   unit: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  hint?: string;
 }[] = [
   { key: "height", label: "Рост", unit: "см", icon: "human-male-height" },
   { key: "weight", label: "Вес", unit: "кг", icon: "scale-bathroom" },
   { key: "waist", label: "Талия", unit: "см", icon: "tape-measure" },
   { key: "hips", label: "Бёдра", unit: "см", icon: "tape-measure" },
   { key: "chest", label: "Грудь", unit: "см", icon: "tape-measure" },
-  { key: "arm", label: "Плечо (в бицепсе)", unit: "см", icon: "tape-measure" },
-  { key: "calf", label: "Икра (в самом широком месте)", unit: "см", icon: "tape-measure" }
+  { key: "arm", label: "Бицепс", hint: "Обхват плеча", unit: "см", icon: "tape-measure" },
+  { key: "calf", label: "Икра", hint: "В самом широком месте", unit: "см", icon: "tape-measure" }
 ];
 
 export function BodyDataScreen({
@@ -41,6 +43,7 @@ export function BodyDataScreen({
   onBack: () => void;
   onContinue: () => void;
 }) {
+  const [showCircumferences, setShowCircumferences] = useState(false);
   const metrics = calculateBodyMetrics(values);
   const canContinue = numberValue(values.height) > 0 && numberValue(values.weight) > 0;
 
@@ -48,16 +51,15 @@ export function BodyDataScreen({
     <AuthScaffold>
       <StepHeader current={3} onBack={onBack} />
       <PageTitle
-        compact
-        title="Первые данные тела"
-        subtitle="Эти данные помогут рассчитать ваши показатели и сравнивать изменения со временем."
+        title="Данные тела"
+        subtitle="Начните с роста и веса. Остальное — по желанию."
       />
 
-      <Text style={styles.sectionTitle}>Основные параметры</Text>
-      <View style={styles.fields}>
+      <View style={styles.primaryMeasurements}>
         {bodyFields.slice(0, 2).map((field) => (
           <MeasurementField
             key={field.key}
+            prominent
             icon={field.icon}
             label={field.label}
             unit={field.unit}
@@ -67,35 +69,48 @@ export function BodyDataScreen({
         ))}
       </View>
 
-      <View style={styles.sectionHeadingRow}>
-        <Text style={styles.sectionTitle}>Обхваты и измерения</Text>
-      </View>
-      <View style={styles.fields}>
-        {bodyFields.slice(2).map((field) => (
-          <MeasurementField
-            key={field.key}
-            icon={field.icon}
-            label={field.label}
-            unit={field.unit}
-            value={values[field.key]}
-            onChange={(value) => onChange({ ...values, [field.key]: value })}
-          />
-        ))}
+      <View style={styles.circumferencesCard}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Обхваты тела"
+          accessibilityState={{ expanded: showCircumferences }}
+          onPress={() => setShowCircumferences((current) => !current)}
+          style={({ pressed }) => [styles.circumferencesHeader, pressed && styles.bodyPressed]}
+        >
+          <View style={styles.circumferencesCopy}>
+            <Text style={styles.circumferencesTitle}>Обхваты тела</Text>
+            <Text style={styles.circumferencesSubtitle}>Необязательно</Text>
+          </View>
+          <Ionicons name={showCircumferences ? "chevron-up" : "add"} size={24} color={authColors.greenDark} />
+        </Pressable>
+        {showCircumferences && (
+          <View style={styles.circumferencesFields}>
+            {bodyFields.slice(2).map((field) => (
+              <MeasurementField
+                key={field.key}
+                label={field.label}
+                hint={field.hint}
+                unit={field.unit}
+                value={values[field.key]}
+                onChange={(value) => onChange({ ...values, [field.key]: value })}
+              />
+            ))}
+          </View>
+        )}
       </View>
 
-      <Surface style={styles.calculationCard}>
-        <View style={styles.calculationHeader}>
-          <Text style={styles.calculationTitle}>Ваши расчётные показатели</Text>
-          <Ionicons name="information-circle-outline" size={23} color={authColors.greenDark} />
-        </View>
+      <View style={styles.calculationCard}>
+        <Text style={styles.calculationTitle}>Ваши показатели</Text>
         <View style={styles.metricsRow}>
-          <Metric label="BMI" value={metrics.bmi} />
-          <Metric label="WHtR" value={metrics.whtr} />
-          <Metric label="WHR" value={metrics.whr} last />
+          <Metric label="ИМТ" accessibilityLabel="Индекс массы тела" value={metrics.bmi} />
+          <Metric label="Талия / рост" value={metrics.whtr} />
+          <Metric label="Талия / бёдра" value={metrics.whr} last />
         </View>
-      </Surface>
+      </View>
 
-      <PrimaryButton title="Продолжить" disabled={!canContinue} onPress={onContinue} />
+      <View style={styles.bodyActions}>
+        <PrimaryButton title="Продолжить" disabled={!canContinue} onPress={onContinue} />
+      </View>
     </AuthScaffold>
   );
 }
@@ -104,40 +119,68 @@ function MeasurementField({
   label,
   unit,
   icon,
+  hint,
+  prominent = false,
   value,
   onChange
 }: {
   label: string;
   unit: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  icon?: keyof typeof MaterialCommunityIcons.glyphMap;
+  hint?: string;
+  prominent?: boolean;
   value: string;
   onChange: (value: string) => void;
 }) {
+  const inputRef = useRef<TextInput>(null);
+  const [focused, setFocused] = useState(false);
+
   return (
-    <View style={styles.measurementField}>
-      <MaterialCommunityIcons name={icon} size={22} color={authColors.greenDark} />
-      <Text numberOfLines={1} style={styles.measurementLabel}>{label}</Text>
-      <Text style={styles.measurementUnit}>{unit}</Text>
-      <TextInput
-        accessibilityLabel={`${label}, ${unit}`}
-        keyboardType="decimal-pad"
-        onChangeText={(next) => onChange(next.replace(/[^0-9,.]/g, ""))}
-        placeholder="—"
-        placeholderTextColor="#A9B0BA"
-        selectTextOnFocus
-        style={styles.measurementInput}
-        value={value}
-      />
-    </View>
+    <Pressable
+      accessible={false}
+      focusable={false}
+      onPress={() => inputRef.current?.focus()}
+      style={[
+        styles.measurementField,
+        prominent && styles.primaryMeasurement,
+        focused && styles.measurementFocused
+      ]}
+    >
+      <View style={[styles.measurementCopy, !prominent && styles.measurementRowCopy]}>
+        {icon && <MaterialCommunityIcons name={icon} size={21} color={authColors.greenDark} />}
+        <View style={styles.measurementLabelCopy}>
+          <Text style={styles.measurementLabel}>{label}</Text>
+          {hint && <Text style={styles.measurementHint}>{hint}</Text>}
+        </View>
+      </View>
+      <View style={[styles.measurementValueRow, prominent && styles.primaryMeasurementValue]}>
+        <TextInput
+          ref={inputRef}
+          accessibilityLabel={`${label}, ${unit}`}
+          accessibilityHint={hint}
+          keyboardType="decimal-pad"
+          maxLength={6}
+          onBlur={() => setFocused(false)}
+          onFocus={() => setFocused(true)}
+          onChangeText={(next) => onChange(next.replace(/[^0-9,.]/g, ""))}
+          placeholder="—"
+          placeholderTextColor="#A9B0BA"
+          selectTextOnFocus
+          selectionColor={authColors.green}
+          style={[styles.measurementInput, prominent && styles.primaryMeasurementInput]}
+          value={value}
+        />
+        <Text style={styles.measurementUnit}>{unit}</Text>
+      </View>
+    </Pressable>
   );
 }
 
-function Metric({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
+function Metric({ label, accessibilityLabel = label, value, last = false }: { label: string; accessibilityLabel?: string; value: string; last?: boolean }) {
   return (
-    <View style={[styles.metric, !last && styles.metricBorder]}>
-      <Text style={styles.metricLabel}>{label}</Text>
+    <View accessible accessibilityLabel={`${accessibilityLabel}: ${value === "—" ? "нет данных" : value}`} style={[styles.metric, !last && styles.metricBorder]}>
       <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricStatus}>{value === "—" ? "Нет данных" : "Норма"}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
     </View>
   );
 }
@@ -445,21 +488,35 @@ function numberValue(value: string) {
 const styles = StyleSheet.create({
   sectionTitle: { color: authColors.ink, fontSize: 18, lineHeight: 23, fontWeight: "700", marginBottom: 3 },
   sourceSectionTitle: { marginBottom: 3 },
-  sectionHeadingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14, marginBottom: 2 },
-  fields: { gap: 5 },
-  measurementField: { minHeight: 43, borderRadius: 13, borderWidth: 1, borderColor: authColors.line, backgroundColor: "rgba(255,255,255,0.98)", flexDirection: "row", alignItems: "center", paddingHorizontal: 13, gap: 8 },
-  measurementLabel: { flex: 1, color: authColors.ink, fontSize: 13, fontWeight: "600" },
-  measurementUnit: { color: authColors.muted, fontSize: 13 },
-  measurementInput: { width: 55, color: authColors.ink, fontSize: 15, textAlign: "right", paddingVertical: 8 },
-  calculationCard: { marginTop: 13, marginBottom: 9, padding: 12, backgroundColor: "#F2FBF8" },
-  calculationHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  calculationTitle: { color: authColors.greenDark, fontSize: 16, fontWeight: "700" },
+  primaryMeasurements: { flexDirection: "row", gap: 12, marginBottom: 20 },
+  measurementField: { minHeight: 64, borderRadius: 14, borderWidth: 1, borderColor: "#E5EBEF", backgroundColor: authColors.white, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 6, gap: 10 },
+  primaryMeasurement: { flex: 1, minWidth: 0, minHeight: 132, flexDirection: "column", alignItems: "stretch", justifyContent: "space-between", backgroundColor: "#F8FAFA", paddingHorizontal: 16, paddingVertical: 16, gap: 10 },
+  measurementFocused: { borderColor: authColors.green, backgroundColor: "#F2FBF8" },
+  measurementCopy: { flexDirection: "row", alignItems: "center", gap: 8 },
+  measurementRowCopy: { flex: 1 },
+  measurementLabelCopy: { flex: 1 },
+  measurementLabel: { color: authColors.ink, fontSize: 15, lineHeight: 21, fontWeight: "600" },
+  measurementHint: { color: authColors.muted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  measurementValueRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  primaryMeasurementValue: { width: "100%" },
+  measurementUnit: { color: authColors.muted, fontSize: 14 },
+  measurementInput: { width: 64, minHeight: 48, color: authColors.ink, fontSize: 19, fontWeight: "500", textAlign: "right", padding: 0, fontVariant: ["tabular-nums"] },
+  primaryMeasurementInput: { flex: 1, minWidth: 0, width: "auto", fontSize: 30, fontWeight: "600", textAlign: "left" },
+  circumferencesCard: { borderWidth: 1, borderColor: authColors.line, borderRadius: 18, marginBottom: 24 },
+  circumferencesHeader: { minHeight: 78, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
+  circumferencesCopy: { flex: 1 },
+  circumferencesTitle: { color: authColors.ink, fontSize: 16, lineHeight: 22, fontWeight: "600" },
+  circumferencesSubtitle: { color: authColors.muted, fontSize: 13, lineHeight: 18, marginTop: 3 },
+  circumferencesFields: { padding: 12, paddingTop: 0, gap: 8 },
+  bodyPressed: { opacity: 0.65 },
+  calculationCard: { padding: 16, borderRadius: 18, backgroundColor: "#F0F8F5", marginBottom: 24 },
+  calculationTitle: { color: authColors.greenDark, fontSize: 14, lineHeight: 20, fontWeight: "600", marginBottom: 16 },
   metricsRow: { flexDirection: "row" },
-  metric: { flex: 1, alignItems: "center", paddingHorizontal: 6 },
+  metric: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
   metricBorder: { borderRightWidth: 1, borderRightColor: "#D8E8E3" },
-  metricLabel: { color: authColors.text, fontSize: 15 },
-  metricValue: { color: authColors.ink, fontSize: 23, lineHeight: 28, fontWeight: "700", marginTop: 4 },
-  metricStatus: { color: authColors.greenDark, fontSize: 10, marginTop: 3, textAlign: "center" },
+  metricLabel: { color: authColors.text, fontSize: 11, lineHeight: 16, textAlign: "center", marginTop: 4 },
+  metricValue: { color: authColors.ink, fontSize: 24, lineHeight: 30, fontWeight: "600", fontVariant: ["tabular-nums"] },
+  bodyActions: { flexGrow: 1, justifyContent: "flex-end", paddingTop: 8 },
   sourceList: { gap: 0 },
   sourceCard: { minHeight: 78, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 10 },
   sourceIcon: { width: 58, height: 58, borderRadius: 13, backgroundColor: "#F3F8F7", overflow: "hidden", alignItems: "center", justifyContent: "center" },
