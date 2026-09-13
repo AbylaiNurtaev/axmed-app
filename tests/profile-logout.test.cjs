@@ -50,7 +50,6 @@ function profileScreens() {
     "./src/features/devices/ConnectedDevicesScreen": {},
     "./assets/body-front.png": 1,
     "./assets/home-person.png": 2,
-    "./assets/avatar-head-clean.png": 3,
     "./assets/comparison.png": 4
   }, {}, "\nexport { ProfileScreen, ProfileDetailScreen };\n");
 }

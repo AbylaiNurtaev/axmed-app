@@ -17,7 +17,6 @@ import {
 } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { AuthFlow } from "./src/features/auth/AuthFlow";
-import { DeviceSyncCard } from "./src/features/devices/DeviceSyncCard";
 import { ConnectedDevicesScreen } from "./src/features/devices/ConnectedDevicesScreen";
 import {
   authenticateWithSocial,
@@ -55,7 +54,6 @@ type ProfileDetail =
 
 const avatarFront = require("./assets/body-front.png") as ImageSourcePropType;
 const homePerson = require("./assets/home-person.png") as ImageSourcePropType;
-const profileHead = require("./assets/avatar-head-clean.png") as ImageSourcePropType;
 const comparison = require("./assets/comparison.png") as ImageSourcePropType;
 
 const metrics = [
@@ -123,7 +121,7 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   const [profileDetail, setProfileDetail] = useState<ProfileDetail>(null);
 
   const screen = useMemo(() => {
-    if (tab === "home") return <HomeScreen setTab={setTab} open={setSheet} onConnect={() => { setTab("profile"); setProfileDetail("devices"); }} />;
+    if (tab === "home") return <HomeScreen setTab={setTab} open={setSheet} />;
     if (tab === "metrics") return <MetricsScreen />;
     if (tab === "avatar") return <AvatarScreen />;
     if (tab === "knowledge") return <KnowledgeScreen open={setSheet} />;
@@ -156,17 +154,22 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   );
 }
 
-function HomeScreen({ setTab, open, onConnect }: { setTab: (tab: Tab) => void; open: (title: string) => void; onConnect: () => void }) {
+function HomeScreen({ setTab, open }: { setTab: (tab: Tab) => void; open: (title: string) => void }) {
   return (
     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
           <Text style={styles.heroTitle}>Привет, Айгерим!</Text>
-          <Text style={styles.subtitle}>Давайте заботиться о вашем здоровье каждый день</Text>
         </View>
-        <Image source={profileHead} style={styles.smallAvatar} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Открыть профиль"
+          style={({ pressed }) => [styles.smallAvatar, pressed && styles.avatarPressed]}
+          onPress={() => setTab("profile")}
+        >
+          <Ionicons name="person-outline" size={25} color={green} />
+        </Pressable>
       </View>
-      <DeviceSyncCard onConnect={onConnect} />
       <View style={styles.healthCard}>
         <View style={styles.healthCopy}>
           <Text style={styles.cardTitle}>Ваше состояние</Text>
@@ -181,7 +184,6 @@ function HomeScreen({ setTab, open, onConnect }: { setTab: (tab: Tab) => void; o
       </View>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle} numberOfLines={1}>Ключевые показатели</Text>
-        <Text style={styles.updated} numberOfLines={1}>24 авг, 20:20</Text>
       </View>
       <View style={styles.listCard}>
         {metrics.slice(0, 4).map((item, index) => (
@@ -342,7 +344,9 @@ function ProfileScreen({ open, openDetail }: { open: (title: string) => void; op
           <Text style={styles.subtitle}>Управляйте своими данными и настройками</Text>
         </View>
         <View>
-          <Image source={profileHead} style={styles.profileAvatar} />
+          <View style={styles.profileAvatar}>
+            <Ionicons name="person-outline" size={32} color={green} />
+          </View>
           <View style={styles.editBadge}><Ionicons name="pencil" size={14} color="#fff" /></View>
         </View>
       </View>
@@ -876,8 +880,9 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, paddingRight: 8 },
   heroTitle: { color: ink, fontSize: 24, fontWeight: "800", lineHeight: 30 },
   subtitle: { color: muted, fontSize: 14, lineHeight: 21, marginTop: 4, maxWidth: 245 },
-  smallAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: "#edf4f1" },
-  profileAvatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: "#edf4f1" },
+  smallAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: "#edf4f1", alignItems: "center", justifyContent: "center" },
+  profileAvatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: "#edf4f1", alignItems: "center", justifyContent: "center" },
+  avatarPressed: { opacity: 0.7 },
   editBadge: { position: "absolute", right: -2, bottom: 4, width: 28, height: 28, borderRadius: 14, backgroundColor: green, alignItems: "center", justifyContent: "center" },
   healthCard: { marginTop: 22, minHeight: 190, borderRadius: 18, borderWidth: 1, borderColor: "#b9f0df", backgroundColor: "#effdfa", overflow: "hidden", flexDirection: "row", alignItems: "center", padding: 16 },
   healthCopy: { width: "40%", zIndex: 2 },
@@ -893,7 +898,6 @@ const styles = StyleSheet.create({
   homePerson: { position: "absolute", right: -8, bottom: -2, width: 118, height: 190 },
   sectionHeader: { marginTop: 22, marginBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
   sectionTitle: { color: ink, fontSize: 17, fontWeight: "900", flex: 1 },
-  updated: { color: muted, fontSize: 12, textAlign: "right", maxWidth: 148 },
   listCard: { borderRadius: 18, borderWidth: 1, borderColor: line, backgroundColor: "#fff", paddingHorizontal: 14, paddingVertical: 10, shadowColor: "#14213d", shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
   metricLine: { minHeight: 58, borderBottomWidth: 1, borderBottomColor: line, flexDirection: "row", alignItems: "center", gap: 10 },
   noBorder: { borderBottomWidth: 0 },
