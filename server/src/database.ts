@@ -87,6 +87,35 @@ ALTER TABLE device_readings ADD COLUMN IF NOT EXISTS aggregation text;
 ALTER TABLE device_readings ADD COLUMN IF NOT EXISTS origin text;
 ALTER TABLE health_devices ADD COLUMN IF NOT EXISTS sync_version integer;
 ALTER TABLE health_devices ADD COLUMN IF NOT EXISTS sync_warnings jsonb;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date date;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender text CHECK (gender IS NULL OR gender IN ('male', 'female'));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS medical_profile jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS app_preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+CREATE TABLE IF NOT EXISTS profile_goals (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  template_key text,
+  title text NOT NULL,
+  category text NOT NULL,
+  icon text NOT NULL,
+  color text NOT NULL,
+  current_value numeric(12, 2) NOT NULL DEFAULT 0,
+  target_value numeric(12, 2) NOT NULL DEFAULT 0,
+  unit text NOT NULL DEFAULT '',
+  progress integer NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed')),
+  due_date date,
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS profile_goals_user_order_idx
+  ON profile_goals (user_id, status, sort_order, created_at DESC);
 `;
 
 export async function migrateDatabase() {

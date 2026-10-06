@@ -1,6 +1,9 @@
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Constants from "expo-constants";
+import * as FileSystem from "expo-file-system";
+import * as ImagePicker from "expo-image-picker";
+import { ReactNode, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,22 +12,36 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
+  TextInput,
   View
 } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { AuthFlow } from "./src/features/auth/AuthFlow";
 import { ConnectedDevicesScreen } from "./src/features/devices/ConnectedDevicesScreen";
+import { deviceGateway } from "./src/devices/deviceGateway";
 import {
   authenticateWithSocial,
+  createProfileGoal,
+  deleteProfileGoal,
   loginWithEmail,
+  loadProfile,
+  loadProfileGoals,
+  ProfileData,
+  ProfileGoal,
+  ProfileGoalInput,
   logout,
   registerWithEmail,
   resendVerificationCode,
   restoreSession,
+  saveProfile,
+  updateProfileGoal,
+  uploadProfileAvatar,
   verifyEmail
 } from "./src/features/auth/authApi";
 
@@ -69,6 +86,139 @@ function notify(title: string) {
   Alert.alert(title, "Раздел готов как кликабельная заглушка. Позже сюда можно подключить реальные данные и API.");
 }
 
+const emptyProfile: ProfileData = {
+  id: "",
+  email: null,
+  displayName: null,
+  fullName: null,
+  phone: null,
+  birthDate: null,
+  gender: null,
+  avatarUrl: null,
+  emailVerified: false,
+  medicalProfile: {},
+  appPreferences: {
+    language: "ru",
+    units: "metric",
+    region: "Казахстан",
+    syncEnabled: true,
+    dailyReminders: true,
+    waterReminders: true,
+    measurementReminders: true,
+    recommendations: true,
+    theme: "light",
+    textSize: "standard",
+    accentColor: "green",
+    animations: true
+  },
+  updatedAt: ""
+};
+
+const labelMaps = {
+  gender: { male: "Мужской", female: "Женский" },
+  language: { ru: "Русский", kk: "Қазақша", en: "English" },
+  units: { metric: "кг, см", imperial: "lb, in" },
+  theme: { light: "Светлая", dark: "Тёмная", system: "Как в системе" },
+  textSize: { small: "Компактный", standard: "Стандартный", large: "Крупный" },
+  accentColor: { green: "Зелёный", blue: "Синий", rose: "Розовый" }
+} as const;
+
+const goalTemplates: ProfileGoalInput[] = [
+  { templateKey: "weight", icon: "scale-bathroom", title: "Снизить вес", category: "Состав тела", currentValue: 65.4, targetValue: 60, unit: "кг", progress: 70, color: green },
+  { templateKey: "fat", icon: "fire", title: "Снизить процент жира", category: "Состав тела", currentValue: 24.5, targetValue: 22, unit: "%", progress: 40, color: "#ff7a33" },
+  { templateKey: "steps", icon: "shoe-sneaker", title: "Ежедневная активность", category: "Активность", currentValue: 6540, targetValue: 8000, unit: "шагов", progress: 82, color: green },
+  { templateKey: "water", icon: "water", title: "Пить больше воды", category: "Привычки", currentValue: 6, targetValue: 8, unit: "стаканов", progress: 75, color: "#1a86df" },
+  { templateKey: "sleep", icon: "sleep", title: "Спать не меньше 8 часов", category: "Восстановление", currentValue: 6.5, targetValue: 8, unit: "ч", progress: 81, color: "#5b7cfa" },
+  { templateKey: "pressure", icon: "heart-pulse", title: "Контроль давления", category: "Здоровье", currentValue: 0, targetValue: 1, unit: "план", progress: 0, color: "#df1d58" }
+];
+
+type MeasurementRow = {
+  id: string;
+  date: string;
+  time: string;
+  score: number;
+  items: { key: string; icon: string; label: string; value: string; color: string; delta: string }[];
+};
+
+const measurementRows: MeasurementRow[] = [
+  {
+    id: "2025-05-24",
+    date: "24 мая",
+    time: "09:15",
+    score: 84,
+    items: [
+      { key: "weight", icon: "scale-bathroom", label: "Вес", value: "65.4 кг", color: green, delta: "-0.4" },
+      { key: "fat", icon: "water-percent", label: "Жир", value: "24.5%", color: "#ff5b21", delta: "-0.5" },
+      { key: "muscle", icon: "dumbbell", label: "Мышцы", value: "27.1 кг", color: "#df1d58", delta: "+0.3" },
+      { key: "water", icon: "water", label: "Вода", value: "54.2%", color: "#1a86df", delta: "+1.1" }
+    ]
+  },
+  {
+    id: "2025-05-17",
+    date: "17 мая",
+    time: "09:11",
+    score: 81,
+    items: [
+      { key: "weight", icon: "scale-bathroom", label: "Вес", value: "65.8 кг", color: green, delta: "-0.3" },
+      { key: "fat", icon: "water-percent", label: "Жир", value: "25.0%", color: "#ff5b21", delta: "-0.5" },
+      { key: "muscle", icon: "dumbbell", label: "Мышцы", value: "26.8 кг", color: "#df1d58", delta: "+0.4" },
+      { key: "water", icon: "water", label: "Вода", value: "53.1%", color: "#1a86df", delta: "+0.9" }
+    ]
+  },
+  {
+    id: "2025-05-10",
+    date: "10 мая",
+    time: "09:12",
+    score: 78,
+    items: [
+      { key: "weight", icon: "scale-bathroom", label: "Вес", value: "66.1 кг", color: green, delta: "-0.2" },
+      { key: "fat", icon: "water-percent", label: "Жир", value: "25.5%", color: "#ff5b21", delta: "-0.5" },
+      { key: "muscle", icon: "dumbbell", label: "Мышцы", value: "26.4 кг", color: "#df1d58", delta: "+0.3" },
+      { key: "water", icon: "water", label: "Вода", value: "52.2%", color: "#1a86df", delta: "+0.7" }
+    ]
+  }
+];
+
+function messageFromError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Произошла неизвестная ошибка. Попробуйте снова.";
+}
+
+// react-native-web's Alert.alert(...) is a no-op stub (see node_modules/react-native-web/src/exports/Alert),
+// so on web we fall back to window.alert/window.confirm to keep alerts and confirmations actually working.
+function alertMessage(title: string, message?: string) {
+  if (Platform.OS === "web") {
+    if (typeof window !== "undefined") window.alert(message ? `${title}\n\n${message}` : title);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
+
+function ageFromBirthDate(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  try {
+    const birthDate = new Date(dateStr);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age >= 0 && age <= 150 ? age : null;
+  } catch {
+    return null;
+  }
+}
+
+function mimeTypeFromAsset(fileName: string): "image/jpeg" | "image/png" | "image/webp" {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
+}
+
 export default function App() {
   const [authComplete, setAuthComplete] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -106,6 +256,7 @@ export default function App() {
         onEmailSignIn={({ email, password }) => loginWithEmail(email, password)}
         onLogout={logout}
         onResendVerification={resendVerificationCode}
+        onSaveProfile={saveProfile}
         onSocialAuthenticated={authenticateWithSocial}
         onVerifyEmail={({ email, code }) => verifyEmail(email, code)}
       />
@@ -119,18 +270,89 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   const [tab, setTab] = useState<Tab>("home");
   const [sheet, setSheet] = useState<string | null>(null);
   const [profileDetail, setProfileDetail] = useState<ProfileDetail>(null);
+  const [profile, setProfile] = useState<ProfileData>(emptyProfile);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const refreshProfile = useCallback(async () => {
+    setProfileLoading(true);
+    try {
+      setProfile(await loadProfile());
+    } catch (error) {
+      alertMessage("Профиль", messageFromError(error));
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshProfile();
+  }, [refreshProfile]);
+
+  const persistProfile = useCallback(async (patch: Parameters<typeof saveProfile>[0]) => {
+    setProfileSaving(true);
+    try {
+      const next = await saveProfile(patch);
+      setProfile(next);
+      return next;
+    } catch (error) {
+      alertMessage("Не удалось сохранить", messageFromError(error));
+      throw error;
+    } finally {
+      setProfileSaving(false);
+    }
+  }, []);
+
+  const pickAvatar = useCallback(async () => {
+    if (avatarUploading) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      alertMessage("Фото профиля", "Разрешите доступ к фото, чтобы обновить аватар.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      base64: true,
+      mediaTypes: ["images"],
+      quality: 0.85
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    const fileName = asset.fileName ?? `profile-${Date.now()}.jpg`;
+    setAvatarUploading(true);
+    try {
+      const dataBase64 = asset.base64 ?? await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64
+      });
+      const next = await uploadProfileAvatar({
+        fileName,
+        mimeType: mimeTypeFromAsset(fileName),
+        dataBase64
+      });
+      setProfile(next);
+    } catch (error) {
+      alertMessage("Не удалось обновить фото", messageFromError(error));
+    } finally {
+      setAvatarUploading(false);
+    }
+  }, [avatarUploading]);
 
   const screen = useMemo(() => {
     if (tab === "home") return <HomeScreen setTab={setTab} open={setSheet} />;
     if (tab === "metrics") return <MetricsScreen />;
     if (tab === "avatar") return <AvatarScreen />;
     if (tab === "knowledge") return <KnowledgeScreen open={setSheet} />;
-    if (profileDetail === "medical") return <MedicalContextScreen back={() => setProfileDetail(null)} open={setSheet} />;
+    if (profileDetail === "medical") return <MedicalContextScreen back={() => setProfileDetail(null)} />;
     if (profileDetail === "reports") return <ReportsScreen back={() => setProfileDetail(null)} open={setSheet} />;
     if (profileDetail === "devices" || profileDetail === "connectDevice") return <ConnectedDevicesScreen onBack={() => setProfileDetail(null)} startPairing={profileDetail === "connectDevice"} />;
-    if (profileDetail) return <ProfileDetailScreen type={profileDetail} back={() => setProfileDetail(null)} open={setSheet} onLogout={onLogout} />;
-    return <ProfileScreen open={setSheet} openDetail={setProfileDetail} />;
-  }, [onLogout, profileDetail, tab]);
+    if (profileDetail) return <ProfileDetailScreen type={profileDetail} profile={profile} back={() => setProfileDetail(null)} save={persistProfile} saving={profileSaving} onLogout={onLogout} />;
+    return <ProfileScreen profile={profile} loading={profileLoading} saving={profileSaving} avatarUploading={avatarUploading} openDetail={setProfileDetail} onAvatarPress={pickAvatar} refresh={refreshProfile} onLogout={onLogout} />;
+  }, [avatarUploading, onLogout, persistProfile, pickAvatar, profile, profileDetail, profileLoading, profileSaving, refreshProfile, tab]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -335,133 +557,558 @@ function KnowledgeScreen({ open }: { open: (title: string) => void }) {
   );
 }
 
-function ProfileScreen({ open, openDetail }: { open: (title: string) => void; openDetail: (detail: ProfileDetail) => void }) {
+function ProfileScreen({
+  profile,
+  loading,
+  saving,
+  avatarUploading,
+  openDetail,
+  onAvatarPress,
+  refresh,
+  onLogout
+}: {
+  profile: ProfileData;
+  loading: boolean;
+  saving: boolean;
+  avatarUploading: boolean;
+  openDetail: (detail: ProfileDetail) => void;
+  onAvatarPress: () => void;
+  refresh: () => void;
+  onLogout: () => Promise<void>;
+}) {
+  const displayName = profile.fullName || profile.displayName || "Не указано";
+  const age = ageFromBirthDate(profile.birthDate);
+  const gender = profile.gender ? labelMaps.gender[profile.gender] : null;
+  const metaLine = [age ? `${age} ${pluralizeYears(age)}` : null, gender].filter(Boolean).join("  •  ") || "Заполните личные данные";
+  const themeLabel = labelMaps.theme[(profile.appPreferences.theme as keyof typeof labelMaps.theme) ?? "light"];
+
+  const bracelet = deviceGateway.forKind("fitness-band");
+  const connection = useSyncExternalStore(bracelet.subscribe, bracelet.getSnapshot, bracelet.getSnapshot);
+  const connectedDeviceCount = connection.phase === "connected" ? 1 : 0;
+
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const confirmLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await onLogout();
+    } finally {
+      setLoggingOut(false);
+      setLogoutConfirmOpen(false);
+    }
+  };
+
+  if (loading && !profile.id) {
+    return (
+      <View style={styles.profileLoadingScreen}>
+        <ActivityIndicator size="large" color={green} />
+        <Text style={styles.profileLoadingText}>Загружаем профиль...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={styles.scroll}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={green} colors={[green]} />}
+    >
+      {/* Header */}
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
           <Text style={styles.heroTitle}>Профиль</Text>
-          <Text style={styles.subtitle}>Управляйте своими данными и настройками</Text>
+          <Text style={styles.subtitle}>Управляйте своими данными{"\n"}и настройками</Text>
         </View>
-        <View>
-          <View style={styles.profileAvatar}>
-            <Ionicons name="person-outline" size={32} color={green} />
-          </View>
-          <View style={styles.editBadge}><Ionicons name="pencil" size={14} color="#fff" /></View>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Изменить фото профиля"
+          onPress={onAvatarPress}
+          disabled={avatarUploading}
+          style={({ pressed }) => [styles.profileAvatarWrap, pressed && styles.avatarPressed]}
+        >
+          {profile.avatarUrl ? (
+            <Image source={{ uri: profile.avatarUrl }} style={styles.profileAvatarImage} />
+          ) : (
+            <View style={styles.profileAvatar}>
+              <Ionicons name="person-outline" size={40} color={green} />
+            </View>
+          )}
+          {avatarUploading ? (
+            <View style={styles.avatarUploadOverlay}>
+              <ActivityIndicator color="#fff" size="small" />
+            </View>
+          ) : (
+            <View style={styles.editBadge}>
+              <Ionicons name="pencil" size={14} color="#fff" />
+            </View>
+          )}
+        </Pressable>
       </View>
-      <Pressable style={styles.personCard} onPress={() => openDetail("personal")}>
-        <IconTile name="account-outline" color={green} large />
-        <View style={styles.trendInfo}>
-          <Text style={styles.trendTitle}>Александра Петрова</Text>
-          <Text style={styles.trendSub}>34 года  ·  Женский</Text>
-          <Text style={styles.trendSub}>alexandra.petrova@gmail.com</Text>
-          <Text style={styles.trendSub}>+7 777 123 45 67</Text>
+
+      {/* User card -> opens personal data editing */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Редактировать личные данные"
+        style={({ pressed }) => [styles.userCard, pressed && styles.userCardPressed]}
+        onPress={() => openDetail("personal")}
+      >
+        <View style={styles.userCardIcon}>
+          <Ionicons name="person-outline" size={30} color={green} />
         </View>
-        <Ionicons name="chevron-forward" size={26} color="#354253" />
+        <View style={styles.userCardInfo}>
+          <View style={styles.userCardNameRow}>
+            <Text style={styles.userCardName} numberOfLines={1}>{displayName}</Text>
+            {saving && <ActivityIndicator color={green} size="small" style={styles.userCardSyncSpinner} />}
+          </View>
+          <Text style={styles.userCardMeta}>{metaLine}</Text>
+          <Text style={styles.userCardContact} numberOfLines={1}>{profile.email ?? "Email не указан"}</Text>
+          <Text style={styles.userCardContact} numberOfLines={1}>{profile.phone ?? "Телефон не указан"}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={22} color={muted} />
       </Pressable>
-      <SettingsGroup title="Здоровье" items={["Медицинский контекст", "Показатели и отчёты", "Согласия и безопасность"]} open={open} openDetail={openDetail} />
-      <SettingsGroup title="Устройства" items={["Подключённые устройства", "Подключить устройство"]} open={open} openDetail={openDetail} />
-      <SettingsGroup title="Настройки" items={["Общие настройки", "Уведомления", "Внешний вид"]} open={() => undefined} openDetail={openDetail} />
-      <Pressable style={styles.logout} onPress={() => openDetail("logout")}>
-        <Ionicons name="log-out-outline" size={24} color="#f12f35" />
-        <Text style={styles.logoutText}>Выйти из аккаунта</Text>
+
+      {/* Здоровье */}
+      <Text style={styles.sectionLabel}>Здоровье</Text>
+      <ProfileSection>
+        <ProfileMenuItem
+          icon="heart-outline"
+          title="Медицинский контекст"
+          subtitle="Цели, состояние, ограничения, лекарства"
+          onPress={() => openDetail("medical")}
+          showDivider
+        />
+        <ProfileMenuItem
+          icon="clipboard-outline"
+          title="Показатели и отчёты"
+          subtitle="История измерений и экспорт данных"
+          onPress={() => openDetail("reports")}
+          showDivider
+        />
+        <ProfileMenuItem
+          icon="shield-checkmark-outline"
+          title="Согласия и безопасность"
+          subtitle="Ваши данные и разрешения"
+          onPress={() => openDetail("security")}
+        />
+      </ProfileSection>
+
+      {/* Устройства */}
+      <Text style={styles.sectionLabel}>Устройства</Text>
+      <ProfileSection>
+        <ProfileMenuItem
+          icon="watch-outline"
+          title="Подключённые устройства"
+          subtitle="Весы, часы, браслеты и приложения"
+          rightContent={connectedDeviceCount > 0 ? <View style={styles.deviceBadge}><Text style={styles.deviceBadgeText}>{connectedDeviceCount}</Text></View> : null}
+          onPress={() => openDetail("devices")}
+          showDivider
+        />
+        <ProfileMenuItem
+          icon="wifi"
+          title="Подключить устройство"
+          subtitle="Добавить новое устройство"
+          onPress={() => openDetail("connectDevice")}
+        />
+      </ProfileSection>
+
+      {/* Настройки */}
+      <Text style={styles.sectionLabel}>Настройки</Text>
+      <ProfileSection>
+        <ProfileMenuItem
+          icon="settings-outline"
+          title="Общие настройки"
+          subtitle="Язык, единицы измерения, уведомления"
+          onPress={() => openDetail("general")}
+          showDivider
+        />
+        <ProfileMenuItem
+          icon="notifications-outline"
+          title="Уведомления"
+          subtitle="Напоминания, рекомендации, обновления"
+          onPress={() => openDetail("notifications")}
+          showDivider
+        />
+        <ProfileMenuItem
+          icon="moon-outline"
+          title="Внешний вид"
+          subtitle="Тема, размер текста"
+          rightContent={<Text style={styles.menuRightLabel}>{themeLabel}</Text>}
+          onPress={() => openDetail("appearance")}
+        />
+      </ProfileSection>
+
+      {/* Logout Button */}
+      <Pressable
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.logoutCardButton, pressed && styles.logoutCardButtonPressed]}
+        onPress={() => setLogoutConfirmOpen(true)}
+      >
+        <Ionicons name="log-out-outline" size={20} color="#f12f35" />
+        <Text style={styles.logoutCardButtonText}>Выйти из аккаунта</Text>
       </Pressable>
-      <Text style={styles.version}>AxMed  ·  Версия 1.0.0</Text>
+
+      {/* Footer */}
+      <Text style={styles.footerVersion}>AxMed  •  Версия {Constants.expoConfig?.version ?? "1.0.0"}</Text>
+
+      <Modal visible={logoutConfirmOpen} animationType="fade" transparent onRequestClose={() => setLogoutConfirmOpen(false)}>
+        <View style={styles.confirmShade}>
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmIcon}>
+              <Ionicons name="log-out-outline" size={26} color="#f12f35" />
+            </View>
+            <Text style={styles.confirmTitle}>Выйти из аккаунта?</Text>
+            <Text style={styles.confirmText}>Вы уверены, что хотите выйти из аккаунта?</Text>
+            <View style={styles.confirmActions}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={loggingOut}
+                style={({ pressed }) => [styles.confirmCancelButton, pressed && styles.confirmCancelButtonPressed]}
+                onPress={() => setLogoutConfirmOpen(false)}
+              >
+                <Text style={styles.confirmCancelText}>Отмена</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={loggingOut}
+                style={({ pressed }) => [styles.confirmDangerButton, pressed && styles.confirmDangerButtonPressed]}
+                onPress={() => void confirmLogout()}
+              >
+                {loggingOut ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.confirmDangerText}>Выйти</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
+  );
+}
+
+function pluralizeYears(age: number) {
+  const mod10 = age % 10;
+  const mod100 = age % 100;
+  if (mod10 === 1 && mod100 !== 11) return "год";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "года";
+  return "лет";
+}
+
+function ProfileSection({ children }: { children: ReactNode }) {
+  return <View style={styles.menuGroupCard}>{children}</View>;
+}
+
+function ProfileMenuItem({
+  icon,
+  title,
+  subtitle,
+  rightContent,
+  onPress,
+  showDivider = false,
+  danger = false,
+  disabled = false,
+  loading = false
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle?: string;
+  rightContent?: ReactNode;
+  onPress: () => void;
+  showDivider?: boolean;
+  danger?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        disabled={disabled || loading}
+        style={({ pressed }) => [styles.menuRow, pressed && !disabled && styles.menuRowPressed, disabled && styles.menuRowDisabled]}
+        onPress={onPress}
+      >
+        <View style={[styles.menuRowIcon, danger && styles.menuRowIconDanger]}>
+          <Ionicons name={icon} size={22} color={danger ? "#f12f35" : green} />
+        </View>
+        <View style={styles.menuRowContent}>
+          <Text style={[styles.menuRowTitle, danger && styles.menuRowTitleDanger]}>{title}</Text>
+          {!!subtitle && <Text style={styles.menuRowSubtitle} numberOfLines={2}>{subtitle}</Text>}
+        </View>
+        {loading ? <ActivityIndicator color={muted} size="small" /> : rightContent}
+        <Ionicons name="chevron-forward" size={20} color={muted} />
+      </Pressable>
+      {showDivider && <View style={styles.menuRowDivider} />}
+    </>
   );
 }
 
 function ProfileDetailScreen({
   type,
+  profile,
   back,
-  open,
+  save,
+  saving,
   onLogout
 }: {
   type: Exclude<ProfileDetail, "medical" | "reports" | "devices" | null>;
+  profile: ProfileData;
   back: () => void;
-  open: (title: string) => void;
+  save: (patch: Parameters<typeof saveProfile>[0]) => Promise<ProfileData>;
+  saving: boolean;
   onLogout: () => Promise<void>;
 }) {
-  const config = {
-    personal: {
-      title: "Личные данные",
-      subtitle: "Основная информация, контакты и параметры профиля",
-      rows: [
-        ["account-outline", "ФИО", "Александра Петрова", ""],
-        ["calendar-account", "Возраст", "34 года", ""],
-        ["gender-female", "Пол", "Женский", ""],
-        ["email-outline", "Email", "alexandra.petrova@gmail.com", ""],
-        ["phone-outline", "Телефон", "+7 777 123 45 67", ""]
-      ],
-      banner: "Данные профиля используются для персональных рекомендаций и расчётов."
-    },
-    security: {
-      title: "Согласия и безопасность",
-      subtitle: "Ваши данные, разрешения и параметры защиты аккаунта",
-      rows: [
-        ["shield-check-outline", "Согласие на обработку данных", "Активно", "Вкл."],
-        ["lock-outline", "Пароль и вход", "Последнее изменение 12 мая", ""],
-        ["fingerprint", "Биометрия", "Face ID для быстрого входа", "Вкл."],
-        ["file-document-outline", "Экспорт согласий", "Скачать документы", ""]
-      ],
-      banner: "Медицинские данные хранятся отдельно и доступны только владельцу аккаунта."
-    },
-    connectDevice: {
-      title: "Подключить устройство",
-      subtitle: "Добавьте весы, часы, браслет или приложение здоровья",
-      rows: [
-        ["scale-bathroom", "Умные весы", "BIA, InBody, AxMed", ""],
-        ["watch", "Смарт-часы", "Apple Watch, Garmin, Samsung", ""],
-        ["bluetooth", "Bluetooth-устройство", "Поиск устройств рядом", ""],
-        ["heart", "Приложение здоровья", "Apple Health, Google Fit", ""]
-      ],
-      banner: "Включите Bluetooth и держите устройство рядом с телефоном."
-    },
-    general: {
-      title: "Общие настройки",
-      subtitle: "Язык, единицы измерения, регион и параметры приложения",
-      rows: [
-        ["translate", "Язык", "Русский", ""],
-        ["weight-kilogram", "Единицы измерения", "кг, см, %", ""],
-        ["map-marker-outline", "Регион", "Казахстан", ""],
-        ["database-sync-outline", "Синхронизация", "Автоматически", "Вкл."]
-      ],
-      banner: "Эти настройки влияют на отображение данных во всех разделах."
-    },
-    notifications: {
-      title: "Уведомления",
-      subtitle: "Напоминания, рекомендации и обновления по здоровью",
-      rows: [
-        ["bell-outline", "Ежедневные напоминания", "09:00 каждый день", "Вкл."],
-        ["cup-water", "Вода", "6 напоминаний в день", "Вкл."],
-        ["calendar-check-outline", "Измерения", "Раз в неделю", "Вкл."],
-        ["lightbulb-outline", "Рекомендации", "Персональные советы", "Вкл."]
-      ],
-      banner: "Уведомления можно отключить или настроить по расписанию."
-    },
-    appearance: {
-      title: "Внешний вид",
-      subtitle: "Тема, размер текста и визуальные параметры приложения",
-      rows: [
-        ["white-balance-sunny", "Тема", "Светлая", ""],
-        ["format-size", "Размер текста", "Стандартный", ""],
-        ["palette-outline", "Акцентный цвет", "Зелёный", ""],
-        ["motion-play-outline", "Анимации", "Умеренные", "Вкл."]
-      ],
-      banner: "Интерфейс адаптирован под светлую тему и медицинский стиль AxMed."
-    },
-    logout: {
-      title: "Выход из аккаунта",
-      subtitle: "Завершение текущей сессии на этом устройстве",
-      rows: [
-        ["account-arrow-right-outline", "Текущий аккаунт", "alexandra.petrova@gmail.com", ""],
-        ["cloud-check-outline", "Данные синхронизированы", "Сегодня, 08:25", ""],
-        ["logout", "Выйти на этом устройстве", "Потребуется повторный вход", ""]
-      ],
-      banner: "После выхода локальные данные останутся защищены до повторной авторизации."
-    }
-  }[type];
+  const [draft, setDraft] = useState({
+    fullName: profile.fullName ?? profile.displayName ?? "",
+    phone: profile.phone ?? "",
+    birthDate: profile.birthDate ?? "",
+    gender: profile.gender ?? "female" as "male" | "female"
+  });
+  const preferences = profile.appPreferences;
+
+  if (type === "personal") {
+    return (
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <DetailHeader title="Личные данные" subtitle="Основная информация, контакты и параметры профиля" back={back} />
+        <View style={styles.formCard}>
+          <ProfileInput
+            label="Полное имя"
+            icon="account-outline"
+            value={draft.fullName}
+            placeholder="Иван Иванов"
+            onChange={(fullName) => setDraft((current) => ({ ...current, fullName }))}
+          />
+          <ProfileInput
+            label="Номер телефона"
+            icon="phone-outline"
+            value={draft.phone}
+            keyboardType="phone-pad"
+            placeholder="+7 (999) 999-99-99"
+            onChange={(phone) => setDraft((current) => ({ ...current, phone }))}
+          />
+          <ProfileInput
+            label="Дата рождения"
+            icon="calendar-outline"
+            value={draft.birthDate}
+            placeholder="YYYY-MM-DD"
+            onChange={(birthDate) => setDraft((current) => ({ ...current, birthDate }))}
+          />
+          <Text style={styles.inputLabel}>Пол при рождении</Text>
+          <View style={styles.choiceRow}>
+            {(["male", "female"] as const).map((gender) => (
+              <Pressable
+                key={gender}
+                style={[styles.choiceButton, draft.gender === gender && styles.choiceButtonActive]}
+                onPress={() => setDraft((current) => ({ ...current, gender }))}
+              >
+                <MaterialCommunityIcons
+                  name={gender === "female" ? "gender-female" : "gender-male"}
+                  size={22}
+                  color={draft.gender === gender ? "#fff" : green}
+                />
+                <Text style={[styles.choiceText, draft.gender === gender && styles.choiceTextActive]}>
+                  {labelMaps.gender[gender]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <Pressable
+          disabled={saving}
+          style={[styles.primaryButton, styles.saveButton, saving && styles.buttonDisabled]}
+          onPress={() => void save({ ...draft, birthDate: draft.birthDate || null })}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Сохранить</Text>
+          )}
+        </Pressable>
+        <Pressable style={styles.infoBanner} onPress={() => undefined}>
+          <IconTile name="shield-check-outline" color={green} compact />
+          <View style={styles.trendInfo}>
+            <Text style={styles.settingTitle}>Конфиденциальность</Text>
+            <Text style={styles.trendSub}>Ваши данные защищены и используются только для персональных рекомендаций.</Text>
+          </View>
+        </Pressable>
+      </ScrollView>
+    );
+  }
+
+  if (type === "general" || type === "notifications" || type === "appearance") {
+    const config = settingsPageCopy(type);
+    const language = preferenceString(preferences.language, "ru");
+    const units = preferenceString(preferences.units, "metric");
+    const region = preferenceString(preferences.region, "Казахстан");
+    const theme = preferenceString(preferences.theme, "light");
+    const textSize = preferenceString(preferences.textSize, "standard");
+    const accentColor = preferenceString(preferences.accentColor, "green");
+    const accent = accentColorValue(accentColor);
+    const previewIsDark = theme === "dark";
+    const previewFontSize = textSize === "large" ? 18 : textSize === "small" ? 13 : 15;
+    const updatePreference = (key: string, value: string | boolean) => {
+      void save({ appPreferences: { [key]: value } });
+    };
+
+    return (
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <DetailHeader title={config.title} subtitle={config.subtitle} back={back} />
+        {type === "general" && (
+          <View style={styles.settingsCard}>
+            <SettingsChoiceGroup
+              title="Язык приложения"
+              subtitle="Тексты интерфейса будут открываться на выбранном языке"
+              value={language}
+              accent={green}
+              disabled={saving}
+              options={[
+                { value: "ru", label: labelMaps.language.ru },
+                { value: "kk", label: labelMaps.language.kk },
+                { value: "en", label: labelMaps.language.en }
+              ]}
+              onChange={(value) => updatePreference("language", value)}
+            />
+            <SettingsChoiceGroup
+              title="Единицы измерения"
+              subtitle="Вес, рост и окружности в привычном формате"
+              value={units}
+              accent={green}
+              disabled={saving}
+              options={[
+                { value: "metric", label: labelMaps.units.metric },
+                { value: "imperial", label: labelMaps.units.imperial }
+              ]}
+              onChange={(value) => updatePreference("units", value)}
+            />
+            <SettingsChoiceGroup
+              title="Регион"
+              subtitle="Нужен для локальных форматов и рекомендаций"
+              value={region}
+              accent={green}
+              disabled={saving}
+              options={[
+                { value: "Казахстан", label: "Казахстан" },
+                { value: "СНГ", label: "СНГ" },
+                { value: "Другое", label: "Другое" }
+              ]}
+              onChange={(value) => updatePreference("region", value)}
+            />
+            <SettingsSwitchRow
+              title="Синхронизация профиля"
+              subtitle="Сохранять изменения аккаунта и настроек на сервере"
+              value={preferences.syncEnabled !== false}
+              disabled={saving}
+              onChange={(value) => updatePreference("syncEnabled", value)}
+            />
+          </View>
+        )}
+        {type === "notifications" && (
+          <View style={styles.settingsCard}>
+            <SettingsSwitchRow
+              title="Ежедневные напоминания"
+              subtitle="Мягкое напоминание открыть AxMed и сверить состояние"
+              value={preferences.dailyReminders !== false}
+              disabled={saving}
+              onChange={(value) => updatePreference("dailyReminders", value)}
+            />
+            <SettingsSwitchRow
+              title="Напоминания о воде"
+              subtitle="Подсказки по питьевому режиму в течение дня"
+              value={preferences.waterReminders !== false}
+              disabled={saving}
+              onChange={(value) => updatePreference("waterReminders", value)}
+            />
+            <SettingsSwitchRow
+              title="Измерения"
+              subtitle="Напоминать о весах, браслете и плановых замерах"
+              value={preferences.measurementReminders !== false}
+              disabled={saving}
+              onChange={(value) => updatePreference("measurementReminders", value)}
+            />
+            <SettingsSwitchRow
+              title="Рекомендации"
+              subtitle="Показывать персональные советы по профилю здоровья"
+              value={preferences.recommendations !== false}
+              disabled={saving}
+              onChange={(value) => updatePreference("recommendations", value)}
+              last
+            />
+          </View>
+        )}
+        {type === "appearance" && (
+          <>
+            <View style={[styles.appearancePreview, previewIsDark && styles.appearancePreviewDark]}>
+              <View style={[styles.appearancePreviewIcon, { backgroundColor: `${accent}1f` }]}>
+                <Ionicons name="color-palette-outline" size={24} color={accent} />
+              </View>
+              <View style={styles.trendInfo}>
+                <Text style={[styles.appearancePreviewTitle, previewIsDark && styles.appearancePreviewTitleDark, { fontSize: previewFontSize + 2 }]}>
+                  {labelMaps.theme[theme as keyof typeof labelMaps.theme] ?? "Светлая"} тема
+                </Text>
+                <Text style={[styles.appearancePreviewText, previewIsDark && styles.appearancePreviewTextDark, { fontSize: previewFontSize }]}>
+                  Акцент, размер текста и анимации применяются к профилю и сохраняются в аккаунте.
+                </Text>
+              </View>
+              <View style={[styles.appearanceAccentDot, { backgroundColor: accent }]} />
+            </View>
+            <View style={styles.settingsCard}>
+              <SettingsChoiceGroup
+                title="Тема"
+                subtitle="Внешний вид раздела профиля"
+                value={theme}
+                accent={accent}
+                disabled={saving}
+                options={[
+                  { value: "light", label: labelMaps.theme.light },
+                  { value: "dark", label: labelMaps.theme.dark },
+                  { value: "system", label: labelMaps.theme.system }
+                ]}
+                onChange={(value) => updatePreference("theme", value)}
+              />
+              <SettingsChoiceGroup
+                title="Размер текста"
+                subtitle="Подберите комфортную плотность интерфейса"
+                value={textSize}
+                accent={accent}
+                disabled={saving}
+                options={[
+                  { value: "small", label: labelMaps.textSize.small },
+                  { value: "standard", label: labelMaps.textSize.standard },
+                  { value: "large", label: labelMaps.textSize.large }
+                ]}
+                onChange={(value) => updatePreference("textSize", value)}
+              />
+              <SettingsChoiceGroup
+                title="Цвет акцента"
+                subtitle="Цвет активных переключателей и preview"
+                value={accentColor}
+                accent={accent}
+                disabled={saving}
+                options={[
+                  { value: "green", label: labelMaps.accentColor.green },
+                  { value: "blue", label: labelMaps.accentColor.blue },
+                  { value: "rose", label: labelMaps.accentColor.rose }
+                ]}
+                onChange={(value) => updatePreference("accentColor", value)}
+              />
+              <SettingsSwitchRow
+                title="Плавные анимации"
+                subtitle="Микроанимации на кнопках и переключателях профиля"
+                value={preferences.animations !== false}
+                disabled={saving}
+                onChange={(value) => updatePreference("animations", value)}
+                last
+              />
+            </View>
+          </>
+        )}
+        {saving && (
+          <View style={styles.inlineSaving}>
+            <ActivityIndicator color={green} size="small" />
+            <Text style={styles.inlineSavingText}>Сохраняем изменения...</Text>
+          </View>
+        )}
+      </ScrollView>
+    );
+  }
+
+  const config = profileStaticConfig(type, profile);
 
   return (
     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -471,7 +1118,7 @@ function ProfileDetailScreen({
           <Pressable
             key={title}
             style={[styles.settingLine, index === config.rows.length - 1 && styles.noBorder]}
-            onPress={() => type === "logout" && title.includes("Выйти") ? void onLogout() : open(title)}
+            onPress={() => type === "logout" && title.includes("Выйти") ? void onLogout() : undefined}
           >
             <IconTile name={icon} color={title.includes("Выйти") ? "#f12f35" : green} compact />
             <View style={styles.trendInfo}>
@@ -483,7 +1130,7 @@ function ProfileDetailScreen({
           </Pressable>
         ))}
       </View>
-      <Pressable style={styles.infoBanner} onPress={() => open(config.title)}>
+      <Pressable style={styles.infoBanner} onPress={() => notify(config.title)}>
         <IconTile name="information-outline" color={green} compact />
         <View style={styles.trendInfo}>
           <Text style={styles.settingTitle}>Важно</Text>
@@ -494,96 +1141,505 @@ function ProfileDetailScreen({
   );
 }
 
-function MedicalContextScreen({ back, open }: { back: () => void; open: (title: string) => void }) {
-  const goals = [
-    { icon: "scale-bathroom", title: "Снизить вес до 60 кг", value: "65.4 / 60 кг", progress: 70, color: green },
-    { icon: "fire", title: "Процент жира < 22%", value: "24.5 / 22 %", progress: 40, color: "#ff7a33" },
-    { icon: "shoe-sneaker", title: "Ежедневная активность", value: "6 540 / 8 000 шагов", progress: 82, color: green },
-    { icon: "water", title: "Пить больше воды", value: "6 / 8 стаканов", progress: 75, color: "#1a86df" }
-  ];
+function settingsPageCopy(type: "general" | "notifications" | "appearance") {
+  if (type === "general") {
+    return { title: "Общие настройки", subtitle: "Язык, единицы измерения, регион и синхронизация" };
+  }
+  if (type === "notifications") {
+    return { title: "Уведомления", subtitle: "Напоминания, рекомендации и плановые измерения" };
+  }
+  return { title: "Внешний вид", subtitle: "Тема, размер текста, цвет акцента и анимации" };
+}
+
+function preferenceString(value: unknown, fallback: string) {
+  return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+function accentColorValue(value: string) {
+  if (value === "blue") return "#1a86df";
+  if (value === "rose") return "#df1d58";
+  return green;
+}
+
+function profileStaticConfig(type: string, profile: ProfileData) {
+  if (type === "security") {
+    return {
+      title: "Согласия и безопасность",
+      subtitle: "Ваши данные и разрешения",
+      rows: [
+        ["shield-check-outline", "Двухфакторная аутентификация", "Не включена", ""],
+        ["lock-outline", "История входов", "Последний вход: сегодня", ""],
+        ["file-document-outline", "Условия и согласия", "Приняты при регистрации", ""],
+      ],
+      banner: "Ваша учётная запись защищена. Используйте надёжный пароль и двухфакторную аутентификацию."
+    };
+  }
+  if (type === "logout") {
+    return {
+      title: "Выход",
+      subtitle: "Завершить сеанс",
+      rows: [
+        ["log-out-outline", "Выйти из аккаунта", "Вход требуется на всех устройствах", ""],
+      ],
+      banner: "Вы выйдете из приложения на всех устройствах."
+    };
+  }
+  return {
+    title: type,
+    subtitle: "",
+    rows: [],
+    banner: ""
+  };
+}
+
+function SettingsChoiceGroup({
+  title,
+  subtitle,
+  value,
+  options,
+  accent,
+  disabled,
+  onChange
+}: {
+  title: string;
+  subtitle: string;
+  value: string;
+  options: { value: string; label: string }[];
+  accent: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
   return (
-    <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-      <DetailHeader title="Медицинский контекст" subtitle="Ваши цели, привычки и важная информация для персональных рекомендаций" back={back} />
-      <View style={styles.blockHeaderRow}>
-        <Text style={styles.panelTitle}>Мои цели</Text>
-        <Pressable style={styles.squareAction} onPress={() => open("Добавить цель")}>
-          <Ionicons name="add" size={24} color={green} />
-        </Pressable>
+    <View style={styles.settingsControlBlock}>
+      <View style={styles.settingsControlHeader}>
+        <Text style={styles.settingsControlTitle}>{title}</Text>
+        <Text style={styles.settingsControlSubtitle}>{subtitle}</Text>
       </View>
-      <View style={styles.listCard}>
-        {goals.map((goal, index) => (
-          <Pressable key={goal.title} style={[styles.goalRow, index === goals.length - 1 && styles.noBorder]} onPress={() => open(goal.title)}>
-            <IconTile name={goal.icon} color={goal.color} />
-            <View style={styles.goalContent}>
-              <Text style={styles.goalTitle}>{goal.title}</Text>
-              <Text style={styles.goalValue}>{goal.value}</Text>
-              <ProgressBar progress={goal.progress} color={goal.color} />
-            </View>
-            <Text style={[styles.goalPercent, { color: goal.color }]}>{goal.progress}%</Text>
-            <Ionicons name="chevron-forward" size={18} color={muted} />
-          </Pressable>
-        ))}
+      <View style={styles.settingsSegmented}>
+        {options.map((option) => {
+          const active = value === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="button"
+              disabled={disabled}
+              style={[
+                styles.settingsSegment,
+                active && { backgroundColor: accent, borderColor: accent },
+                disabled && styles.settingsControlDisabled
+              ]}
+              onPress={() => onChange(option.value)}
+            >
+              <Text style={[styles.settingsSegmentText, active && styles.settingsSegmentTextActive]} numberOfLines={2}>
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
-      <Text style={styles.groupTitle}>Дополнительно</Text>
-      <View style={styles.listCard}>
-        {[
-          ["heart-pulse", "Хронические заболевания", "Добавить или просмотреть", "0"],
-          ["pill", "Регулярные лекарства", "1 препарат", "1"],
-          ["flower-outline", "Аллергии и непереносимости", "Не указано", "0"],
-          ["clipboard-text-outline", "Последний медицинский чек-ап", "12 мая 2025", ""]
-        ].map(([icon, title, sub, count], index) => (
-          <Pressable key={title} style={[styles.settingLine, index === 3 && styles.noBorder]} onPress={() => open(title)}>
-            <IconTile name={icon} color={green} compact />
-            <View style={styles.trendInfo}>
-              <Text style={styles.settingTitle}>{title}</Text>
-              <Text style={styles.trendSub}>{sub}</Text>
-            </View>
-            {!!count && <Text style={styles.countBadge}>{count}</Text>}
-            <Ionicons name="chevron-forward" size={18} color={muted} />
-          </Pressable>
-        ))}
-      </View>
-      <Pressable style={styles.infoBanner} onPress={() => open("Конфиденциальность")}>
-        <IconTile name="shield-lock-outline" color={green} compact />
-        <View style={styles.trendInfo}>
-          <Text style={styles.settingTitle}>Конфиденциальность</Text>
-          <Text style={styles.trendSub}>Ваши данные защищены и используются только для персонализации.</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={muted} />
-      </Pressable>
-    </ScrollView>
+    </View>
   );
 }
 
-function ReportsScreen({ back, open }: { back: () => void; open: (title: string) => void }) {
+function SettingsSwitchRow({
+  title,
+  subtitle,
+  value,
+  disabled,
+  onChange,
+  last = false
+}: {
+  title: string;
+  subtitle: string;
+  value: boolean;
+  disabled?: boolean;
+  onChange: (value: boolean) => void;
+  last?: boolean;
+}) {
   return (
-    <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-      <DetailHeader title="Показатели и отчёты" subtitle="История измерений, динамика показателей и персональные отчёты" back={back} />
-      <Segmented values={["Неделя", "Месяц", "3 месяца", "Год"]} value="Месяц" onChange={() => undefined} />
-      <View style={styles.dateNav}>
-        <Ionicons name="chevron-back" size={20} color={muted} />
-        <Text style={styles.dateNavText}>1 - 31 мая 2025</Text>
-        <Ionicons name="chevron-forward" size={20} color={muted} />
+    <View style={[styles.settingsSwitchRow, last && styles.noBorder]}>
+      <View style={styles.trendInfo}>
+        <Text style={styles.settingsControlTitle}>{title}</Text>
+        <Text style={styles.settingsControlSubtitle}>{subtitle}</Text>
       </View>
-      <View style={styles.kpiGrid}>
-        {metrics.slice(0, 4).map((item) => (
-          <Pressable key={item.label} style={styles.kpiCard} onPress={() => open(item.label)}>
-            <IconTile name={item.icon} color={item.color} compact />
-            <Text style={styles.kpiLabel} numberOfLines={3}>{item.label}</Text>
-            <Text style={styles.kpiValue}>{item.value} <Text style={styles.kpiUnit}>{item.unit}</Text></Text>
-            <MiniSparkline points={[...item.points]} color={item.color} />
+      <Switch
+        value={value}
+        disabled={disabled}
+        onValueChange={onChange}
+        trackColor={{ false: "#d5dbe3", true: "#9ee7d1" }}
+        thumbColor={value ? green : "#fff"}
+        ios_backgroundColor="#d5dbe3"
+      />
+    </View>
+  );
+}
+
+function MedicalContextScreen({ back }: { back: () => void }) {
+  const open = (title: string) => {
+    Alert.alert(title, "Раздел готов как кликабельная заглушка. Позже сюда можно подключить реальные данные и API.");
+  };
+  const [goals, setGoals] = useState<ProfileGoal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<ProfileGoal | null>(null);
+  const [draft, setDraft] = useState(goalDraftFromInput({ title: "", targetValue: 1, currentValue: 0, unit: "", progress: 0 }));
+  const [customGoalMode, setCustomGoalMode] = useState(false);
+
+  const refreshGoals = useCallback(async () => {
+    setLoading(true);
+    try {
+      setGoals(await loadProfileGoals());
+    } catch (error) {
+      alertMessage("Цели", messageFromError(error));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshGoals();
+  }, [refreshGoals]);
+
+  const openCreate = (template?: ProfileGoalInput) => {
+    setEditingGoal(null);
+    setDraft(goalDraftFromInput(template ?? {
+      title: "",
+      category: "Здоровье",
+      icon: "flag-checkered",
+      color: green,
+      currentValue: 0,
+      targetValue: 1,
+      unit: "",
+      progress: 0
+    }));
+    setCustomGoalMode(Boolean(template));
+    setEditorOpen(true);
+  };
+
+  const openEdit = (goal: ProfileGoal) => {
+    setEditingGoal(goal);
+    setDraft(goalDraftFromInput(goal));
+    setCustomGoalMode(true);
+    setEditorOpen(true);
+  };
+
+  const saveGoal = async () => {
+    const input = goalInputFromDraft(draft);
+    if (!input.title.trim()) {
+      alertMessage("Цель", "Напишите название цели.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingGoal) {
+        const updated = await updateProfileGoal(editingGoal.id, input);
+        setGoals((current) => current.map((goal) => goal.id === updated.id ? updated : goal));
+      } else {
+        const created = await createProfileGoal(input);
+        setGoals((current) => [created, ...current]);
+      }
+      setEditorOpen(false);
+    } catch (error) {
+      alertMessage("Не удалось сохранить цель", messageFromError(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeGoal = async () => {
+    if (!editingGoal) return;
+    setSaving(true);
+    try {
+      await deleteProfileGoal(editingGoal.id);
+      setGoals((current) => current.filter((goal) => goal.id !== editingGoal.id));
+      setEditorOpen(false);
+    } catch (error) {
+      alertMessage("Не удалось удалить цель", messageFromError(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <DetailHeader title="Медицинский контекст" subtitle="Ваши цели, привычки и важная информация для персональных рекомендаций" back={back} />
+        <View style={styles.blockHeaderRow}>
+          <Text style={styles.panelTitle}>Мои цели</Text>
+          <Pressable style={styles.squareAction} onPress={() => openCreate()}>
+            <Ionicons name="add" size={24} color={green} />
           </Pressable>
-        ))}
-      </View>
-      <View style={styles.chartCard}>
-        <View style={styles.cardTopRow}>
-          <Text style={styles.panelTitle}>Динамика веса</Text>
-          <Pressable style={styles.smallPill}><Text style={styles.smallPillText}>По дням</Text></Pressable>
         </View>
-        <BigLineChart />
-      </View>
-      <MeasurementsTable open={open} />
-    </ScrollView>
+        <View style={styles.listCard}>
+          {loading ? (
+            <View style={styles.goalEmptyState}>
+              <ActivityIndicator color={green} />
+              <Text style={styles.trendSub}>Загружаем цели...</Text>
+            </View>
+          ) : goals.length === 0 ? (
+            <View style={styles.goalEmptyState}>
+              <IconTile name="target" color={green} />
+              <Text style={styles.goalEmptyTitle}>Пока нет целей</Text>
+              <Text style={styles.goalEmptyText}>Создайте первую цель: из шаблона или вручную.</Text>
+              <Pressable style={styles.goalInlineButton} onPress={() => openCreate()}>
+                <Text style={styles.goalInlineButtonText}>Создать цель</Text>
+              </Pressable>
+            </View>
+          ) : goals.map((goal, index) => (
+            <Pressable key={goal.id} style={[styles.goalRow, index === goals.length - 1 && styles.noBorder]} onPress={() => openEdit(goal)}>
+              <IconTile name={goal.icon} color={goal.color} />
+              <View style={styles.goalContent}>
+                <View style={styles.goalTitleRow}>
+                  <Text style={styles.goalTitle} numberOfLines={2}>{goal.title}</Text>
+                  {goal.status === "completed" && <Text style={styles.goalDoneBadge}>Готово</Text>}
+                </View>
+                <Text style={styles.goalValue}>{formatGoalValue(goal)}</Text>
+                <ProgressBar progress={goal.progress} color={goal.color} />
+              </View>
+              <Text style={[styles.goalPercent, { color: goal.color }]}>{goal.progress}%</Text>
+              <Ionicons name="chevron-forward" size={18} color={muted} />
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.groupTitle}>Дополнительно</Text>
+        <View style={styles.listCard}>
+          {[
+            ["heart-pulse", "Хронические заболевания", "Добавить или просмотреть", "0"],
+            ["pill", "Регулярные лекарства", "1 препарат", "1"],
+            ["flower-outline", "Аллергии и непереносимости", "Не указано", "0"],
+            ["clipboard-text-outline", "Последний медицинский чек-ап", "12 мая 2025", ""]
+          ].map(([icon, title, sub, count], index) => (
+            <Pressable key={title} style={[styles.settingLine, index === 3 && styles.noBorder]} onPress={() => open(title)}>
+              <IconTile name={icon} color={green} compact />
+              <View style={styles.trendInfo}>
+                <Text style={styles.settingTitle}>{title}</Text>
+                <Text style={styles.trendSub}>{sub}</Text>
+              </View>
+              {!!count && <Text style={styles.countBadge}>{count}</Text>}
+              <Ionicons name="chevron-forward" size={18} color={muted} />
+            </Pressable>
+          ))}
+        </View>
+        <Pressable style={styles.infoBanner} onPress={() => open("Конфиденциальность")}>
+          <IconTile name="shield-lock-outline" color={green} compact />
+          <View style={styles.trendInfo}>
+            <Text style={styles.settingTitle}>Конфиденциальность</Text>
+            <Text style={styles.trendSub}>Ваши данные защищены и используются только для персонализации.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={muted} />
+        </Pressable>
+      </ScrollView>
+      <Modal visible={editorOpen} animationType="slide" transparent onRequestClose={() => setEditorOpen(false)}>
+        <Pressable style={styles.modalShade} onPress={() => !saving && setEditorOpen(false)}>
+          <Pressable style={styles.goalEditorCard}>
+            <ScrollView contentContainerStyle={styles.goalEditorScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.cardTopRow}>
+                <Text style={styles.modalTitle}>{editingGoal ? "Редактировать цель" : "Создать цель"}</Text>
+                <Pressable style={styles.squareAction} disabled={saving} onPress={() => setEditorOpen(false)}>
+                  <Ionicons name="close" size={22} color={muted} />
+                </Pressable>
+              </View>
+              {!editingGoal && (
+                <>
+                  <Text style={styles.goalCreateLead}>Выберите готовую цель или настройте свою.</Text>
+                  <View style={styles.goalTemplateGrid}>
+                    {goalTemplates.map((template) => {
+                      const active = draft.templateKey === template.templateKey && !customGoalMode;
+                      return (
+                        <Pressable
+                          key={template.templateKey}
+                          style={[styles.goalTemplateCard, active && styles.goalTemplateCardActive]}
+                          onPress={() => {
+                            setCustomGoalMode(false);
+                            setDraft(goalDraftFromInput(template));
+                          }}
+                        >
+                          <IconTile name={template.icon ?? "flag-checkered"} color={template.color ?? green} compact />
+                          <View style={styles.trendInfo}>
+                            <Text style={styles.goalTemplateTitle} numberOfLines={2}>{template.title}</Text>
+                            <Text style={styles.goalTemplateSub}>{template.targetValue} {template.unit}</Text>
+                          </View>
+                          {active && <Ionicons name="checkmark-circle" size={20} color={green} />}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <Pressable
+                    style={[styles.customGoalButton, customGoalMode && styles.customGoalButtonActive]}
+                    onPress={() => {
+                      setCustomGoalMode(true);
+                      setDraft(goalDraftFromInput({
+                        title: "",
+                        category: "Здоровье",
+                        icon: "flag-checkered",
+                        color: green,
+                        currentValue: 0,
+                        targetValue: 1,
+                        unit: "",
+                        progress: 0
+                      }));
+                    }}
+                  >
+                    <IconTile name="pencil-outline" color={customGoalMode ? green : muted} compact />
+                    <View style={styles.trendInfo}>
+                      <Text style={styles.settingTitle}>Своя цель</Text>
+                      <Text style={styles.trendSub}>Название, единицы и прогресс вручную</Text>
+                    </View>
+                    <Ionicons name={customGoalMode ? "checkmark-circle" : "chevron-forward"} size={20} color={customGoalMode ? green : muted} />
+                  </Pressable>
+                </>
+              )}
+              <GoalEditorInput label="Название" value={draft.title} onChange={(title) => setDraft((current) => ({ ...current, title }))} />
+              <View style={styles.goalEditorRow}>
+                <GoalEditorInput rowItem label="Сейчас" value={draft.currentValue} keyboardType="decimal-pad" onChange={(currentValue) => setDraft((current) => ({ ...current, currentValue }))} />
+                <GoalEditorInput rowItem label="Цель" value={draft.targetValue} keyboardType="decimal-pad" onChange={(targetValue) => setDraft((current) => ({ ...current, targetValue }))} />
+              </View>
+              <View style={styles.goalEditorRow}>
+                <GoalEditorInput rowItem label="Единица" value={draft.unit} onChange={(unit) => setDraft((current) => ({ ...current, unit }))} />
+                <GoalEditorInput rowItem label="Прогресс %" value={draft.progress} keyboardType="number-pad" onChange={(progress) => setDraft((current) => ({ ...current, progress }))} />
+              </View>
+              <Text style={styles.inputLabel}>Статус</Text>
+              <View style={styles.choiceRow}>
+                {[
+                  ["active", "Активна"],
+                  ["paused", "Пауза"],
+                  ["completed", "Готово"]
+                ].map(([status, label]) => (
+                  <Pressable
+                    key={status}
+                    style={[styles.choiceButton, draft.status === status && styles.choiceButtonActive]}
+                    onPress={() => setDraft((current) => ({ ...current, status: status as ProfileGoal["status"] }))}
+                  >
+                    <Text style={[styles.choiceText, draft.status === status && styles.choiceTextActive]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable disabled={saving} style={[styles.primaryButton, styles.saveButton, saving && styles.buttonDisabled]} onPress={() => void saveGoal()}>
+                {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.primaryButtonText}>Сохранить</Text>}
+              </Pressable>
+              {editingGoal && (
+                <Pressable disabled={saving} style={[styles.goalDeleteButton, saving && styles.buttonDisabled]} onPress={() => void removeGoal()}>
+                  <Ionicons name="trash-outline" size={18} color="#f12f35" />
+                  <Text style={styles.goalDeleteText}>Удалить цель</Text>
+                </Pressable>
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
+function GoalEditorInput({
+  label,
+  value,
+  keyboardType,
+  rowItem,
+  onChange
+}: {
+  label: string;
+  value: string;
+  keyboardType?: "default" | "decimal-pad" | "number-pad";
+  rowItem?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <View style={[styles.goalEditorInputWrap, rowItem && styles.goalEditorInputWrapRow]}>
+      <Text style={styles.inputLabel}>{label}</Text>
+      <TextInput
+        value={value}
+        keyboardType={keyboardType ?? "default"}
+        onChangeText={onChange}
+        placeholderTextColor="#a5adba"
+        style={styles.goalEditorInput}
+      />
+    </View>
+  );
+}
+
+function goalDraftFromInput(goal: ProfileGoalInput | ProfileGoal) {
+  return {
+    templateKey: "templateKey" in goal ? goal.templateKey : null,
+    title: goal.title ?? "",
+    category: goal.category ?? "Здоровье",
+    icon: goal.icon ?? "flag-checkered",
+    color: goal.color ?? green,
+    currentValue: String(goal.currentValue ?? 0),
+    targetValue: String(goal.targetValue ?? 1),
+    unit: goal.unit ?? "",
+    progress: String(goal.progress ?? 0),
+    status: goal.status ?? "active" as ProfileGoal["status"],
+    dueDate: goal.dueDate ?? null
+  };
+}
+
+function goalInputFromDraft(draft: ReturnType<typeof goalDraftFromInput>): ProfileGoalInput {
+  return {
+    templateKey: draft.templateKey,
+    title: draft.title,
+    category: draft.category,
+    icon: draft.icon,
+    color: draft.color,
+    currentValue: parseGoalNumber(draft.currentValue),
+    targetValue: parseGoalNumber(draft.targetValue),
+    unit: draft.unit,
+    progress: Math.max(0, Math.min(100, Math.round(parseGoalNumber(draft.progress)))),
+    status: draft.status,
+    dueDate: draft.dueDate
+  };
+}
+
+function parseGoalNumber(value: string) {
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatGoalValue(goal: ProfileGoal) {
+  const unit = goal.unit ? ` ${goal.unit}` : "";
+  return `${formatCompactNumber(goal.currentValue)} / ${formatCompactNumber(goal.targetValue)}${unit}`;
+}
+
+function formatCompactNumber(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function ReportsScreen({ back, open }: { back: () => void; open: (title: string) => void }) {
+  const [range, setRange] = useState("Месяц");
+  const [selectedMeasurement, setSelectedMeasurement] = useState<MeasurementRow | null>(null);
+  return (
+    <>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <DetailHeader title="Показатели и отчёты" subtitle="История измерений, динамика показателей и персональные отчёты" back={back} />
+        <Segmented values={["Неделя", "Месяц", "3 месяца", "Год"]} value={range} onChange={setRange} />
+        <View style={styles.dateNav}>
+          <Ionicons name="chevron-back" size={20} color={muted} />
+          <Text style={styles.dateNavText}>1 - 31 мая 2025</Text>
+          <Ionicons name="chevron-forward" size={20} color={muted} />
+        </View>
+        <View style={styles.kpiGrid}>
+          {metrics.slice(0, 4).map((item) => (
+            <Pressable key={item.label} style={styles.kpiCard} onPress={() => open(item.label)}>
+              <IconTile name={item.icon} color={item.color} compact />
+              <Text style={styles.kpiLabel} numberOfLines={3}>{item.label}</Text>
+              <Text style={styles.kpiValue}>{item.value} <Text style={styles.kpiUnit}>{item.unit}</Text></Text>
+              <MiniSparkline points={[...item.points]} color={item.color} />
+            </Pressable>
+          ))}
+        </View>
+        <View style={styles.chartCard}>
+          <View style={styles.cardTopRow}>
+            <Text style={styles.panelTitle}>Динамика веса</Text>
+            <Pressable style={styles.smallPill} onPress={() => open("Группировка")}><Text style={styles.smallPillText}>По дням</Text></Pressable>
+          </View>
+          <BigLineChart />
+        </View>
+        <MeasurementHistory onSelect={setSelectedMeasurement} />
+        <ReportActions open={open} />
+      </ScrollView>
+      <MeasurementDetail measurement={selectedMeasurement} onClose={() => setSelectedMeasurement(null)} />
+    </>
   );
 }
 
@@ -659,35 +1715,37 @@ function DevicesScreen({ back, open }: { back: () => void; open: (title: string)
   );
 }
 
-function SettingsGroup({ title, items, open, openDetail }: { title: string; items: string[]; open: (title: string) => void; openDetail?: (detail: ProfileDetail) => void }) {
-  const handlePress = (item: string) => {
-    if (item === "Медицинский контекст") return openDetail?.("medical");
-    if (item === "Показатели и отчёты") return openDetail?.("reports");
-    if (item === "Согласия и безопасность") return openDetail?.("security");
-    if (item === "Подключённые устройства") return openDetail?.("devices");
-    if (item === "Подключить устройство") return openDetail?.("connectDevice");
-    if (item === "Общие настройки") return openDetail?.("general");
-    if (item === "Уведомления") return openDetail?.("notifications");
-    if (item === "Внешний вид") return openDetail?.("appearance");
-    return open(item);
-  };
 
+function ProfileInput({
+  label,
+  icon,
+  value,
+  placeholder,
+  keyboardType,
+  onChange
+}: {
+  label: string;
+  icon: string;
+  value: string;
+  placeholder?: string;
+  keyboardType?: any;
+  onChange: (value: string) => void;
+}) {
   return (
-    <>
-      <Text style={styles.groupTitle}>{title}</Text>
-      <View style={styles.listCard}>
-        {items.map((item, index) => (
-          <Pressable key={item} style={[styles.settingLine, index === items.length - 1 && styles.noBorder]} onPress={() => handlePress(item)}>
-            <IconTile name={index === 0 ? "heart-pulse" : index === 1 ? "clipboard-text-outline" : "shield-check-outline"} color={green} />
-            <View style={styles.trendInfo}>
-              <Text style={styles.settingTitle}>{item}</Text>
-              <Text style={styles.trendSub}>{index === 0 ? "Цели, состояние, ограничения" : "История, доступы и уведомления"}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#354253" />
-          </Pressable>
-        ))}
+    <View style={styles.inputWrapper}>
+      <Text style={styles.inputLabel}>{label}</Text>
+      <View style={styles.inputContainer}>
+        <MaterialCommunityIcons name={icon as any} size={18} color={muted} />
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor="#a0aab8"
+          value={value}
+          onChangeText={onChange}
+          keyboardType={keyboardType}
+        />
       </View>
-    </>
+    </View>
   );
 }
 
@@ -725,32 +1783,98 @@ function ProgressBar({ progress, color }: { progress: number; color: string }) {
   );
 }
 
-function MeasurementsTable({ open }: { open: (title: string) => void }) {
-  const rows = [
-    ["24 мая 2025", "65.4 кг", "24.5%", "27.1 кг", "54.2%"],
-    ["17 мая 2025", "65.8 кг", "25.0%", "26.8 кг", "53.1%"],
-    ["10 мая 2025", "66.1 кг", "25.5%", "26.4 кг", "52.2%"],
-    ["3 мая 2025", "66.3 кг", "26.0%", "26.1 кг", "51.5%"]
-  ];
+function MeasurementHistory({ onSelect }: { onSelect: (measurement: MeasurementRow) => void }) {
   return (
-    <View style={styles.tableCard}>
+    <View style={styles.measurementPanel}>
       <View style={styles.cardTopRow}>
         <Text style={styles.panelTitle}>История измерений</Text>
-        <Pressable onPress={() => open("История измерений")}><Text style={styles.linkText}>См. все</Text></Pressable>
+        <View style={styles.measurementHint}>
+          <Ionicons name="scan-outline" size={14} color={green} />
+          <Text style={styles.measurementHintText}>{measurementRows.length}</Text>
+        </View>
       </View>
-      <View style={styles.tableHeader}>
-        <Text style={[styles.tableHeadText, styles.tableDate]}>Дата</Text>
-        <Text style={styles.tableHeadText}>Вес</Text>
-        <Text style={styles.tableHeadText}>Жир</Text>
-        <Text style={styles.tableHeadText}>Вода</Text>
-      </View>
-      {rows.map((row, index) => (
-        <Pressable key={row[0]} style={[styles.tableRow, index === rows.length - 1 && styles.noBorder]} onPress={() => open(row[0])}>
-          <View style={styles.tableDate}><Text style={styles.tableMain}>{row[0]}</Text><Text style={styles.tableSub}>09:{index === 0 ? "15" : "1" + index}</Text></View>
-          <Text style={styles.tableCell}>{row[1]}</Text>
-          <Text style={styles.tableCell}>{row[2]}</Text>
-          <Text style={styles.tableCell}>{row[4]}</Text>
-          <Ionicons name="chevron-forward" size={16} color={muted} />
+      {measurementRows.map((measurement) => (
+        <Pressable key={measurement.id} style={styles.measurementCard} onPress={() => onSelect(measurement)}>
+          <View style={styles.measurementTop}>
+            <View style={styles.measurementDatePill}>
+              <Text style={styles.measurementDate}>{measurement.date}</Text>
+              <Text style={styles.measurementTime}>{measurement.time}</Text>
+            </View>
+            <View style={styles.measurementScore}>
+              <Text style={styles.measurementScoreValue}>{measurement.score}</Text>
+              <Text style={styles.measurementScoreLabel}>балл</Text>
+            </View>
+          </View>
+          <View style={styles.measurementMetricGrid}>
+            {measurement.items.map((item) => (
+              <View key={item.key} style={styles.measurementMetric}>
+                <IconTile name={item.icon} color={item.color} compact />
+                <View style={styles.measurementMetricText}>
+                  <Text style={styles.measurementMetricLabel}>{item.label}</Text>
+                  <Text style={styles.measurementMetricValue}>{item.value}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+          <View style={styles.measurementFooter}>
+            <Text style={styles.measurementFooterText}>Открыть замер</Text>
+            <Ionicons name="chevron-forward" size={18} color={green} />
+          </View>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function MeasurementDetail({ measurement, onClose }: { measurement: MeasurementRow | null; onClose: () => void }) {
+  return (
+    <Modal visible={Boolean(measurement)} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={styles.modalShade} onPress={onClose}>
+        <Pressable style={styles.measurementDetailCard}>
+          <View style={styles.cardTopRow}>
+            <View>
+              <Text style={styles.modalTitle}>Замер</Text>
+              <Text style={styles.trendSub}>{measurement?.date} · {measurement?.time}</Text>
+            </View>
+            <Pressable style={styles.squareAction} onPress={onClose}>
+              <Ionicons name="close" size={22} color={muted} />
+            </Pressable>
+          </View>
+          <View style={styles.measurementDetailScore}>
+            <Text style={styles.measurementDetailScoreValue}>{measurement?.score}</Text>
+            <Text style={styles.measurementDetailScoreLabel}>из 100</Text>
+          </View>
+          <View style={styles.measurementDetailGrid}>
+            {measurement?.items.map((item) => (
+              <View key={item.key} style={styles.measurementDetailMetric}>
+                <IconTile name={item.icon} color={item.color} compact />
+                <Text style={styles.measurementDetailLabel}>{item.label}</Text>
+                <Text style={styles.measurementDetailValue}>{item.value}</Text>
+                <Text style={[styles.measurementDelta, { color: item.delta.startsWith("+") ? green : item.color }]}>{item.delta}</Text>
+              </View>
+            ))}
+          </View>
+          <Pressable style={styles.primaryButton} onPress={onClose}>
+            <Text style={styles.primaryButtonText}>Готово</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function ReportActions({ open }: { open: (title: string) => void }) {
+  return (
+    <View style={styles.reportActionGrid}>
+      {[
+        ["calendar-check", "Неделя", "Короткий итог"],
+        ["chart-bar", "Месяц", "Динамика"],
+        ["download", "Экспорт", "PDF / CSV"]
+      ].map(([icon, title, sub]) => (
+        <Pressable key={title} style={styles.reportActionCard} onPress={() => open(title)}>
+          <IconTile name={icon} color={green} compact />
+          <Text style={styles.reportActionTitle}>{title}</Text>
+          <Text style={styles.reportActionSub}>{sub}</Text>
         </Pressable>
       ))}
     </View>
@@ -758,10 +1882,10 @@ function MeasurementsTable({ open }: { open: (title: string) => void }) {
 }
 
 function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
-  const tabs: { key: Tab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  const tabs: { key: Tab; label: string; icon: keyof typeof Ionicons.glyphMap; raised?: boolean }[] = [
     { key: "home", label: "Главная", icon: "home-outline" },
     { key: "metrics", label: "Показатели", icon: "bar-chart-outline" },
-    { key: "avatar", label: "Аватар", icon: "person" },
+    { key: "avatar", label: "Аватар", icon: "person", raised: true },
     { key: "knowledge", label: "База знаний", icon: "book-outline" },
     { key: "profile", label: "Профиль", icon: "person-outline" }
   ];
@@ -769,6 +1893,21 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => voi
     <View style={styles.tabBar}>
       {tabs.map((item) => {
         const isActive = active === item.key;
+        if (item.raised) {
+          return (
+            <Pressable
+              key={item.key}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+              style={styles.tabButtonRaisedWrap}
+              onPress={() => onChange(item.key)}
+            >
+              <View style={[styles.tabButtonRaised, isActive && styles.tabButtonRaisedActive]}>
+                <Ionicons name={item.icon} size={26} color="#fff" />
+              </View>
+            </Pressable>
+          );
+        }
         return (
           <Pressable key={item.key} style={styles.tabButton} onPress={() => onChange(item.key)}>
             <Ionicons name={item.icon} size={24} color={isActive ? green : "#687484"} />
@@ -873,6 +2012,8 @@ function BigLineChart() {
 
 const styles = StyleSheet.create({
   authLoading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
+  profileLoadingScreen: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: "#fff" },
+  profileLoadingText: { color: muted, fontSize: 14, fontWeight: "600" },
   safe: { flex: 1, backgroundColor: "#fff" },
   app: { flex: 1, backgroundColor: "#fff" },
   scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === "android" ? 28 : 10, paddingBottom: 102 },
@@ -881,9 +2022,13 @@ const styles = StyleSheet.create({
   heroTitle: { color: ink, fontSize: 24, fontWeight: "800", lineHeight: 30 },
   subtitle: { color: muted, fontSize: 14, lineHeight: 21, marginTop: 4, maxWidth: 245 },
   smallAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: "#edf4f1", alignItems: "center", justifyContent: "center" },
-  profileAvatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: "#edf4f1", alignItems: "center", justifyContent: "center" },
+  profileAvatar: { width: 92, height: 92, borderRadius: 46, backgroundColor: "#edf4f1", alignItems: "center", justifyContent: "center" },
+  profileAvatarWrap: { position: "relative" },
+  profileAvatarImage: { width: 92, height: 92, borderRadius: 46, backgroundColor: "#edf4f1" },
+  avatarUploadOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 46, backgroundColor: "rgba(7,18,37,0.45)", alignItems: "center", justifyContent: "center" },
+  sectionLabel: { color: "#4b5566", fontSize: 15, fontWeight: "700", marginTop: 22, marginBottom: 10 },
   avatarPressed: { opacity: 0.7 },
-  editBadge: { position: "absolute", right: -2, bottom: 4, width: 28, height: 28, borderRadius: 14, backgroundColor: green, alignItems: "center", justifyContent: "center" },
+  editBadge: { position: "absolute", right: -2, bottom: -2, width: 30, height: 30, borderRadius: 15, backgroundColor: green, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
   healthCard: { marginTop: 22, minHeight: 190, borderRadius: 18, borderWidth: 1, borderColor: "#b9f0df", backgroundColor: "#effdfa", overflow: "hidden", flexDirection: "row", alignItems: "center", padding: 16 },
   healthCopy: { width: "40%", zIndex: 2 },
   cardTitle: { color: ink, fontSize: 17, fontWeight: "800", marginBottom: 8 },
@@ -951,12 +2096,12 @@ const styles = StyleSheet.create({
   tabButton: { flex: 1, alignItems: "center", justifyContent: "center", gap: 5 },
   tabLabel: { color: "#687484", fontSize: 10, fontWeight: "700", textAlign: "center", lineHeight: 12 },
   tabLabelActive: { color: green },
+  tabButtonRaisedWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  tabButtonRaised: { width: 56, height: 56, borderRadius: 28, backgroundColor: green, alignItems: "center", justifyContent: "center", marginBottom: 26, shadowColor: green, shadowOpacity: 0.35, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
+  tabButtonRaisedActive: { backgroundColor: "#008f70" },
   screenHeader: { marginBottom: 16 },
   screenTitle: { color: ink, fontSize: 19, fontWeight: "900", lineHeight: 24 },
   screenSubtitle: { color: muted, fontSize: 12.5, lineHeight: 18, marginTop: 4, maxWidth: 310 },
-  detailHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginBottom: 22 },
-  detailHeaderText: { flex: 1 },
-  headerIconButton: { width: 28, height: 32, alignItems: "flex-start", justifyContent: "center", marginTop: 1 },
   infoButton: { width: 32, height: 32, alignItems: "center", justifyContent: "center", marginTop: 1 },
   dateNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: -4, marginBottom: 18, paddingHorizontal: 8 },
   dateNavText: { color: "#586274", fontSize: 14, fontWeight: "800" },
@@ -973,6 +2118,37 @@ const styles = StyleSheet.create({
   legendText: { color: green, fontSize: 13, fontWeight: "700", marginTop: 6 },
   smallPill: { minHeight: 32, borderRadius: 11, borderWidth: 1, borderColor: line, paddingHorizontal: 11, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#fff" },
   smallPillText: { color: "#596274", fontSize: 13, fontWeight: "700" },
+  measurementPanel: { marginBottom: 14 },
+  measurementHint: { minHeight: 30, borderRadius: 10, backgroundColor: "#e9f8f3", paddingHorizontal: 10, flexDirection: "row", alignItems: "center", gap: 4 },
+  measurementHintText: { color: green, fontSize: 13, fontWeight: "900" },
+  measurementCard: { borderRadius: 18, borderWidth: 1, borderColor: line, backgroundColor: "#fff", padding: 14, marginBottom: 10, shadowColor: "#14213d", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  measurementTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  measurementDatePill: { minHeight: 44, borderRadius: 13, backgroundColor: "#f4f7f8", paddingHorizontal: 12, justifyContent: "center" },
+  measurementDate: { color: ink, fontSize: 14, fontWeight: "900" },
+  measurementTime: { color: muted, fontSize: 12, fontWeight: "800", marginTop: 2 },
+  measurementScore: { minWidth: 60, height: 44, borderRadius: 13, backgroundColor: "#e9f8f3", alignItems: "center", justifyContent: "center" },
+  measurementScoreValue: { color: green, fontSize: 18, fontWeight: "900", lineHeight: 20 },
+  measurementScoreLabel: { color: green, fontSize: 10, fontWeight: "800" },
+  measurementMetricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  measurementMetric: { width: "48%", minHeight: 56, borderRadius: 14, backgroundColor: "#f8fafb", padding: 8, flexDirection: "row", alignItems: "center", gap: 8 },
+  measurementMetricText: { flex: 1 },
+  measurementMetricLabel: { color: muted, fontSize: 11, fontWeight: "800" },
+  measurementMetricValue: { color: ink, fontSize: 14, fontWeight: "900", marginTop: 2 },
+  measurementFooter: { borderTopWidth: 1, borderTopColor: "#eef2f5", marginTop: 12, paddingTop: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  measurementFooterText: { color: green, fontSize: 13, fontWeight: "900" },
+  measurementDetailCard: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34 },
+  measurementDetailScore: { alignSelf: "flex-start", minWidth: 92, minHeight: 78, borderRadius: 18, backgroundColor: "#e9f8f3", alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  measurementDetailScoreValue: { color: green, fontSize: 34, fontWeight: "900", lineHeight: 38 },
+  measurementDetailScoreLabel: { color: green, fontSize: 12, fontWeight: "900" },
+  measurementDetailGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 18 },
+  measurementDetailMetric: { width: "48%", minHeight: 118, borderRadius: 16, borderWidth: 1, borderColor: line, backgroundColor: "#fff", padding: 12 },
+  measurementDetailLabel: { color: muted, fontSize: 12, fontWeight: "800", marginTop: 8 },
+  measurementDetailValue: { color: ink, fontSize: 18, fontWeight: "900", marginTop: 3 },
+  measurementDelta: { fontSize: 12, fontWeight: "900", marginTop: 3 },
+  reportActionGrid: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  reportActionCard: { flex: 1, minHeight: 104, borderRadius: 16, borderWidth: 1, borderColor: line, backgroundColor: "#fff", padding: 10, justifyContent: "space-between", shadowColor: "#14213d", shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
+  reportActionTitle: { color: ink, fontSize: 13, fontWeight: "900", marginTop: 6 },
+  reportActionSub: { color: muted, fontSize: 11, fontWeight: "800", marginTop: 2 },
   tableCard: { borderRadius: 18, borderWidth: 1, borderColor: line, backgroundColor: "#fff", padding: 14, marginBottom: 14, shadowColor: "#14213d", shadowOpacity: 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
   tableHeader: { flexDirection: "row", alignItems: "center", paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: "#f0f3f6" },
   tableHeadText: { flex: 1, color: muted, fontSize: 12, fontWeight: "800" },
@@ -985,9 +2161,32 @@ const styles = StyleSheet.create({
   squareAction: { width: 44, height: 44, borderRadius: 13, borderWidth: 1, borderColor: line, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
   goalRow: { minHeight: 82, borderBottomWidth: 1, borderBottomColor: "#f0f3f6", flexDirection: "row", alignItems: "center", gap: 10 },
   goalContent: { flex: 1 },
+  goalTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   goalTitle: { color: ink, fontSize: 13.5, lineHeight: 17, fontWeight: "900" },
   goalValue: { color: muted, fontSize: 12.5, fontWeight: "700", marginTop: 6, marginBottom: 7 },
   goalPercent: { width: 34, textAlign: "right", fontSize: 13.5, fontWeight: "900" },
+  goalDoneBadge: { color: green, backgroundColor: "#e9f8f3", borderRadius: 8, overflow: "hidden", paddingHorizontal: 7, paddingVertical: 3, fontSize: 10.5, fontWeight: "900" },
+  goalEmptyState: { minHeight: 190, alignItems: "center", justifyContent: "center", padding: 18 },
+  goalEmptyTitle: { color: ink, fontSize: 17, fontWeight: "900", marginTop: 10 },
+  goalEmptyText: { color: muted, fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 6, maxWidth: 260 },
+  goalInlineButton: { minHeight: 42, borderRadius: 13, backgroundColor: green, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", marginTop: 14 },
+  goalInlineButtonText: { color: "#fff", fontSize: 14, fontWeight: "900" },
+  goalCreateLead: { color: muted, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: -2, marginBottom: 12 },
+  goalTemplateGrid: { gap: 8, marginBottom: 10 },
+  goalTemplateCard: { minHeight: 58, borderRadius: 15, borderWidth: 1, borderColor: line, backgroundColor: "#fff", padding: 10, flexDirection: "row", alignItems: "center", gap: 10 },
+  goalTemplateCardActive: { borderColor: green, backgroundColor: "#f0fbf8" },
+  goalTemplateTitle: { color: ink, fontSize: 13, lineHeight: 16, fontWeight: "900" },
+  goalTemplateSub: { color: muted, fontSize: 12, fontWeight: "800", marginTop: 2 },
+  customGoalButton: { minHeight: 64, borderRadius: 16, borderWidth: 1, borderColor: line, backgroundColor: "#f8fafb", padding: 10, flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  customGoalButtonActive: { borderColor: green, backgroundColor: "#f0fbf8" },
+  goalEditorCard: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34, maxHeight: "92%" },
+  goalEditorScroll: { paddingBottom: 2 },
+  goalEditorRow: { flexDirection: "row", gap: 10 },
+  goalEditorInputWrap: { marginBottom: 14 },
+  goalEditorInputWrapRow: { flex: 1 },
+  goalEditorInput: { height: 48, borderRadius: 12, borderWidth: 1, borderColor: line, paddingHorizontal: 12, color: ink, fontSize: 15, fontWeight: "700", backgroundColor: "#fff" },
+  goalDeleteButton: { minHeight: 48, borderRadius: 14, borderWidth: 1, borderColor: "#ffd0d0", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginTop: 8 },
+  goalDeleteText: { color: "#f12f35", fontSize: 15, fontWeight: "900" },
   progressTrack: { height: 6, borderRadius: 4, backgroundColor: "#edf0f2", overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: 4 },
   countBadge: { minWidth: 26, height: 26, borderRadius: 9, backgroundColor: "#e9f8f3", color: green, textAlign: "center", lineHeight: 26, fontSize: 13, fontWeight: "900" },
@@ -1006,5 +2205,93 @@ const styles = StyleSheet.create({
   modalShade: { flex: 1, backgroundColor: "rgba(7,18,37,0.24)", justifyContent: "flex-end" },
   modalCard: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
   modalTitle: { color: ink, fontSize: 22, fontWeight: "900" },
-  modalText: { color: muted, fontSize: 15, lineHeight: 22, marginTop: 10, marginBottom: 22 }
+  modalText: { color: muted, fontSize: 15, lineHeight: 22, marginTop: 10, marginBottom: 22 },
+  formCard: { marginBottom: 16 },
+  inputWrapper: { marginBottom: 16 },
+  inputLabel: { color: ink, fontSize: 14, fontWeight: "800", marginBottom: 8 },
+  inputContainer: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: line, borderRadius: 12, paddingHorizontal: 12, height: 48, backgroundColor: "#fff", gap: 10 },
+  input: { flex: 1, color: ink, fontSize: 15, fontWeight: "600" },
+  choiceRow: { flexDirection: "row", gap: 12, marginTop: 12 },
+  choiceButton: { flex: 1, height: 56, borderWidth: 1.5, borderColor: line, borderRadius: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#fff" },
+  choiceButtonActive: { backgroundColor: green, borderColor: green },
+  choiceText: { color: "#576478", fontSize: 14, fontWeight: "700" },
+  choiceTextActive: { color: "#fff" },
+  saveButton: { minHeight: 54, borderRadius: 16, marginTop: 8, shadowColor: green, shadowOpacity: 0.24, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
+  buttonDisabled: { opacity: 0.6 },
+  settingsCard: { borderRadius: 20, borderWidth: 1, borderColor: line, backgroundColor: "#fff", padding: 16, gap: 16, shadowColor: "#14213d", shadowOpacity: 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  settingsControlBlock: { gap: 10 },
+  settingsControlHeader: { gap: 4 },
+  settingsControlTitle: { color: ink, fontSize: 15, fontWeight: "900" },
+  settingsControlSubtitle: { color: muted, fontSize: 12.5, lineHeight: 18, marginTop: 3 },
+  settingsSegmented: { flexDirection: "row", gap: 8 },
+  settingsSegment: { flex: 1, minHeight: 44, borderRadius: 13, borderWidth: 1, borderColor: line, backgroundColor: "#f7f8fa", alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
+  settingsSegmentText: { color: "#4c5667", fontSize: 12.5, lineHeight: 15, fontWeight: "800", textAlign: "center" },
+  settingsSegmentTextActive: { color: "#fff" },
+  settingsControlDisabled: { opacity: 0.64 },
+  settingsSwitchRow: { minHeight: 68, borderBottomWidth: 1, borderBottomColor: "#edf0f2", flexDirection: "row", alignItems: "center", gap: 16, paddingBottom: 16 },
+  inlineSaving: { marginTop: 14, minHeight: 42, borderRadius: 14, backgroundColor: "#edf9f5", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  inlineSavingText: { color: green, fontSize: 13, fontWeight: "800" },
+  appearancePreview: { minHeight: 104, borderRadius: 20, borderWidth: 1, borderColor: line, backgroundColor: "#fff", padding: 16, marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 12, shadowColor: "#14213d", shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  appearancePreviewDark: { backgroundColor: "#111827", borderColor: "#263244" },
+  appearancePreviewIcon: { width: 48, height: 48, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  appearancePreviewTitle: { color: ink, fontWeight: "900", lineHeight: 24 },
+  appearancePreviewTitleDark: { color: "#f8fafc" },
+  appearancePreviewText: { color: muted, lineHeight: 20, marginTop: 4 },
+  appearancePreviewTextDark: { color: "#c7d2e0" },
+  appearanceAccentDot: { width: 18, height: 18, borderRadius: 9 },
+  refreshProfile: { marginTop: 20, minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: line, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, shadowColor: "#14213d", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  refreshProfileText: { color: green, fontSize: 15, fontWeight: "800" },
+  detailHeaderText: { flex: 1 },
+  detailHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 20 },
+  headerIconButton: { width: 32, height: 32, alignItems: "center", justifyContent: "center", backgroundColor: "#edf4f1", borderRadius: 10 },
+  profileHeaderContainer: { marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: line },
+  userCard: { marginTop: 18, borderRadius: 24, borderWidth: 1, borderColor: line, backgroundColor: "#fff", padding: 18, flexDirection: "row", alignItems: "flex-start", gap: 14, shadowColor: "#14213d", shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  userCardPressed: { backgroundColor: "#fafbfc" },
+  userCardIcon: { width: 64, height: 64, borderRadius: 18, backgroundColor: "rgba(0, 168, 126, 0.1)", alignItems: "center", justifyContent: "center" },
+  userCardInfo: { flex: 1, minWidth: 0, gap: 3 },
+  userCardNameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  userCardName: { flex: 1, color: ink, fontSize: 18, fontWeight: "800" },
+  userCardSyncSpinner: { marginLeft: 4 },
+  userCardMeta: { color: muted, fontSize: 14, fontWeight: "500", marginBottom: 4 },
+  userCardContact: { color: muted, fontSize: 13.5, fontWeight: "500" },
+  profileHeaderTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  profileHeaderTitle: { color: ink, fontSize: 28, fontWeight: "900", lineHeight: 34 },
+  profileHeaderStatus: { color: muted, fontSize: 13, marginTop: 4, fontWeight: "600" },
+  syncButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#edf9f5", alignItems: "center", justifyContent: "center" },
+  syncButtonPressed: { opacity: 0.7 },
+  profilePrimaryCard: { backgroundColor: "#fff", borderRadius: 20, borderWidth: 1, borderColor: line, padding: 20, marginBottom: 20, shadowColor: "#14213d", shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  avatarSection: { flexDirection: "row", gap: 16, marginBottom: 20, alignItems: "center" },
+  nameSection: { flex: 1 },
+  verificationBadge: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, backgroundColor: "rgba(0, 168, 126, 0.08)", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, alignSelf: "flex-start" },
+  verificationText: { color: green, fontSize: 12, fontWeight: "600" },
+  menuGroupCard: { backgroundColor: "#fff", borderRadius: 24, borderWidth: 1, borderColor: line, paddingHorizontal: 18, shadowColor: "#14213d", shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2, overflow: "hidden" },
+  menuRow: { minHeight: 82, flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14 },
+  menuRowPressed: { backgroundColor: "#fafbfc" },
+  menuRowDisabled: { opacity: 0.5 },
+  menuRowIcon: { width: 52, height: 52, borderRadius: 16, backgroundColor: "rgba(0, 168, 126, 0.1)", alignItems: "center", justifyContent: "center" },
+  menuRowIconDanger: { backgroundColor: "rgba(241, 47, 53, 0.1)" },
+  menuRowContent: { flex: 1, minWidth: 0 },
+  menuRowTitle: { color: ink, fontSize: 15.5, fontWeight: "700" },
+  menuRowTitleDanger: { color: "#f12f35" },
+  menuRowSubtitle: { color: muted, fontSize: 13, marginTop: 3, fontWeight: "500" },
+  menuRowDivider: { height: 1, backgroundColor: "#edf0f2" },
+  menuRightLabel: { color: muted, fontSize: 14, fontWeight: "600" },
+  deviceBadge: { minWidth: 26, height: 26, borderRadius: 13, backgroundColor: "rgba(0, 168, 126, 0.12)", alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
+  deviceBadgeText: { color: green, fontSize: 13, fontWeight: "800" },
+  logoutCardButton: { backgroundColor: "rgba(241, 47, 53, 0.06)", borderRadius: 18, borderWidth: 1.5, borderColor: "rgba(241, 47, 53, 0.3)", padding: 16, marginTop: 24, marginBottom: 18, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  logoutCardButtonPressed: { backgroundColor: "rgba(241, 47, 53, 0.12)" },
+  logoutCardButtonText: { color: "#f12f35", fontSize: 16, fontWeight: "700" },
+  footerVersion: { color: muted, fontSize: 13, fontWeight: "600", textAlign: "center", marginBottom: 12 },
+  confirmShade: { flex: 1, backgroundColor: "rgba(7,18,37,0.4)", alignItems: "center", justifyContent: "center", padding: 24 },
+  confirmCard: { width: "100%", maxWidth: 360, backgroundColor: "#fff", borderRadius: 24, padding: 24, alignItems: "center" },
+  confirmIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(241, 47, 53, 0.1)", alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  confirmTitle: { color: ink, fontSize: 18, fontWeight: "800", textAlign: "center" },
+  confirmText: { color: muted, fontSize: 14, lineHeight: 20, textAlign: "center", marginTop: 8, marginBottom: 22 },
+  confirmActions: { flexDirection: "row", gap: 12, width: "100%" },
+  confirmCancelButton: { flex: 1, minHeight: 48, borderRadius: 14, borderWidth: 1.5, borderColor: line, alignItems: "center", justifyContent: "center" },
+  confirmCancelButtonPressed: { backgroundColor: "#f8f9fa" },
+  confirmCancelText: { color: ink, fontSize: 15, fontWeight: "700" },
+  confirmDangerButton: { flex: 1, minHeight: 48, borderRadius: 14, backgroundColor: "#f12f35", alignItems: "center", justifyContent: "center" },
+  confirmDangerButtonPressed: { backgroundColor: "#d81f25" },
+  confirmDangerText: { color: "#fff", fontSize: 15, fontWeight: "700" }
 });

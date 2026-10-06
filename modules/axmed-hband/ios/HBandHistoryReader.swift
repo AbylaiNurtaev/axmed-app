@@ -1,4 +1,11 @@
 import Foundation
+
+#if targetEnvironment(simulator)
+
+enum HBandHistoryReader {}
+
+#else
+
 import VeepooBleSDK
 
 enum HBandHistoryReader {
@@ -146,3 +153,5 @@ enum HBandHistoryReader {
     if !model.metArr.isEmpty { b.warnings.insert("manualMetUnits") }
   }
 }
+
+#endif

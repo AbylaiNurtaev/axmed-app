@@ -11,7 +11,55 @@ export type AuthUser = {
   id: string;
   email: string | null;
   displayName: string | null;
+  avatarUrl?: string | null;
   emailVerified: boolean;
+};
+
+export type ProfileData = {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  fullName: string | null;
+  phone: string | null;
+  birthDate: string | null;
+  gender: "male" | "female" | null;
+  avatarUrl: string | null;
+  emailVerified: boolean;
+  medicalProfile: Record<string, unknown>;
+  appPreferences: Record<string, unknown>;
+  updatedAt: string;
+};
+
+export type ProfileGoal = {
+  id: string;
+  templateKey: string | null;
+  title: string;
+  category: string;
+  icon: string;
+  color: string;
+  currentValue: number;
+  targetValue: number;
+  unit: string;
+  progress: number;
+  status: "active" | "paused" | "completed";
+  dueDate: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProfileGoalInput = {
+  templateKey?: string | null;
+  title: string;
+  category?: string;
+  icon?: string;
+  color?: string;
+  currentValue?: number;
+  targetValue?: number;
+  unit?: string;
+  progress?: number;
+  status?: ProfileGoal["status"];
+  dueDate?: string | null;
 };
 
 export type AuthSession = {
@@ -140,7 +188,7 @@ async function request<T>(path: string, body: unknown): Promise<T> {
   return apiRequest<T>(path, { body });
 }
 
-export async function authenticatedRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST"; signal?: AbortSignal } = {}): Promise<T> {
+export async function authenticatedRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST" | "PATCH" | "DELETE"; signal?: AbortSignal } = {}): Promise<T> {
   const owner = getSessionUserId();
   const revision = sessionRevision;
   if (!owner || !currentSession) throw new AuthApiError("authRequired", "Войдите в аккаунт.", 401);
@@ -156,7 +204,43 @@ export async function authenticatedRequest<T>(path: string, options: { body?: un
   }
 }
 
-async function apiRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST"; signal?: AbortSignal; accessToken?: string }): Promise<T> {
+export async function loadProfile() {
+  return authenticatedRequest<ProfileData>("/api/profile", { method: "GET" });
+}
+
+export async function saveProfile(input: Partial<Pick<ProfileData, "fullName" | "phone" | "birthDate" | "gender">> & {
+  medicalProfile?: Record<string, unknown>;
+  appPreferences?: Record<string, unknown>;
+}) {
+  const profile = await authenticatedRequest<ProfileData>("/api/profile", { method: "PATCH", body: input });
+  mergeCurrentUser(profile);
+  return profile;
+}
+
+export async function uploadProfileAvatar(input: { fileName: string; mimeType: "image/jpeg" | "image/png" | "image/webp"; dataBase64: string }) {
+  const profile = await authenticatedRequest<ProfileData>("/api/profile/avatar", { body: input });
+  mergeCurrentUser(profile);
+  return profile;
+}
+
+export async function loadProfileGoals() {
+  const payload = await authenticatedRequest<{ goals: ProfileGoal[] }>("/api/profile/goals", { method: "GET" });
+  return payload.goals;
+}
+
+export async function createProfileGoal(input: ProfileGoalInput) {
+  return authenticatedRequest<ProfileGoal>("/api/profile/goals", { body: input });
+}
+
+export async function updateProfileGoal(goalId: string, input: Partial<ProfileGoalInput> & { sortOrder?: number }) {
+  return authenticatedRequest<ProfileGoal>(`/api/profile/goals/${goalId}`, { method: "PATCH", body: input });
+}
+
+export async function deleteProfileGoal(goalId: string) {
+  await authenticatedRequest<void>(`/api/profile/goals/${goalId}`, { method: "DELETE" });
+}
+
+async function apiRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST" | "PATCH" | "DELETE"; signal?: AbortSignal; accessToken?: string }): Promise<T> {
   const controller = new AbortController();
   const abort = () => controller.abort();
   options.signal?.addEventListener("abort", abort, { once: true });
@@ -200,6 +284,21 @@ async function apiRequest<T>(path: string, options: { body?: unknown; method?: "
     clearTimeout(timeout);
     options.signal?.removeEventListener("abort", abort);
   }
+}
+
+function mergeCurrentUser(profile: Pick<ProfileData, "id" | "email" | "displayName" | "avatarUrl" | "emailVerified">) {
+  if (!currentSession || currentSession.user.id !== profile.id) return;
+  currentSession = {
+    ...currentSession,
+    user: {
+      ...currentSession.user,
+      email: profile.email,
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl,
+      emailVerified: profile.emailVerified
+    }
+  };
+  emitSession();
 }
 
 async function saveSession(session: AuthSession, revision: number) {

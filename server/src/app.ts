@@ -7,6 +7,8 @@ import { query } from "./database.js";
 import { errorHandler } from "./errors.js";
 import { deviceSyncSchema } from "./deviceSchemas.js";
 import { loadDeviceReadings, requireDeviceUser, saveDeviceReadings } from "./deviceService.js";
+import { createGoal, deleteGoal, listGoals, updateGoal } from "./goalService.js";
+import { loadProfile, updateProfile, uploadAvatar } from "./profileService.js";
 import {
   authenticateSocial,
   loginWithEmail,
@@ -20,7 +22,11 @@ import {
   credentialsSchema,
   emailOnlySchema,
   refreshSchema,
+  goalCreateSchema,
+  goalUpdateSchema,
   socialAuthSchema,
+  avatarUploadSchema,
+  profileUpdateSchema,
   verifyEmailSchema
 } from "./schemas.js";
 
@@ -38,6 +44,15 @@ app.use("/api/devices", (request, _response, next) => {
   void requireDeviceUser(request.get("authorization")).then(() => next()).catch(next);
 });
 app.use("/api/devices", express.json({ limit: "24mb" }));
+app.use("/api/profile", rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false }));
+app.use("/api/profile", (request, _response, next) => {
+  void requireDeviceUser(request.get("authorization")).then((userId) => {
+    responseLocals(request).userId = userId;
+    next();
+  }).catch(next);
+});
+app.use("/api/profile/avatar", express.json({ limit: "8mb" }));
+app.use("/api/profile", express.json({ limit: "64kb" }));
 app.use(express.json({ limit: "16kb" }));
 app.use((_request, response, next) => {
   response.setHeader("Cache-Control", "no-store");
@@ -110,6 +125,49 @@ app.get("/api/devices/readings", asyncHandler(async (request, response) => {
   response.json(await loadDeviceReadings(userId));
 }));
 
+app.get("/api/profile", asyncHandler(async (request, response) => {
+  response.json(await loadProfile(responseLocals(request).userId));
+}));
+
+app.patch("/api/profile", asyncHandler(async (request, response) => {
+  const input = profileUpdateSchema.parse(request.body);
+  response.json(await updateProfile(responseLocals(request).userId, input));
+}));
+
+app.post("/api/profile/avatar", asyncHandler(async (request, response) => {
+  const input = avatarUploadSchema.parse(request.body);
+  response.status(201).json(await uploadAvatar(responseLocals(request).userId, input.fileName, input.mimeType, input.dataBase64));
+}));
+
+app.get("/api/profile/goals", asyncHandler(async (request, response) => {
+  response.json(await listGoals(responseLocals(request).userId));
+}));
+
+app.post("/api/profile/goals", asyncHandler(async (request, response) => {
+  const input = goalCreateSchema.parse(request.body);
+  response.status(201).json(await createGoal(responseLocals(request).userId, input));
+}));
+
+app.patch("/api/profile/goals/:goalId", asyncHandler(async (request, response) => {
+  const input = goalUpdateSchema.parse(request.body);
+  const { goalId } = request.params;
+  if (typeof goalId !== "string") {
+    response.status(400).json({ error: { code: "GOAL_ID_REQUIRED", message: "Не указан идентификатор цели." } });
+    return;
+  }
+  response.json(await updateGoal(responseLocals(request).userId, goalId, input));
+}));
+
+app.delete("/api/profile/goals/:goalId", asyncHandler(async (request, response) => {
+  const { goalId } = request.params;
+  if (typeof goalId !== "string") {
+    response.status(400).json({ error: { code: "GOAL_ID_REQUIRED", message: "Не указан идентификатор цели." } });
+    return;
+  }
+  await deleteGoal(responseLocals(request).userId, goalId);
+  response.status(204).send();
+}));
+
 app.use((_request, response) => {
   response.status(404).json({ error: { code: "NOT_FOUND", message: "Маршрут не найден." } });
 });
@@ -124,4 +182,8 @@ function requestMetadata(request: Request) {
     userAgent: request.get("user-agent")?.slice(0, 500),
     ip: request.ip?.slice(0, 64)
   };
+}
+
+function responseLocals(request: Request) {
+  return request.res!.locals as { userId: string };
 }
