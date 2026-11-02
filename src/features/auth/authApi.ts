@@ -29,14 +29,15 @@ export type VerificationResult = {
 };
 
 type ApiErrorPayload = {
-  error?: { code?: string; message?: string };
+  error?: { code?: string; message?: string; retryAfterSeconds?: number };
 };
 
 export class AuthApiError extends Error {
   constructor(
     public readonly code: string,
     message: string,
-    public readonly status: number
+    public readonly status: number,
+    public readonly retryAfterSeconds?: number
   ) {
     super(message);
     this.name = "AuthApiError";
@@ -69,6 +70,17 @@ export async function verifyEmail(email: string, code: string) {
 
 export async function resendVerificationCode(email: string) {
   return request<VerificationResult>("/api/auth/resend-code", { email });
+}
+
+export type PasswordResetRequest = { message: string; expiresIn: number; resendAfter: number };
+export function requestPasswordReset(email: string, signal?: AbortSignal) {
+  return apiRequest<PasswordResetRequest>("/api/auth/password-reset/request", { body: { email }, signal });
+}
+export function verifyPasswordResetCode(email: string, code: string, signal?: AbortSignal) {
+  return apiRequest<{ resetToken: string; expiresIn: number }>("/api/auth/password-reset/verify", { body: { email, code }, signal });
+}
+export function completePasswordReset(email: string, resetToken: string, password: string, signal?: AbortSignal) {
+  return apiRequest<void>("/api/auth/password-reset/complete", { body: { email, resetToken, password }, signal });
 }
 
 export async function loginWithEmail(email: string, password: string) {
@@ -181,7 +193,8 @@ async function apiRequest<T>(path: string, options: { body?: unknown; method?: "
       throw new AuthApiError(
         errorPayload?.error?.code ?? "REQUEST_FAILED",
         errorPayload?.error?.message ?? "Не удалось выполнить запрос.",
-        response.status
+        response.status,
+        errorPayload?.error?.retryAfterSeconds ?? (Number(response.headers.get("Retry-After")) || undefined)
       );
     }
 

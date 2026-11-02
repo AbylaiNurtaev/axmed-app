@@ -20,11 +20,13 @@ import { AuthFlow } from "./src/features/auth/AuthFlow";
 import { ConnectedDevicesScreen } from "./src/features/devices/ConnectedDevicesScreen";
 import {
   authenticateWithSocial,
+  getSessionUserId,
   loginWithEmail,
   logout,
   registerWithEmail,
   resendVerificationCode,
   restoreSession,
+  subscribeSession,
   verifyEmail
 } from "./src/features/auth/authApi";
 
@@ -76,6 +78,10 @@ export default function App() {
     await logout();
     setAuthComplete(false);
   }, []);
+
+  useEffect(() => subscribeSession(() => {
+    if (!getSessionUserId()) setAuthComplete(false);
+  }), []);
 
   useEffect(() => {
     let active = true;

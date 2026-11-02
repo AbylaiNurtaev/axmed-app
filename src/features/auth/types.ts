@@ -4,7 +4,8 @@ export type Gender = "male" | "female";
 
 export type AuthRoute =
   | { name: "welcome" }
-  | { name: "auth"; mode: AuthMode }
+  | { name: "auth"; mode: AuthMode; email?: string; notice?: string }
+  | { name: "passwordRecovery"; email: string }
   | { name: "verification"; mode: AuthMode; email: string; developmentCode?: string }
   | { name: "about" }
   | { name: "ageRestriction" }

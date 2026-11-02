@@ -9,6 +9,7 @@ import { signInWithSocialProvider } from "./socialAuth";
 import type { SocialAuthCredential, SocialProvider } from "./socialAuth";
 import { AuthMode, AuthRoute, BodyMeasurements } from "./types";
 import type { VerificationResult } from "./authApi";
+import { PasswordRecoveryScreen } from "./PasswordRecoveryScreen";
 
 const initialMeasurements: BodyMeasurements = {
   height: "178",
@@ -94,11 +95,19 @@ export function AuthFlow({
     return withSwipeBack(
       <AuthChoiceScreen
         initialMode={route.mode}
+        initialEmail={route.email}
+        notice={route.notice}
         onBack={goBack}
+        onForgotPassword={email => setRoute({ name: "passwordRecovery", email })}
         onContinueEmail={continueWithEmail}
         onSocialContinue={continueWithSocial}
       />
     );
+  }
+
+  if (route.name === "passwordRecovery") {
+    return withSwipeBack(<PasswordRecoveryScreen initialEmail={route.email} onBack={goBack}
+      onComplete={email => setRoute({ name: "auth", mode: "signIn", email, notice: "Пароль изменён. Войдите с новым паролем." })} />);
   }
 
   if (route.name === "verification") {
@@ -216,6 +225,8 @@ function getPreviousRoute(route: AuthRoute): AuthRoute | null {
       return { name: "welcome" };
     case "verification":
       return { name: "auth", mode: route.mode };
+    case "passwordRecovery":
+      return { name: "auth", mode: "signIn", email: route.email };
     case "about":
       return { name: "auth", mode: "signUp" };
     case "ageRestriction":

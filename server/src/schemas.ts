@@ -20,6 +20,14 @@ export const credentialsSchema = z.object({
   password: passwordSchema
 }).strict();
 
+// Password strength is checked when setting a password, not when attempting login.
+export const loginSchema = z.object({ email: emailSchema, password: z.string().min(1).max(128) }).strict();
+export const resetPasswordSchema = z.object({
+  email: emailSchema,
+  resetToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  password: passwordSchema
+}).strict();
+
 export const verifyEmailSchema = z.object({
   email: emailSchema,
   code: z.string().regex(/^\d{6}$/, "Код должен состоять из шести цифр.")

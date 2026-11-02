@@ -7,6 +7,7 @@ import { query } from "./database.js";
 import { errorHandler } from "./errors.js";
 import { deviceSyncSchema } from "./deviceSchemas.js";
 import { loadDeviceReadings, requireDeviceUser, saveDeviceReadings } from "./deviceService.js";
+import { requestPasswordReset, resetPassword, verifyPasswordResetCode } from "./passwordRecoveryService.js";
 import {
   authenticateSocial,
   loginWithEmail,
@@ -19,6 +20,8 @@ import {
 import {
   credentialsSchema,
   emailOnlySchema,
+  loginSchema,
+  resetPasswordSchema,
   refreshSchema,
   socialAuthSchema,
   verifyEmailSchema
@@ -56,13 +59,23 @@ const credentialLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false
 });
+const throttled: RequestHandler = (_request, response) => {
+  response.status(429).json({ error: { code: "TOO_MANY_REQUESTS", message: "Слишком много запросов. Попробуйте позже.",
+    retryAfterSeconds: Number(response.getHeader("Retry-After")) || 60 } });
+};
+const loginLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 40, skipSuccessfulRequests: true,
+  standardHeaders: "draft-8", legacyHeaders: false, handler: throttled });
+const recoveryLimiter = rateLimit({ windowMs: 15 * 60_000, limit: 30,
+  standardHeaders: "draft-8", legacyHeaders: false, handler: throttled });
 
 app.get("/health", asyncHandler(async (_request, response) => {
   await query("SELECT 1");
   response.json({ status: "ok" });
 }));
 
-app.use("/api/auth", authLimiter);
+// Login floods must not exhaust the independent recovery budget.
+app.use(["/api/auth/register", "/api/auth/verify-email", "/api/auth/resend-code",
+  "/api/auth/social", "/api/auth/refresh", "/api/auth/logout"], authLimiter);
 
 app.post("/api/auth/register", credentialLimiter, asyncHandler(async (request, response) => {
   const { email, password } = credentialsSchema.parse(request.body);
@@ -79,9 +92,23 @@ app.post("/api/auth/resend-code", credentialLimiter, asyncHandler(async (request
   response.json(await resendVerificationCode(email));
 }));
 
-app.post("/api/auth/login", credentialLimiter, asyncHandler(async (request, response) => {
-  const { email, password } = credentialsSchema.parse(request.body);
+app.post("/api/auth/login", loginLimiter, asyncHandler(async (request, response) => {
+  const { email, password } = loginSchema.parse(request.body);
   response.json(await loginWithEmail(email, password, requestMetadata(request)));
+}));
+
+app.post("/api/auth/password-reset/request", recoveryLimiter, asyncHandler(async (request, response) => {
+  const { email } = emailOnlySchema.parse(request.body);
+  response.json(await requestPasswordReset(email));
+}));
+app.post("/api/auth/password-reset/verify", recoveryLimiter, asyncHandler(async (request, response) => {
+  const { email, code } = verifyEmailSchema.parse(request.body);
+  response.json(await verifyPasswordResetCode(email, code));
+}));
+app.post("/api/auth/password-reset/complete", recoveryLimiter, asyncHandler(async (request, response) => {
+  const { email, resetToken, password } = resetPasswordSchema.parse(request.body);
+  await resetPassword(email, resetToken, password);
+  response.status(204).send();
 }));
 
 app.post("/api/auth/social", credentialLimiter, asyncHandler(async (request, response) => {

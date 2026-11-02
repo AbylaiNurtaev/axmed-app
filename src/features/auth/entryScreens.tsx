@@ -22,6 +22,8 @@ import Svg, { Path } from "react-native-svg";
 import { SocialAuthError } from "./socialAuth";
 import type { SocialProvider } from "./socialAuth";
 import type { VerificationResult } from "./authApi";
+import { AuthApiError } from "./authApi";
+import { countdownLabel, useSecondsRemaining } from "./useSecondsRemaining";
 import { AuthMode } from "./types";
 import {
   AuthScaffold,
@@ -79,11 +81,17 @@ function HealthIllustration({ compact }: { compact: boolean }) {
 
 export function AuthChoiceScreen({
   initialMode,
+  initialEmail = "",
+  notice,
+  onForgotPassword,
   onBack,
   onContinueEmail,
   onSocialContinue
 }: {
   initialMode: AuthMode;
+  initialEmail?: string;
+  notice?: string;
+  onForgotPassword: (email: string) => void;
   onBack: () => void;
   onContinueEmail: (email: string, mode: AuthMode, password: string) => Promise<void> | void;
   onSocialContinue: (mode: AuthMode, provider: SocialProvider) => Promise<void>;
@@ -91,7 +99,7 @@ export function AuthChoiceScreen({
   const { height } = useWindowDimensions();
   const isCompact = height < 650;
   const [mode, setMode] = useState<AuthMode>(initialMode);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -103,8 +111,12 @@ export function AuthChoiceScreen({
   const [emailLoading, setEmailLoading] = useState(false);
   const [socialError, setSocialError] = useState("");
   const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
+  const [loginPauses, setLoginPauses] = useState<Record<string, number>>({});
+  const pendingEmail = useRef(false);
+  const pauseSeconds = useSecondsRemaining(loginPauses[email.trim().toLowerCase()] ?? 0);
 
   const continueWithEmail = async () => {
+    if (pendingEmail.current || (mode === "signIn" && pauseSeconds > 0)) return;
     const normalizedEmail = email.trim().toLowerCase();
     if (!emailPattern.test(normalizedEmail)) {
       setError("Введите корректный email");
@@ -126,10 +138,16 @@ export function AuthChoiceScreen({
     setPasswordError("");
     setConfirmPasswordError("");
     setSubmitError("");
+    pendingEmail.current = true;
     setEmailLoading(true);
     try {
       await onContinueEmail(normalizedEmail, mode, password);
     } catch (submitFailure) {
+      if (mode === "signIn" && submitFailure instanceof AuthApiError && submitFailure.retryAfterSeconds) {
+        setLoginPauses(current => ({ ...current, [normalizedEmail]: Date.now() + submitFailure.retryAfterSeconds! * 1000 }));
+        setSubmitError("");
+        return;
+      }
       setSubmitError(getErrorMessage(
         submitFailure,
         isSignUp
@@ -137,6 +155,7 @@ export function AuthChoiceScreen({
           : "Неверный email или пароль. Проверьте данные и попробуйте снова."
       ));
     } finally {
+      pendingEmail.current = false;
       setEmailLoading(false);
     }
   };
@@ -173,15 +192,18 @@ export function AuthChoiceScreen({
       </View>
 
       <Text style={styles.authTitle}>{isSignUp ? "Регистрация" : "Вход"}</Text>
+      {notice && !isSignUp ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
 
       <Surface style={styles.emailCard}>
         <FormField
           autoCapitalize="none"
           autoComplete="email"
+          editable={!emailLoading}
+          accessibilityLabel="Email"
           error={error}
           icon="mail-outline"
           keyboardType="email-address"
-          onChangeText={(value) => { setEmail(value); if (error) setError(""); }}
+          onChangeText={(value) => { setEmail(value); setSubmitError(""); if (error) setError(""); }}
           onSubmitEditing={continueWithEmail}
           placeholder="Введите email"
           returnKeyType="go"
@@ -190,6 +212,8 @@ export function AuthChoiceScreen({
         <FormField
           autoCapitalize="none"
           autoComplete={isSignUp ? "new-password" : "current-password"}
+          editable={!emailLoading}
+          accessibilityLabel="Пароль"
           error={passwordError}
           icon="lock-closed-outline"
           onChangeText={(value) => {
@@ -227,13 +251,20 @@ export function AuthChoiceScreen({
             value={confirmPassword}
           />
         ) : null}
+        {!isSignUp ? <Pressable accessibilityRole="button" onPress={() => onForgotPassword(email.trim().toLowerCase())}
+          disabled={emailLoading} style={styles.forgotPassword}>
+          <Text style={styles.forgotPasswordText}>Забыли пароль?</Text>
+        </Pressable> : null}
         <PrimaryButton
-          title={emailLoading ? (isSignUp ? "Создаём…" : "Входим…") : isSignUp ? "Продолжить с Email" : "Войти"}
-          disabled={emailLoading}
+          title={emailLoading ? (isSignUp ? "Создаём…" : "Входим…") : isSignUp ? "Продолжить с Email" : pauseSeconds > 0 ? `Повторить через ${countdownLabel(pauseSeconds)}` : "Войти"}
+          disabled={emailLoading || (!isSignUp && pauseSeconds > 0)}
           onPress={continueWithEmail}
           variant="entry"
         />
-        {submitError ? <Text accessibilityRole="alert" style={styles.submitError}>{submitError}</Text> : null}
+        {submitError && (isSignUp || pauseSeconds === 0) ? <Text accessibilityRole="alert" style={styles.submitError}>{submitError}</Text> : null}
+        {!isSignUp && pauseSeconds > 0 ? <Text accessibilityRole="alert" style={styles.submitError}>
+          Слишком много попыток. Повторите через {countdownLabel(pauseSeconds)} или восстановите пароль.
+        </Text> : null}
       </Surface>
 
       <View style={styles.divider}>
@@ -480,6 +511,9 @@ const styles = StyleSheet.create({
   authTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center", letterSpacing: -0.6 },
   emailCard: { gap: 10, padding: 12, marginTop: 20 },
   submitError: { color: "#B42318", fontSize: 12, lineHeight: 17, textAlign: "center", paddingHorizontal: 4 },
+  notice: { color: authColors.greenDark, fontSize: 14, lineHeight: 20, textAlign: "center", marginTop: 12 },
+  forgotPassword: { minHeight: 44, justifyContent: "center", alignItems: "flex-end" },
+  forgotPasswordText: { color: authColors.greenDark, fontSize: 14, fontWeight: "600" },
   divider: { flexDirection: "row", alignItems: "center", gap: 14, marginVertical: 12, paddingHorizontal: 34 },
   dividerLine: { flex: 1, height: 1, backgroundColor: "#9BDCCB" },
   dividerText: { color: authColors.greenDark, fontSize: 17, fontWeight: "600" },
