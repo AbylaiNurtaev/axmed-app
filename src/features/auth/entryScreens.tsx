@@ -8,8 +8,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
-  ImageSourcePropType,
   Platform,
   Pressable,
   StyleSheet,
@@ -32,52 +30,12 @@ import {
   FormField,
   LinkButton,
   PrimaryButton,
-  SecondaryButton,
   Surface,
   authColors
 } from "./ui";
 
-const healthHero = require("../../../assets/auth-health-hero.png") as ImageSourcePropType;
+export { WelcomeScreen } from "./WelcomeScreen";
 const emailPattern = /^(?=.{3,254}$)(?=.{1,64}@)[a-z0-9]+(?:[._%+-][a-z0-9]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
-
-export function WelcomeScreen({ onCreateAccount, onSignIn }: { onCreateAccount: () => void; onSignIn: () => void }) {
-  const { height } = useWindowDimensions();
-  const isCompact = height < 650;
-
-  return (
-    <AuthScaffold
-      contentStyle={[styles.welcomeContent, isCompact && styles.welcomeContentCompact]}
-      decorVariant="welcome"
-    >
-      <View style={styles.welcomeTop}>
-        <AxMedLogo hero />
-        <Text style={styles.welcomeTitle}>Добро пожаловать</Text>
-        <Text style={styles.welcomeSubtitle}>
-          AxMed помогает отслеживать важные показатели здоровья, понимать изменения и получать понятные рекомендации.
-        </Text>
-      </View>
-
-      <HealthIllustration compact={isCompact} />
-
-      <View style={styles.welcomeActions}>
-        <PrimaryButton title="Создать аккаунт" onPress={onCreateAccount} variant="welcome" />
-        <SecondaryButton title="Войти" onPress={onSignIn} variant="welcome" />
-      </View>
-    </AuthScaffold>
-  );
-}
-
-function HealthIllustration({ compact }: { compact: boolean }) {
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={[styles.illustration, compact && styles.illustrationCompact]}
-    >
-      <Image resizeMode="contain" source={healthHero} style={styles.healthHeroImage} />
-    </View>
-  );
-}
 
 export function AuthChoiceScreen({
   initialMode,
@@ -495,15 +453,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 const styles = StyleSheet.create({
-  welcomeContent: { paddingHorizontal: 40, paddingTop: 86, paddingBottom: 84 },
-  welcomeContentCompact: { paddingTop: 54, paddingBottom: 18 },
-  welcomeTop: { alignItems: "center", marginHorizontal: -16 },
-  welcomeTitle: { color: authColors.ink, fontSize: 29, lineHeight: 35, fontWeight: "800", letterSpacing: -1, textAlign: "center", marginTop: 22 },
-  welcomeSubtitle: { color: "#53617A", fontSize: 15, lineHeight: 21, textAlign: "center", marginTop: 11, maxWidth: 326, alignSelf: "center" },
-  illustration: { height: 246, marginHorizontal: -31, marginTop: 6, marginBottom: -8, alignItems: "center", justifyContent: "center" },
-  illustrationCompact: { height: 194, marginTop: 1, marginBottom: 2 },
-  healthHeroImage: { width: "100%", height: "100%" },
-  welcomeActions: { gap: 10, marginTop: "auto" },
   entryContent: { paddingHorizontal: 32, paddingTop: 62, paddingBottom: 22 },
   entryContentCompact: { paddingTop: 18, paddingBottom: 14 },
   entryLogo: { minHeight: 150, alignItems: "center", justifyContent: "flex-start" },
