@@ -1,14 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import {
-  AppleAuthenticationButton,
-  AppleAuthenticationButtonStyle,
-  AppleAuthenticationButtonType
-} from "expo-apple-authentication";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -16,18 +9,12 @@ import {
   useWindowDimensions,
   View
 } from "react-native";
-import Svg, { Path } from "react-native-svg";
-import { SocialAuthError } from "./socialAuth";
-import type { SocialProvider } from "./socialAuth";
 import type { VerificationResult } from "./authApi";
-import { AuthApiError } from "./authApi";
-import { countdownLabel, useSecondsRemaining } from "./useSecondsRemaining";
 import { AuthMode } from "./types";
 import {
   AuthScaffold,
   AxMedLogo,
   BackButton,
-  FormField,
   LinkButton,
   PrimaryButton,
   Surface,
@@ -35,296 +22,7 @@ import {
 } from "./ui";
 
 export { WelcomeScreen } from "./WelcomeScreen";
-const emailPattern = /^(?=.{3,254}$)(?=.{1,64}@)[a-z0-9]+(?:[._%+-][a-z0-9]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
-
-export function AuthChoiceScreen({
-  initialMode,
-  initialEmail = "",
-  notice,
-  onForgotPassword,
-  onBack,
-  onContinueEmail,
-  onSocialContinue
-}: {
-  initialMode: AuthMode;
-  initialEmail?: string;
-  notice?: string;
-  onForgotPassword: (email: string) => void;
-  onBack: () => void;
-  onContinueEmail: (email: string, mode: AuthMode, password: string) => Promise<void> | void;
-  onSocialContinue: (mode: AuthMode, provider: SocialProvider) => Promise<void>;
-}) {
-  const { height } = useWindowDimensions();
-  const isCompact = height < 650;
-  const [mode, setMode] = useState<AuthMode>(initialMode);
-  const [email, setEmail] = useState(initialEmail);
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-  const [error, setError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [confirmPasswordError, setConfirmPasswordError] = useState("");
-  const [submitError, setSubmitError] = useState("");
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [socialError, setSocialError] = useState("");
-  const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
-  const [loginPauses, setLoginPauses] = useState<Record<string, number>>({});
-  const pendingEmail = useRef(false);
-  const pauseSeconds = useSecondsRemaining(loginPauses[email.trim().toLowerCase()] ?? 0);
-
-  const continueWithEmail = async () => {
-    if (pendingEmail.current || (mode === "signIn" && pauseSeconds > 0)) return;
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!emailPattern.test(normalizedEmail)) {
-      setError("Введите корректный email");
-      return;
-    }
-    if (password.length === 0) {
-      setPasswordError("Введите пароль");
-      return;
-    }
-    if (isSignUp && (password.length < 8 || !/\p{L}/u.test(password) || !/\p{N}/u.test(password))) {
-      setPasswordError("Минимум 8 символов, одна буква и одна цифра");
-      return;
-    }
-    if (isSignUp && password !== confirmPassword) {
-      setConfirmPasswordError("Пароли не совпадают");
-      return;
-    }
-    setError("");
-    setPasswordError("");
-    setConfirmPasswordError("");
-    setSubmitError("");
-    pendingEmail.current = true;
-    setEmailLoading(true);
-    try {
-      await onContinueEmail(normalizedEmail, mode, password);
-    } catch (submitFailure) {
-      if (mode === "signIn" && submitFailure instanceof AuthApiError && submitFailure.retryAfterSeconds) {
-        setLoginPauses(current => ({ ...current, [normalizedEmail]: Date.now() + submitFailure.retryAfterSeconds! * 1000 }));
-        setSubmitError("");
-        return;
-      }
-      setSubmitError(getErrorMessage(
-        submitFailure,
-        isSignUp
-          ? "Не удалось создать аккаунт. Попробуйте снова."
-          : "Неверный email или пароль. Проверьте данные и попробуйте снова."
-      ));
-    } finally {
-      pendingEmail.current = false;
-      setEmailLoading(false);
-    }
-  };
-
-  const isSignUp = mode === "signUp";
-
-  const continueWithSocial = async (provider: SocialProvider) => {
-    if (socialLoading) return;
-    setSocialError("");
-    setSocialLoading(provider);
-
-    try {
-      await onSocialContinue(mode, provider);
-    } catch (socialAuthError) {
-      if (socialAuthError instanceof SocialAuthError && socialAuthError.code === "cancelled") return;
-      setSocialError(
-        socialAuthError instanceof SocialAuthError
-          ? socialAuthError.userMessage
-          : `Не удалось войти с ${provider}. Попробуйте ещё раз.`
-      );
-    } finally {
-      setSocialLoading(null);
-    }
-  };
-
-  return (
-    <AuthScaffold
-      contentStyle={[styles.entryContent, isCompact && styles.entryContentCompact]}
-      decorVariant="entry"
-    >
-      <View style={styles.entryLogo}>
-        <View style={styles.entryBack}><BackButton onPress={onBack} /></View>
-        <AxMedLogo compact />
-      </View>
-
-      <Text style={styles.authTitle}>{isSignUp ? "Регистрация" : "Вход"}</Text>
-      {notice && !isSignUp ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : null}
-
-      <Surface style={styles.emailCard}>
-        <FormField
-          autoCapitalize="none"
-          autoComplete="email"
-          editable={!emailLoading}
-          accessibilityLabel="Email"
-          error={error}
-          icon="mail-outline"
-          keyboardType="email-address"
-          onChangeText={(value) => { setEmail(value); setSubmitError(""); if (error) setError(""); }}
-          onSubmitEditing={continueWithEmail}
-          placeholder="Введите email"
-          returnKeyType="go"
-          value={email}
-        />
-        <FormField
-          autoCapitalize="none"
-          autoComplete={isSignUp ? "new-password" : "current-password"}
-          editable={!emailLoading}
-          accessibilityLabel="Пароль"
-          error={passwordError}
-          icon="lock-closed-outline"
-          onChangeText={(value) => {
-            setPassword(value);
-            if (passwordError) setPasswordError("");
-            if (submitError) setSubmitError("");
-          }}
-          onSubmitEditing={isSignUp ? undefined : continueWithEmail}
-          placeholder={isSignUp ? "Придумайте пароль" : "Введите пароль"}
-          returnKeyType={isSignUp ? "next" : "go"}
-          rightIcon={passwordVisible ? "eye-off-outline" : "eye-outline"}
-          rightIconAccessibilityLabel={passwordVisible ? "Скрыть пароль" : "Показать пароль"}
-          onRightIconPress={() => setPasswordVisible((visible) => !visible)}
-          secureTextEntry={!passwordVisible}
-          value={password}
-        />
-        {isSignUp ? (
-          <FormField
-            autoCapitalize="none"
-            autoComplete="new-password"
-            error={confirmPasswordError}
-            icon="shield-checkmark-outline"
-            onChangeText={(value) => {
-              setConfirmPassword(value);
-              if (confirmPasswordError) setConfirmPasswordError("");
-              if (submitError) setSubmitError("");
-            }}
-            onSubmitEditing={continueWithEmail}
-            placeholder="Повторите пароль"
-            returnKeyType="go"
-            rightIcon={confirmPasswordVisible ? "eye-off-outline" : "eye-outline"}
-            rightIconAccessibilityLabel={confirmPasswordVisible ? "Скрыть повтор пароля" : "Показать повтор пароля"}
-            onRightIconPress={() => setConfirmPasswordVisible((visible) => !visible)}
-            secureTextEntry={!confirmPasswordVisible}
-            value={confirmPassword}
-          />
-        ) : null}
-        {!isSignUp ? <Pressable accessibilityRole="button" onPress={() => onForgotPassword(email.trim().toLowerCase())}
-          disabled={emailLoading} style={styles.forgotPassword}>
-          <Text style={styles.forgotPasswordText}>Забыли пароль?</Text>
-        </Pressable> : null}
-        <PrimaryButton
-          title={emailLoading ? (isSignUp ? "Создаём…" : "Входим…") : isSignUp ? "Продолжить с Email" : pauseSeconds > 0 ? `Повторить через ${countdownLabel(pauseSeconds)}` : "Войти"}
-          disabled={emailLoading || (!isSignUp && pauseSeconds > 0)}
-          onPress={continueWithEmail}
-          variant="entry"
-        />
-        {submitError && (isSignUp || pauseSeconds === 0) ? <Text accessibilityRole="alert" style={styles.submitError}>{submitError}</Text> : null}
-        {!isSignUp && pauseSeconds > 0 ? <Text accessibilityRole="alert" style={styles.submitError}>
-          Слишком много попыток. Повторите через {countdownLabel(pauseSeconds)} или восстановите пароль.
-        </Text> : null}
-      </Surface>
-
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>или</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <View style={styles.socialButtons}>
-        <SocialButton
-          provider="Google"
-          title={isSignUp ? "Продолжить с Google" : "Войти с Google"}
-          loading={socialLoading === "Google"}
-          disabled={socialLoading !== null}
-          onPress={() => continueWithSocial("Google")}
-        />
-        <SocialButton
-          provider="Apple"
-          title={isSignUp ? "Продолжить с Apple" : "Войти с Apple"}
-          loading={socialLoading === "Apple"}
-          disabled={socialLoading !== null}
-          onPress={() => continueWithSocial("Apple")}
-        />
-        {socialError ? <Text accessibilityRole="alert" style={styles.socialError}>{socialError}</Text> : null}
-      </View>
-
-      <Pressable
-        style={styles.switchMode}
-        onPress={() => {
-          setMode(isSignUp ? "signIn" : "signUp");
-          setError("");
-          setPasswordError("");
-          setConfirmPasswordError("");
-          setPasswordVisible(false);
-          setConfirmPasswordVisible(false);
-          setSubmitError("");
-        }}
-      >
-        <Text style={styles.switchModeMuted}>{isSignUp ? "Уже есть аккаунт?" : "Нет аккаунта?"} </Text>
-        <Text style={styles.switchModeLink}>{isSignUp ? "Войти" : "Зарегистрироваться"}</Text>
-      </Pressable>
-
-    </AuthScaffold>
-  );
-}
-
-function SocialButton({
-  provider,
-  title,
-  loading,
-  disabled,
-  onPress
-}: {
-  provider: SocialProvider;
-  title: string;
-  loading: boolean;
-  disabled: boolean;
-  onPress: () => void;
-}) {
-  if (provider === "Apple" && Platform.OS === "ios") {
-    return (
-      <View pointerEvents={disabled ? "none" : "auto"} style={[styles.appleButtonContainer, disabled && styles.buttonDisabled]}>
-        <AppleAuthenticationButton
-          buttonType={AppleAuthenticationButtonType.CONTINUE}
-          buttonStyle={AppleAuthenticationButtonStyle.WHITE_OUTLINE}
-          cornerRadius={14}
-          onPress={onPress}
-          style={styles.appleButton}
-        />
-        {loading ? <View style={styles.appleLoading}><ActivityIndicator size="small" color="#111" /></View> : null}
-      </View>
-    );
-  }
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ busy: loading, disabled }}
-      disabled={disabled}
-      style={({ pressed }) => [styles.socialButton, pressed && styles.buttonPressed, disabled && styles.buttonDisabled]}
-      onPress={onPress}
-    >
-      {loading
-        ? <ActivityIndicator size="small" color={authColors.greenDark} />
-        : provider === "Google"
-          ? <GoogleMark />
-          : <Ionicons name="logo-apple" size={28} color="#111" />}
-      <Text style={styles.socialButtonText}>{title}</Text>
-    </Pressable>
-  );
-}
-
-function GoogleMark() {
-  return (
-    <Svg accessibilityLabel="Google" width={27} height={27} viewBox="0 0 24 24">
-      <Path d="M21.6 12.227c0-.709-.064-1.391-.182-2.045H12v3.868h5.382a4.6 4.6 0 0 1-1.995 3.018v2.509h3.232c1.891-1.741 2.981-4.305 2.981-7.35Z" fill="#4285F4" />
-      <Path d="M12 22c2.7 0 4.968-.895 6.618-2.423l-3.232-2.509c-.895.6-2.041.955-3.386.955-2.605 0-4.809-1.759-5.595-4.123H3.064v2.591A9.997 9.997 0 0 0 12 22Z" fill="#34A853" />
-      <Path d="M6.405 13.9A6.018 6.018 0 0 1 6.091 12c0-.659.114-1.3.314-1.9V7.509H3.064A9.997 9.997 0 0 0 2 12c0 1.614.386 3.141 1.064 4.491L6.405 13.9Z" fill="#FBBC05" />
-      <Path d="M12 5.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C16.964 2.995 14.695 2 12 2a9.997 9.997 0 0 0-8.936 5.509L6.405 10.1C7.191 7.736 9.395 5.977 12 5.977Z" fill="#EA4335" />
-    </Svg>
-  );
-}
+export { AuthChoiceScreen } from "./AuthChoiceScreen";
 
 export function VerificationScreen({
   email,
@@ -457,27 +155,7 @@ const styles = StyleSheet.create({
   entryContentCompact: { paddingTop: 18, paddingBottom: 14 },
   entryLogo: { minHeight: 150, alignItems: "center", justifyContent: "flex-start" },
   entryBack: { position: "absolute", left: 0, top: 4, zIndex: 2 },
-  authTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center", letterSpacing: -0.6 },
-  emailCard: { gap: 10, padding: 12, marginTop: 20 },
   submitError: { color: "#B42318", fontSize: 12, lineHeight: 17, textAlign: "center", paddingHorizontal: 4 },
-  notice: { color: authColors.greenDark, fontSize: 14, lineHeight: 20, textAlign: "center", marginTop: 12 },
-  forgotPassword: { minHeight: 44, justifyContent: "center", alignItems: "flex-end" },
-  forgotPasswordText: { color: authColors.greenDark, fontSize: 14, fontWeight: "600" },
-  divider: { flexDirection: "row", alignItems: "center", gap: 14, marginVertical: 12, paddingHorizontal: 34 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: "#9BDCCB" },
-  dividerText: { color: authColors.greenDark, fontSize: 17, fontWeight: "600" },
-  socialButtons: { gap: 11 },
-  socialButton: { minHeight: 44, borderRadius: 14, borderWidth: 1.5, borderColor: authColors.green, backgroundColor: "rgba(255,255,255,0.92)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 18 },
-  socialButtonText: { color: authColors.ink, fontSize: 16, fontWeight: "700" },
-  appleButtonContainer: { width: "100%", height: 44 },
-  appleButton: { width: "100%", height: 44 },
-  appleLoading: { position: "absolute", inset: 0, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center" },
-  socialError: { color: "#B42318", fontSize: 12, lineHeight: 17, textAlign: "center", paddingHorizontal: 8 },
-  switchMode: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 10, minHeight: 26 },
-  switchModeMuted: { color: authColors.text, fontSize: 14 },
-  switchModeLink: { color: authColors.greenDark, fontSize: 14, fontWeight: "700" },
-  buttonPressed: { opacity: 0.76 },
-  buttonDisabled: { opacity: 0.62 },
   verifyTitle: { color: authColors.ink, fontSize: 30, lineHeight: 37, fontWeight: "800", textAlign: "center" },
   verifySubtitle: { color: authColors.text, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 4, paddingHorizontal: 18 },
   verificationEmail: { color: authColors.greenDark, fontSize: 17, fontWeight: "700", textAlign: "center", marginTop: 9, marginBottom: 11, paddingHorizontal: 12 },
