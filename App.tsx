@@ -17,6 +17,7 @@ import {
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { AuthFlow } from "./src/features/auth/AuthFlow";
 import { SessionRestoreScreen } from "./src/features/auth/SessionRestoreScreen";
+import { HomeScreen, homeColors } from "./src/features/home/HomeScreen";
 import { ConnectedDevicesScreen } from "./src/features/devices/ConnectedDevicesScreen";
 import {
   authenticateWithSocial,
@@ -56,7 +57,6 @@ type ProfileDetail =
   | null;
 
 const avatarFront = require("./assets/body-front.png") as ImageSourcePropType;
-const homePerson = require("./assets/home-person.png") as ImageSourcePropType;
 const comparison = require("./assets/comparison.png") as ImageSourcePropType;
 
 const metrics = [
@@ -126,7 +126,8 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   const [profileDetail, setProfileDetail] = useState<ProfileDetail>(null);
 
   const screen = useMemo(() => {
-    if (tab === "home") return <HomeScreen setTab={setTab} open={setSheet} />;
+    if (tab === "home") return <HomeScreen name="Айгерим" score={84} status="Хорошо" metrics={metrics.slice(0, 4)}
+      onOpenProfile={() => setTab("profile")} onOpenMetrics={() => setTab("metrics")} />;
     if (tab === "metrics") return <MetricsScreen />;
     if (tab === "avatar") return <AvatarScreen />;
     if (tab === "knowledge") return <KnowledgeScreen open={setSheet} />;
@@ -138,9 +139,9 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   }, [onLogout, profileDetail, tab]);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, tab === "home" && styles.homeBackground]}>
       <StatusBar style="dark" />
-      <View style={styles.app}>
+      <View style={[styles.app, tab === "home" && styles.homeBackground]}>
         {screen}
         <TabBar active={tab} onChange={(next) => { setProfileDetail(null); setTab(next); }} />
       </View>
@@ -156,51 +157,6 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
         </Pressable>
       </Modal>
     </SafeAreaView>
-  );
-}
-
-function HomeScreen({ setTab, open }: { setTab: (tab: Tab) => void; open: (title: string) => void }) {
-  return (
-    <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-      <View style={styles.headerRow}>
-        <View style={styles.headerText}>
-          <Text style={styles.heroTitle}>Привет, Айгерим!</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Открыть профиль"
-          style={({ pressed }) => [styles.smallAvatar, pressed && styles.avatarPressed]}
-          onPress={() => setTab("profile")}
-        >
-          <Ionicons name="person-outline" size={25} color={green} />
-        </Pressable>
-      </View>
-      <View style={styles.healthCard}>
-        <View style={styles.healthCopy}>
-          <Text style={styles.cardTitle}>Ваше состояние</Text>
-          <Text style={styles.score}><Text>84</Text><Text style={styles.scoreSuffix}> /100</Text></Text>
-          <Text style={styles.good}>Хорошо</Text>
-          <Pressable style={styles.primaryButton} onPress={() => setTab("metrics")}>
-            <Text style={styles.primaryButtonText}>Подробнее</Text>
-          </Pressable>
-        </View>
-        <Gauge value={84} />
-        <Image source={homePerson} style={styles.homePerson} resizeMode="contain" />
-      </View>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle} numberOfLines={1}>Ключевые показатели</Text>
-      </View>
-      <View style={styles.listCard}>
-        {metrics.slice(0, 4).map((item, index) => (
-          <Pressable key={item.label} style={[styles.metricLine, index === 3 && styles.noBorder]} onPress={() => open(item.label)}>
-            <IconTile name={item.icon} color={item.color} />
-            <Text style={styles.metricName}>{item.label}</Text>
-            <Text style={styles.metricValue}>{item.value} <Text style={styles.metricUnit}>{item.unit}</Text></Text>
-            <Text style={[styles.delta, { color: item.delta.startsWith("+") ? green : green }]}>{item.delta}</Text>
-          </Pressable>
-        ))}
-      </View>
-    </ScrollView>
   );
 }
 
@@ -771,16 +727,23 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => voi
     { key: "profile", label: "Профиль", icon: "person-outline" }
   ];
   return (
-    <View style={styles.tabBar}>
-      {tabs.map((item) => {
-        const isActive = active === item.key;
-        return (
-          <Pressable key={item.key} style={styles.tabButton} onPress={() => onChange(item.key)}>
-            <Ionicons name={item.icon} size={24} color={isActive ? green : "#687484"} />
-            <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{item.label}</Text>
-          </Pressable>
-        );
-      })}
+    <View pointerEvents="box-none" style={styles.tabBarPosition}>
+      <View accessibilityRole="tablist" style={styles.tabBar}>
+        {tabs.map((item) => {
+          const isActive = active === item.key;
+          return (
+            <Pressable key={item.key} accessibilityRole="tab" accessibilityLabel={item.label}
+              accessibilityState={{ selected: isActive }} aria-selected={isActive}
+              style={({ pressed }) => [styles.tabButton, pressed && styles.avatarPressed]} onPress={() => onChange(item.key)}>
+              <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants"
+                style={[styles.tabIcon, isActive && styles.tabIconActive]}>
+                <Ionicons name={item.icon} size={21} color={isActive ? homeColors.white : homeColors.muted} />
+              </View>
+              <Text allowFontScaling maxFontSizeMultiplier={1.3} style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{item.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -811,25 +774,6 @@ function IconTile({ name, color, large, compact }: { name: string; color: string
   return (
     <View style={[styles.iconTile, compact && styles.iconTileCompact, large && styles.iconTileLarge, { backgroundColor: `${color}17` }]}>
       <MaterialCommunityIcons name={name as keyof typeof MaterialCommunityIcons.glyphMap} size={large ? 30 : compact ? 20 : 24} color={color} />
-    </View>
-  );
-}
-
-function Gauge({ value }: { value: number }) {
-  return (
-    <View style={styles.gauge}>
-      <Svg width="150" height="120" viewBox="0 0 150 120">
-        <Defs>
-          <LinearGradient id="gauge" x1="0" y1="0" x2="1" y2="0">
-            <Stop offset="0" stopColor="#00b69a" />
-            <Stop offset="1" stopColor="#7bd94d" />
-          </LinearGradient>
-        </Defs>
-        <Path d="M25 95 A55 55 0 0 1 125 95" stroke="#e7efed" strokeWidth="16" fill="none" strokeLinecap="round" />
-        <Path d="M25 95 A55 55 0 0 1 119 65" stroke="url(#gauge)" strokeWidth="16" fill="none" strokeLinecap="round" />
-      </Svg>
-      <Text style={styles.gaugeValue}>{value}</Text>
-      <Text style={styles.gaugeCaption}>из 100</Text>
     </View>
   );
 }
@@ -879,39 +823,24 @@ function BigLineChart() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fff" },
   app: { flex: 1, backgroundColor: "#fff" },
+  homeBackground: { backgroundColor: homeColors.background },
   scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === "android" ? 28 : 10, paddingBottom: 102 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 14 },
   headerText: { flex: 1, paddingRight: 8 },
   heroTitle: { color: ink, fontSize: 24, fontWeight: "800", lineHeight: 30 },
   subtitle: { color: muted, fontSize: 14, lineHeight: 21, marginTop: 4, maxWidth: 245 },
-  smallAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: "#edf4f1", alignItems: "center", justifyContent: "center" },
   profileAvatar: { width: 68, height: 68, borderRadius: 34, backgroundColor: "#edf4f1", alignItems: "center", justifyContent: "center" },
   avatarPressed: { opacity: 0.7 },
   editBadge: { position: "absolute", right: -2, bottom: 4, width: 28, height: 28, borderRadius: 14, backgroundColor: green, alignItems: "center", justifyContent: "center" },
-  healthCard: { marginTop: 22, minHeight: 190, borderRadius: 18, borderWidth: 1, borderColor: "#b9f0df", backgroundColor: "#effdfa", overflow: "hidden", flexDirection: "row", alignItems: "center", padding: 16 },
-  healthCopy: { width: "40%", zIndex: 2 },
   cardTitle: { color: ink, fontSize: 17, fontWeight: "800", marginBottom: 8 },
-  score: { color: ink, fontSize: 40, fontWeight: "900" },
-  scoreSuffix: { color: "#5c6275", fontSize: 18, fontWeight: "500" },
-  good: { color: green, fontSize: 20, fontWeight: "700", marginBottom: 16 },
   primaryButton: { minHeight: 40, borderRadius: 12, backgroundColor: green, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
   primaryButtonText: { color: "#fff", fontSize: 15, fontWeight: "800" },
-  gauge: { position: "absolute", left: "37%", top: 74, alignItems: "center", justifyContent: "center", transform: [{ scale: 0.7 }] },
-  gaugeValue: { position: "absolute", top: 50, color: ink, fontSize: 29, fontWeight: "900" },
-  gaugeCaption: { position: "absolute", top: 84, color: "#71788a", fontSize: 13, fontWeight: "600" },
-  homePerson: { position: "absolute", right: -8, bottom: -2, width: 118, height: 190 },
-  sectionHeader: { marginTop: 22, marginBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
-  sectionTitle: { color: ink, fontSize: 17, fontWeight: "900", flex: 1 },
   listCard: { borderRadius: 18, borderWidth: 1, borderColor: line, backgroundColor: "#fff", paddingHorizontal: 14, paddingVertical: 10, shadowColor: "#14213d", shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
-  metricLine: { minHeight: 58, borderBottomWidth: 1, borderBottomColor: line, flexDirection: "row", alignItems: "center", gap: 10 },
   noBorder: { borderBottomWidth: 0 },
   iconTile: { width: 40, height: 40, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   iconTileCompact: { width: 34, height: 34, borderRadius: 10 },
   iconTileLarge: { width: 58, height: 58, borderRadius: 15 },
-  metricName: { flex: 1, color: "#263041", fontSize: 15 },
-  metricValue: { color: ink, fontSize: 16, fontWeight: "900", minWidth: 68, textAlign: "right" },
   metricUnit: { color: "#263041", fontSize: 13, fontWeight: "700" },
-  delta: { minWidth: 54, textAlign: "right", fontSize: 15, fontWeight: "800" },
   twoTabs: { height: 56, borderBottomWidth: 1, borderBottomColor: line, flexDirection: "row", marginBottom: 18 },
   twoTab: { flex: 1, alignItems: "center", justifyContent: "center" },
   twoTabText: { color: "#596272", fontSize: 18, fontWeight: "800" },
@@ -951,10 +880,15 @@ const styles = StyleSheet.create({
   logout: { marginTop: 22, minHeight: 52, borderRadius: 15, borderWidth: 1, borderColor: "#ffd0d0", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
   logoutText: { color: "#f12f35", fontSize: 16, fontWeight: "900" },
   version: { color: muted, textAlign: "center", marginTop: 18, fontSize: 14 },
-  tabBar: { position: "absolute", left: 18, right: 18, bottom: Platform.OS === "ios" ? 12 : 16, minHeight: 66, borderRadius: 20, borderWidth: 1, borderColor: line, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", paddingHorizontal: 4, shadowColor: "#14213d", shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
-  tabButton: { flex: 1, alignItems: "center", justifyContent: "center", gap: 5 },
-  tabLabel: { color: "#687484", fontSize: 10, fontWeight: "700", textAlign: "center", lineHeight: 12 },
-  tabLabelActive: { color: green },
+  tabBarPosition: { position: "absolute", left: 0, right: 0, bottom: 12, alignItems: "center", paddingHorizontal: 18 },
+  tabBar: { width: "100%", maxWidth: 444, minHeight: 74, borderRadius: 26, borderWidth: 1, borderColor: homeColors.line,
+    backgroundColor: homeColors.white, flexDirection: "row", alignItems: "stretch", paddingHorizontal: 6, paddingVertical: 6,
+    shadowColor: "#000000", shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
+  tabButton: { flex: 1, minHeight: 60, alignItems: "center", justifyContent: "flex-start", gap: 5 },
+  tabIcon: { width: 42, height: 32, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  tabIconActive: { backgroundColor: homeColors.ink },
+  tabLabel: { color: homeColors.muted, fontSize: 9.5, fontWeight: "500", textAlign: "center", lineHeight: 12 },
+  tabLabelActive: { color: homeColors.ink },
   screenHeader: { marginBottom: 16 },
   screenTitle: { color: ink, fontSize: 19, fontWeight: "900", lineHeight: 24 },
   screenSubtitle: { color: muted, fontSize: 12.5, lineHeight: 18, marginTop: 4, maxWidth: 310 },

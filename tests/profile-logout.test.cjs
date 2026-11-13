@@ -46,11 +46,11 @@ function profileScreens() {
     "@expo/vector-icons": {},
     "./src/features/auth/AuthFlow": {},
     "./src/features/auth/SessionRestoreScreen": {},
+    "./src/features/home/HomeScreen": { homeColors: {} },
     "./src/features/auth/authApi": {},
     "./src/features/devices/DeviceSyncCard": {},
     "./src/features/devices/ConnectedDevicesScreen": {},
     "./assets/body-front.png": 1,
-    "./assets/home-person.png": 2,
     "./assets/comparison.png": 4
   }, {}, "\nexport { ProfileScreen, ProfileDetailScreen };\n");
 }
