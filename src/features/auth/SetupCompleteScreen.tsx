@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSyncExternalStore } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { deviceGateway } from "../../devices/deviceGateway";
-import { AuthScaffold, PrimaryButton, authColors } from "./ui";
+import { AuthScaffold, AuthHeader, PrimaryButton, authColors } from "./onboardingUi";
 
 const bracelet = deviceGateway.forKind("fitness-band");
 
@@ -26,6 +26,7 @@ export function SetupCompleteContent({
 
   return (
     <AuthScaffold contentStyle={styles.content}>
+      <AuthHeader />
       <View style={styles.main}>
         <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.halo}>
           <View style={styles.successIcon}>
@@ -58,14 +59,14 @@ export function SetupCompleteContent({
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 24 },
+  content: {},
   main: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingVertical: 44 },
-  halo: { width: 112, height: 112, borderRadius: 56, backgroundColor: "#EAF8F3", justifyContent: "center", alignItems: "center", marginBottom: 28 },
-  successIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: authColors.green, justifyContent: "center", alignItems: "center" },
-  title: { color: authColors.ink, fontSize: 32, lineHeight: 40, fontWeight: "700", textAlign: "center" },
-  subtitle: { color: authColors.muted, fontSize: 15, lineHeight: 23, textAlign: "center", marginTop: 10 },
-  device: { width: "100%", maxWidth: 300, flexDirection: "row", alignItems: "center", gap: 12, minHeight: 80, backgroundColor: "#F1FAF7", borderRadius: 20, padding: 16, marginTop: 32 },
-  deviceNeutral: { backgroundColor: "#F6F8F8" },
+  halo: { width: 112, height: 112, borderRadius: 38, backgroundColor: "#EDEDED", justifyContent: "center", alignItems: "center", marginBottom: 28 },
+  successIcon: { width: 80, height: 80, borderRadius: 27, backgroundColor: authColors.green, justifyContent: "center", alignItems: "center" },
+  title: { color: authColors.ink, fontSize: 40, lineHeight: 48, fontWeight: "500", letterSpacing: -1.8, textAlign: "center" },
+  subtitle: { color: authColors.muted, fontSize: 14, lineHeight: 22, textAlign: "center", marginTop: 10 },
+  device: { width: "100%", maxWidth: 334, flexDirection: "row", alignItems: "center", gap: 12, minHeight: 80, backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: authColors.line, padding: 18, marginTop: 32 },
+  deviceNeutral: { backgroundColor: "#FFFFFF" },
   deviceIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: authColors.white, alignItems: "center", justifyContent: "center" },
   deviceCopy: { flex: 1, minWidth: 0 },
   deviceName: { color: authColors.ink, fontSize: 16, lineHeight: 22, fontWeight: "600" },

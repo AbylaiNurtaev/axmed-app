@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AuthApiError, completePasswordReset, requestPasswordReset, verifyPasswordResetCode } from "./authApi";
-import { AuthScaffold, AxMedLogo, BackButton, FormField, PageTitle, PrimaryButton, Surface, authColors } from "./ui";
+import { AuthScaffold, AuthHeader, CodeInput, FormField, PageTitle, PrimaryButton, authColors } from "./onboardingUi";
 import { countdownLabel, useSecondsRemaining } from "./useSecondsRemaining";
 
 type Stage = "email" | "code" | "password";
@@ -89,23 +89,23 @@ export function PasswordRecoveryScreen({ initialEmail, onBack, onComplete }: {
   }
   const title = stage === "email" ? "Забыли пароль?" : stage === "code" ? "Введите код" : "Новый пароль";
   const subtitle = stage === "email" ? "Укажите email вашего аккаунта. Мы отправим код для восстановления."
-    : stage === "code" ? `Код из письма действует 10 минут. Email: ${email}`
+    : stage === "code" ? "Введите шестизначный код из письма. Он действует 10 минут."
     : "Придумайте новый пароль. После сохранения войдите в аккаунт заново.";
-  return <AuthScaffold decorVariant="entry" contentStyle={styles.content}>
-    <View style={styles.header}><View style={styles.back}><BackButton onPress={onBack} /></View><AxMedLogo compact /></View>
-    <PageTitle title={title} subtitle={subtitle} centered />
-    <Surface style={styles.card}>
+  return <AuthScaffold>
+    <AuthHeader onBack={onBack} />
+    <PageTitle title={title} subtitle={subtitle} />
+    <View style={styles.card}>
       {stage === "email" ? <>
-        <FormField icon="mail-outline" accessibilityLabel="Email для восстановления" value={email} autoCapitalize="none"
+        <FormField label="Email" icon="mail-outline" accessibilityLabel="Email для восстановления" value={email} autoCapitalize="none"
           autoComplete="email" keyboardType="email-address" editable={!busy} placeholder="Введите email"
           onChangeText={value => { setEmail(value); setError(""); }} onSubmitEditing={sendCode} returnKeyType="send" />
         <PrimaryButton title={busy ? "Отправляем…" : resendSeconds > 0 ? `Повторить через ${countdownLabel(resendSeconds)}` : "Получить код"}
           disabled={busy || resendSeconds > 0} onPress={sendCode} variant="entry" />
       </> : stage === "code" ? <>
-        <FormField icon="key-outline" accessibilityLabel="Шестизначный код восстановления" value={code}
-          onChangeText={value => { setCode(value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
-          keyboardType="number-pad" textContentType="oneTimeCode" autoComplete="one-time-code" maxLength={6}
-          editable={!busy && !codeExhausted} placeholder="Код из 6 цифр" onSubmitEditing={verifyCode} />
+        <Text allowFontScaling selectable style={styles.email}>{email}</Text>
+        <CodeInput label="Шестизначный код восстановления" value={code}
+          onChangeText={value => { setCode(value); setError(""); }} editable={!busy && !codeExhausted}
+          error={!!error} onSubmitEditing={verifyCode} />
         <PrimaryButton title={busy ? "Проверяем…" : verifySeconds > 0 ? `Повторить через ${countdownLabel(verifySeconds)}` : "Подтвердить код"}
           disabled={busy || code.length !== 6 || codeExhausted || verifySeconds > 0} onPress={verifyCode} variant="entry" />
         <Pressable accessibilityRole="button" disabled={busy || resendSeconds > 0} onPress={sendCode} style={styles.link}>
@@ -115,11 +115,11 @@ export function PasswordRecoveryScreen({ initialEmail, onBack, onComplete }: {
           <Text style={styles.linkText}>Изменить email</Text>
         </Pressable>
       </> : <>
-        <FormField icon="lock-closed-outline" accessibilityLabel="Новый пароль" value={password} autoCapitalize="none" autoComplete="new-password"
+        <FormField label="Новый пароль" icon="lock-closed-outline" accessibilityLabel="Новый пароль" value={password} autoCapitalize="none" autoComplete="new-password"
           maxLength={128} secureTextEntry={!visible} editable={!busy} placeholder="Новый пароль"
           onChangeText={value => { setPassword(value); setError(""); }} rightIcon={visible ? "eye-off-outline" : "eye-outline"}
           rightIconAccessibilityLabel={visible ? "Скрыть новый пароль" : "Показать новый пароль"} onRightIconPress={() => setVisible(value => !value)} />
-        <FormField icon="lock-closed-outline" accessibilityLabel="Повтор нового пароля" value={confirmation} autoCapitalize="none" autoComplete="new-password"
+        <FormField label="Повтор пароля" icon="lock-closed-outline" accessibilityLabel="Повтор нового пароля" value={confirmation} autoCapitalize="none" autoComplete="new-password"
           maxLength={128} secureTextEntry={!confirmationVisible} editable={!busy} placeholder="Повторите пароль"
           onChangeText={value => { setConfirmation(value); setError(""); }} rightIcon={confirmationVisible ? "eye-off-outline" : "eye-outline"}
           rightIconAccessibilityLabel={confirmationVisible ? "Скрыть повтор пароля" : "Показать повтор пароля"}
@@ -133,15 +133,17 @@ export function PasswordRecoveryScreen({ initialEmail, onBack, onComplete }: {
       </>}
       {info ? <Text accessibilityLiveRegion="polite" style={styles.help}>{info}</Text> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-    </Surface>
+    </View>
   </AuthScaffold>;
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 28, paddingTop: 30, paddingBottom: 28 },
-  header: { minHeight: 115, alignItems: "center" }, back: { position: "absolute", left: 0, top: 4 },
-  card: { padding: 16, gap: 14, marginTop: 22 }, help: { color: authColors.muted, fontSize: 14, lineHeight: 21, textAlign: "center" },
-  error: { color: authColors.danger, fontSize: 14, lineHeight: 21, textAlign: "center" },
+  card: { gap: 18 },
+  email: { color: authColors.ink, fontSize: 14, lineHeight: 21, padding: 14, borderRadius: 16,
+    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: authColors.line },
+  help: { color: authColors.muted, fontSize: 12, lineHeight: 19 },
+  error: { color: authColors.danger, fontSize: 13, lineHeight: 20, padding: 14,
+    borderRadius: 16, backgroundColor: authColors.soft },
   link: { minHeight: 44, alignItems: "center", justifyContent: "center" },
-  linkText: { color: authColors.greenDark, fontSize: 14, fontWeight: "600", textAlign: "center" }
+  linkText: { color: authColors.ink, fontSize: 13, lineHeight: 19, fontWeight: "500", textAlign: "center" }
 });

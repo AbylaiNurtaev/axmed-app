@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRef, useState } from "react";
-import { Image, ImageSourcePropType, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { BodyMeasurements } from "./types";
 import {
   AuthScaffold,
@@ -10,10 +10,7 @@ import {
   StepHeader,
   Surface,
   authColors
-} from "./ui";
-
-const deviceSprite = require("../../../assets/auth-device-sprite.png") as ImageSourcePropType;
-const deviceSpriteLeftOffsets = [-0.15, -1.17, -2.01, -2.88, -3.95];
+} from "./onboardingUi";
 
 const bodyFields: {
   key: keyof BodyMeasurements;
@@ -153,7 +150,7 @@ function MeasurementField({
           onFocus={() => setFocused(true)}
           onChangeText={(next) => onChange(next.replace(/[^0-9,.]/g, ""))}
           placeholder="—"
-          placeholderTextColor="#A9B0BA"
+          placeholderTextColor="#777777"
           selectTextOnFocus
           selectionColor={authColors.green}
           style={[styles.measurementInput, prominent && styles.primaryMeasurementInput]}
@@ -162,23 +159,6 @@ function MeasurementField({
         <Text style={styles.measurementUnit}>{unit}</Text>
       </View>
     </Pressable>
-  );
-}
-
-function DeviceArtwork({ index, size = 54 }: { index: number; size?: number }) {
-  return (
-    <View style={[styles.deviceArtwork, { width: size, height: size }]}>
-      <Image
-        resizeMode="stretch"
-        source={deviceSprite}
-        style={{
-          height: size * 2,
-          left: deviceSpriteLeftOffsets[index] * size,
-          top: -size / 2,
-          width: size * 5
-        }}
-      />
-    </View>
   );
 }
 
@@ -204,12 +184,11 @@ export function ConnectionErrorScreen({
 
         <Surface style={styles.failedDevice}>
           <View style={styles.failedDeviceIcon}>
-            <DeviceArtwork index={0} size={76} />
+            <MaterialCommunityIcons name="watch-variant" size={34} color={authColors.ink} />
           </View>
           <View style={styles.sourceCopy}>
             <Text style={styles.failedDeviceTitle}>{source}</Text>
-            <Text style={styles.failedDeviceText}>Модель: BodyScale X</Text>
-            <Text style={styles.failedDeviceText}>SN: BSX123456789</Text>
+            <Text style={styles.failedDeviceText}>Соединение не установлено</Text>
           </View>
         </Surface>
 
@@ -243,20 +222,20 @@ function numberValue(value: string) {
 
 const styles = StyleSheet.create({
   primaryMeasurements: { flexDirection: "row", gap: 12, marginBottom: 20 },
-  measurementField: { minHeight: 64, borderRadius: 14, borderWidth: 1, borderColor: "#E5EBEF", backgroundColor: authColors.white, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 6, gap: 10 },
-  primaryMeasurement: { flex: 1, minWidth: 0, minHeight: 132, flexDirection: "column", alignItems: "stretch", justifyContent: "space-between", backgroundColor: "#F8FAFA", paddingHorizontal: 16, paddingVertical: 16, gap: 10 },
-  measurementFocused: { borderColor: authColors.green, backgroundColor: "#F2FBF8" },
+  measurementField: { minHeight: 64, borderRadius: 17, borderWidth: 1, borderColor: "#E3E3E3", backgroundColor: authColors.white, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 6, gap: 10 },
+  primaryMeasurement: { flex: 1, minWidth: 0, minHeight: 132, flexDirection: "column", alignItems: "stretch", justifyContent: "space-between", backgroundColor: "#FFFFFF", paddingHorizontal: 16, paddingVertical: 16, gap: 10 },
+  measurementFocused: { borderColor: authColors.green, backgroundColor: "#FFFFFF" },
   measurementCopy: { flexDirection: "row", alignItems: "center", gap: 8 },
   measurementRowCopy: { flex: 1 },
   measurementLabelCopy: { flex: 1 },
-  measurementLabel: { color: authColors.ink, fontSize: 15, lineHeight: 21, fontWeight: "600" },
+  measurementLabel: { color: authColors.ink, fontSize: 13, lineHeight: 19, fontWeight: "500" },
   measurementHint: { color: authColors.muted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   measurementValueRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   primaryMeasurementValue: { width: "100%" },
   measurementUnit: { color: authColors.muted, fontSize: 14 },
-  measurementInput: { width: 64, minHeight: 48, color: authColors.ink, fontSize: 19, fontWeight: "500", textAlign: "right", padding: 0, fontVariant: ["tabular-nums"] },
-  primaryMeasurementInput: { flex: 1, minWidth: 0, width: "auto", fontSize: 30, fontWeight: "600", textAlign: "left" },
-  circumferencesCard: { borderWidth: 1, borderColor: authColors.line, borderRadius: 18, marginBottom: 24 },
+  measurementInput: { width: 62, minHeight: 48, outlineWidth: 0, color: authColors.ink, fontSize: 19, fontWeight: "500", textAlign: "right", padding: 0, fontVariant: ["tabular-nums"] },
+  primaryMeasurementInput: { flex: 1, minWidth: 0, width: "auto", fontSize: 32, fontWeight: "500", textAlign: "left" },
+  circumferencesCard: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: authColors.line, borderRadius: 22, marginBottom: 24 },
   circumferencesHeader: { minHeight: 78, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
   circumferencesCopy: { flex: 1 },
   circumferencesTitle: { color: authColors.ink, fontSize: 16, lineHeight: 22, fontWeight: "600" },
@@ -264,19 +243,18 @@ const styles = StyleSheet.create({
   circumferencesFields: { padding: 12, paddingTop: 0, gap: 8 },
   bodyPressed: { opacity: 0.65 },
   bodyActions: { flexGrow: 1, justifyContent: "flex-end", paddingTop: 8 },
-  deviceArtwork: { overflow: "hidden", alignItems: "flex-start", justifyContent: "flex-start" },
   sourceCopy: { flex: 1 },
   errorContent: { justifyContent: "space-between" },
   errorMain: { alignItems: "stretch" },
   connectionErrorIcon: { width: 98, height: 98, borderRadius: 49, backgroundColor: authColors.dangerSoft, alignItems: "center", justifyContent: "center", alignSelf: "center", marginTop: 8, marginBottom: 20 },
   failedDevice: { padding: 16, flexDirection: "row", alignItems: "center", gap: 16 },
-  failedDeviceIcon: { width: 92, height: 92, borderRadius: 17, backgroundColor: "#F5F8F7", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  failedDeviceIcon: { width: 56, height: 64, borderRadius: 17, backgroundColor: "#EFEFEF", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   failedDeviceTitle: { color: authColors.ink, fontSize: 18, fontWeight: "700", marginBottom: 6 },
   failedDeviceText: { color: authColors.text, fontSize: 14, lineHeight: 20 },
-  tipsCard: { borderRadius: 17, borderWidth: 1, borderColor: "#CBEAE2", backgroundColor: "#F4FBF9", padding: 15, marginTop: 15 },
+  tipsCard: { borderRadius: 17, borderWidth: 1, borderColor: "#E3E3E3", backgroundColor: "#FFFFFF", padding: 15, marginTop: 15 },
   tipHeading: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 9 },
   tipTitle: { color: authColors.greenDark, fontSize: 16, fontWeight: "700" },
-  tip: { color: authColors.text, fontSize: 11.5, lineHeight: 19, paddingLeft: 5 },
+  tip: { color: authColors.text, fontSize: 12, lineHeight: 20, paddingLeft: 5 },
   errorActions: { gap: 12, marginTop: 24 },
-  laterText: { color: authColors.muted, fontSize: 12, lineHeight: 18, textAlign: "center", paddingHorizontal: 35 },
+  laterText: { color: authColors.muted, fontSize: 12, lineHeight: 18, textAlign: "center", paddingHorizontal: 8 },
 });
