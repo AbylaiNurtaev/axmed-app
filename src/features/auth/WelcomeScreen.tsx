@@ -56,18 +56,18 @@ export function WelcomeScreen({ onCreateAccount, onSignIn }: {
           </View>
 
           <View style={[styles.actions, compact && styles.actionsCompact]}>
-            <Pressable accessibilityRole="button" onPress={onCreateAccount}
-              style={({ pressed }) => [styles.createButton, pressed && styles.createButtonPressed]}>
-              <Text allowFontScaling style={styles.createButtonText}>Создать аккаунт</Text>
-              <View style={styles.buttonArrow}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Войти в аккаунт" onPress={onSignIn}
+              style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}>
+              <Text allowFontScaling style={styles.primaryButtonText}>Войти</Text>
+              <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.buttonArrow}>
                 <Ionicons name="arrow-forward" size={20} color={colors.background} />
               </View>
             </Pressable>
-            <View style={styles.signInRow}>
-              <Text allowFontScaling style={styles.signInHint}>Уже с нами?</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Войти в аккаунт" onPress={onSignIn}
-                style={({ pressed }) => [styles.signInButton, pressed && styles.linkPressed]}>
-                <Text allowFontScaling style={styles.signInText}>Войти</Text>
+            <View style={styles.registerRow}>
+              <Text allowFontScaling style={styles.registerHint}>Нет аккаунта?</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Создать аккаунт" onPress={onCreateAccount}
+                style={({ pressed }) => [styles.registerButton, pressed && styles.linkPressed]}>
+                <Text allowFontScaling style={styles.registerText}>Создать</Text>
               </Pressable>
             </View>
           </View>
@@ -101,15 +101,15 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.muted, fontSize: 13, lineHeight: 21, marginTop: 18, letterSpacing: -0.12 },
   actions: { paddingTop: 30 },
   actionsCompact: { paddingTop: 23 },
-  createButton: { minHeight: 62, paddingLeft: 24, paddingRight: 12, paddingVertical: 9, borderRadius: 32,
+  primaryButton: { minHeight: 62, paddingLeft: 24, paddingRight: 12, paddingVertical: 9, borderRadius: 32,
     backgroundColor: colors.ink, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12,
     shadowColor: "#000000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 3 },
-  createButtonPressed: { backgroundColor: "#2A2A2A", transform: [{ scale: 0.985 }] },
-  createButtonText: { color: colors.background, fontSize: 15, fontWeight: "500", letterSpacing: 0.1, flexShrink: 1 },
+  primaryButtonPressed: { backgroundColor: "#2A2A2A", transform: [{ scale: 0.985 }] },
+  primaryButtonText: { color: colors.background, fontSize: 15, fontWeight: "500", letterSpacing: 0.1, flexShrink: 1 },
   buttonArrow: { width: 39, height: 39, borderRadius: 20, borderWidth: 1, borderColor: "#444444", alignItems: "center", justifyContent: "center" },
-  signInRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 9, flexWrap: "wrap" },
-  signInHint: { fontSize: 13, color: colors.muted },
-  signInButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 6 },
-  signInText: { fontSize: 13, color: colors.ink, fontWeight: "600" },
+  registerRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 9, flexWrap: "wrap" },
+  registerHint: { fontSize: 13, color: colors.muted },
+  registerButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 6 },
+  registerText: { fontSize: 13, color: colors.ink, fontWeight: "600" },
   linkPressed: { opacity: 0.55 }
 });

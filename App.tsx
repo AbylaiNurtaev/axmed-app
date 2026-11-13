@@ -2,7 +2,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   ImageSourcePropType,
@@ -17,6 +16,7 @@ import {
 } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { AuthFlow } from "./src/features/auth/AuthFlow";
+import { SessionRestoreScreen } from "./src/features/auth/SessionRestoreScreen";
 import { ConnectedDevicesScreen } from "./src/features/devices/ConnectedDevicesScreen";
 import {
   authenticateWithSocial,
@@ -41,6 +41,7 @@ const line = "#e8edf1";
 };
 
 type Tab = "home" | "metrics" | "avatar" | "knowledge" | "profile";
+type AuthState = "restoring" | "restoreError" | "signedOut" | "signedIn";
 type ProfileDetail =
   | "personal"
   | "medical"
@@ -72,42 +73,40 @@ function notify(title: string) {
 }
 
 export default function App() {
-  const [authComplete, setAuthComplete] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>("restoring");
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
   const handleLogout = useCallback(async () => {
     await logout();
-    setAuthComplete(false);
+    setAuthState("signedOut");
   }, []);
 
   useEffect(() => subscribeSession(() => {
-    if (!getSessionUserId()) setAuthComplete(false);
+    if (!getSessionUserId()) setAuthState(state => state === "signedIn" ? "signedOut" : state);
   }), []);
 
   useEffect(() => {
     let active = true;
     restoreSession()
       .then((session) => {
-        if (active) setAuthComplete(Boolean(session));
+        if (active) setAuthState(session ? "signedIn" : "signedOut");
       })
-      .finally(() => {
-        if (active) setAuthReady(true);
+      .catch(() => {
+        if (active) setAuthState("restoreError");
       });
     return () => { active = false; };
-  }, []);
+  }, [restoreAttempt]);
 
-  if (!authReady) {
-    return (
-      <View style={styles.authLoading}>
-        <StatusBar style="dark" />
-        <ActivityIndicator size="large" color={green} />
-      </View>
-    );
+  if (authState === "restoring" || authState === "restoreError") {
+    return <SessionRestoreScreen failed={authState === "restoreError"} onRetry={() => {
+      setAuthState("restoring");
+      setRestoreAttempt(attempt => attempt + 1);
+    }} />;
   }
 
-  if (!authComplete) {
+  if (authState === "signedOut") {
     return (
       <AuthFlow
-        onComplete={() => setAuthComplete(true)}
+        onComplete={() => setAuthState("signedIn")}
         onEmailRegister={({ email, password }) => registerWithEmail(email, password)}
         onEmailSignIn={({ email, password }) => loginWithEmail(email, password)}
         onLogout={logout}
@@ -878,7 +877,6 @@ function BigLineChart() {
 }
 
 const styles = StyleSheet.create({
-  authLoading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
   safe: { flex: 1, backgroundColor: "#fff" },
   app: { flex: 1, backgroundColor: "#fff" },
   scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === "android" ? 28 : 10, paddingBottom: 102 },

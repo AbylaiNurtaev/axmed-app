@@ -107,6 +107,7 @@ export async function authenticateWithSocial(credential: SocialAuthCredential, m
   return session;
 }
 
+// Only an absent or rejected refresh token means signed out. Other failures can be retried.
 export async function restoreSession(): Promise<AuthSession | null> {
   const revision = sessionRevision;
   const refreshToken = await readRefreshToken();
@@ -121,11 +122,9 @@ export async function restoreSession(): Promise<AuthSession | null> {
     if (revision !== sessionRevision) return null;
     if (error instanceof AuthApiError && error.status === 401) {
       await clearStoredSession();
-    } else {
-      currentSession = null;
-      emitSession();
+      return null;
     }
-    return null;
+    throw error;
   }
 }
 
