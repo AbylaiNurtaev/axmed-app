@@ -4,11 +4,16 @@ import { config } from "./config.js";
 import { inTransaction, query } from "./database.js";
 import { ApiError } from "./errors.js";
 import type { DeviceSyncInput } from "./deviceSchemas.js";
+import { applyDeviceSyncToPlan } from "./planService.js";
 
 const signingKey = new TextEncoder().encode(config.JWT_SECRET);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function requireDeviceUser(authorization?: string) {
+  return (await requireSession(authorization)).userId;
+}
+
+export async function requireSession(authorization?: string) {
   if (!authorization?.startsWith("Bearer ")) throw new ApiError(401, "UNAUTHORIZED", "Войдите в аккаунт.");
   let userId: string;
   let sessionId: string;
@@ -20,13 +25,14 @@ export async function requireDeviceUser(authorization?: string) {
     userId = payload.sub;
     sessionId = payload.sid;
   } catch { throw new ApiError(401, "UNAUTHORIZED", "Сессия истекла. Войдите снова."); }
-  const active = await query(`SELECT 1 FROM refresh_tokens WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL AND expires_at > now()`, [sessionId, userId]);
+  const active = await query(`UPDATE refresh_tokens SET last_seen_at = now()
+    WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL AND expires_at > now() RETURNING id`, [sessionId, userId]);
   if (!active.rowCount) throw new ApiError(401, "UNAUTHORIZED", "Сессия истекла. Войдите снова.");
-  return userId;
+  return { userId, sessionId };
 }
 
 export async function saveDeviceReadings(userId: string, input: DeviceSyncInput) {
-  return inTransaction(async client => {
+  const result = await inTransaction(async client => {
     const device = await client.query<{ id: string }>(`
       INSERT INTO health_devices (id, user_id, adapter_id, external_id, kind, name, time_zone)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -61,19 +67,24 @@ export async function saveDeviceReadings(userId: string, input: DeviceSyncInput)
     }
     return { accepted: unique.length, complete: input.complete };
   });
+  await applyDeviceSyncToPlan(userId, input);
+  return result;
 }
 
-export async function loadDeviceReadings(userId: string) {
-  const devices = await query(`SELECT * FROM health_devices WHERE user_id = $1 AND last_read_at IS NOT NULL ORDER BY last_sync_at DESC LIMIT 1`, [userId]);
+export async function loadDeviceReadings(userId: string, kind?: "fitness-band" | "scale") {
+  const historyDays = kind === "scale" ? 90 : 7;
+  const devices = await query(`SELECT * FROM health_devices
+    WHERE user_id = $1 AND last_read_at IS NOT NULL AND ($2::text IS NULL OR kind = $2)
+    ORDER BY last_sync_at DESC LIMIT 1`, [userId, kind ?? null]);
   const device = devices.rows[0];
   if (!device) return null;
   const readings = await query(`SELECT source_record_id AS "sourceRecordId", metric, value, unit, aggregation, origin,
     recorded_at AS "recordedAt", period_end AS "periodEnd", to_char(local_date, 'YYYY-MM-DD') AS "localDate"
-    FROM device_readings WHERE device_id = $1 AND recorded_at >= $2::timestamptz - interval '8 days'
-    ORDER BY recorded_at DESC, metric, source_record_id LIMIT 60000`, [device.id, device.last_read_at]);
+    FROM device_readings WHERE device_id = $1 AND recorded_at >= $2::timestamptz - make_interval(days => $3::int)
+    ORDER BY recorded_at DESC, metric, source_record_id LIMIT 60000`, [device.id, device.last_read_at, historyDays]);
   return {
     device: { id: device.external_id, name: device.name, adapterId: device.adapter_id, kind: device.kind },
-    readAt: device.last_read_at.toISOString(), timeZone: device.time_zone, historyDays: 7, skippedRecords: 0,
+    readAt: device.last_read_at.toISOString(), timeZone: device.time_zone, historyDays, skippedRecords: 0,
     syncVersion: device.sync_version ?? 1, warnings: device.sync_warnings ?? [],
     ...(device.battery ? { battery: device.battery } : {}),
     samples: readings.rows.map(row => ({ ...row, aggregation: row.aggregation ?? undefined, origin: row.origin ?? undefined, recordedAt: row.recordedAt.toISOString(),

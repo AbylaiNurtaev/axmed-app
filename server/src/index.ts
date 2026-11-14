@@ -1,3 +1,8 @@
+import { webcrypto } from "crypto";
+if (!globalThis.crypto) {
+  Object.defineProperty(globalThis, "crypto", { value: webcrypto });
+}
+
 import { app } from "./app.js";
 import { config } from "./config.js";
 import { migrateDatabase, pool } from "./database.js";

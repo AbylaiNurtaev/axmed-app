@@ -7,8 +7,14 @@ import { SetupCompleteScreen } from "./SetupCompleteScreen";
 import { BraceletConnectionScreen } from "./BraceletConnectionScreen";
 import { signInWithSocialProvider } from "./socialAuth";
 import type { SocialAuthCredential, SocialProvider } from "./socialAuth";
-import { AuthMode, AuthRoute, BodyMeasurements } from "./types";
+import { AuthMode, AuthRoute, BodyMeasurements, Gender } from "./types";
 import type { VerificationResult } from "./authApi";
+
+type OnboardingProfilePatch = {
+  birthDate?: string | null;
+  gender?: Gender | null;
+  medicalProfile?: Record<string, unknown>;
+};
 
 const initialMeasurements: BodyMeasurements = {
   height: "178",
@@ -28,6 +34,7 @@ type AuthFlowProps = {
   onVerifyEmail: (input: { email: string; code: string }) => Promise<unknown>;
   onResendVerification: (email: string) => Promise<VerificationResult>;
   onSocialAuthenticated: (credential: SocialAuthCredential, mode: AuthMode) => Promise<unknown>;
+  onSaveProfile: (patch: OnboardingProfilePatch) => Promise<unknown>;
 };
 
 export function AuthFlow({
@@ -37,7 +44,8 @@ export function AuthFlow({
   onLogout,
   onVerifyEmail,
   onResendVerification,
-  onSocialAuthenticated
+  onSocialAuthenticated,
+  onSaveProfile
 }: AuthFlowProps) {
   const [route, setRoute] = useState<AuthRoute>({ name: "welcome" });
   const [measurements, setMeasurements] = useState<BodyMeasurements>(initialMeasurements);
@@ -123,7 +131,10 @@ export function AuthFlow({
     return withSwipeBack(
       <AboutScreen
         onBack={goBack}
-        onContinue={() => setRoute({ name: "consents" })}
+        onContinue={(birthDate, gender) => {
+          setRoute({ name: "consents" });
+          void onSaveProfile({ birthDate: toIsoDate(birthDate), gender });
+        }}
         onUnderAge={() => setRoute({ name: "ageRestriction" })}
       />
     );
@@ -154,7 +165,10 @@ export function AuthFlow({
         values={measurements}
         onChange={setMeasurements}
         onBack={goBack}
-        onContinue={() => setRoute({ name: "dataSource" })}
+        onContinue={() => {
+          setRoute({ name: "dataSource" });
+          void onSaveProfile({ medicalProfile: { bodyMeasurements: measurements } });
+        }}
       />
     );
   }
@@ -208,6 +222,13 @@ function SwipeBackGesture({ children, onBack }: { children: ReactNode; onBack: (
       {children}
     </View>
   );
+}
+
+function toIsoDate(ddmmyyyy: string): string | null {
+  const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(ddmmyyyy);
+  if (!match) return null;
+  const [, day, month, year] = match;
+  return `${year}-${month}-${day}`;
 }
 
 function getPreviousRoute(route: AuthRoute): AuthRoute | null {

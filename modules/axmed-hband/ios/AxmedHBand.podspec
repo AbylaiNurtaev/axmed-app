@@ -14,14 +14,16 @@ Pod::Spec.new do |s|
   s.dependency 'FMDB', '2.6.2'
   s.dependency 'MJExtension', '3.0.15.1'
   s.source_files = '*.swift'
-  s.vendored_frameworks = 'Vendor/*.framework'
   s.frameworks = 'CoreBluetooth', 'UIKit'
   s.libraries = 'z', 'sqlite3', 'c++'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 
-  required = %w[VeepooBleSDK ABParTool DFUnits GRDFUSDK JLDialUnit JL_BLEKit ZipZap]
-  required.each do |name|
-    binary = File.join(__dir__, 'Vendor', "#{name}.framework", name)
-    raise "Missing HBand SDK: #{binary}. Run scripts/import-hband-sdk.ps1 first." unless File.file?(binary)
+  if ENV['AXMED_HBAND_SIMULATOR_STUB'] != '1'
+    s.vendored_frameworks = 'Vendor/*.framework'
+    required = %w[VeepooBleSDK ABParTool DFUnits GRDFUSDK JLDialUnit JL_BLEKit ZipZap]
+    required.each do |name|
+      binary = File.join(__dir__, 'Vendor', "#{name}.framework", name)
+      raise "Missing HBand SDK: #{binary}. Run scripts/import-hband-sdk.ps1 first." unless File.file?(binary)
+    end
   end
 end

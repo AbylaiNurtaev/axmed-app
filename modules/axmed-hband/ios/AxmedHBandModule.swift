@@ -1,5 +1,36 @@
 import CoreBluetooth
 import ExpoModulesCore
+
+#if targetEnvironment(simulator)
+
+public class AxmedHBandModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("AxmedHBand")
+    Events("onSnapshot", "onSyncProgress")
+
+    AsyncFunction("getSnapshot") {
+      self.snapshot()
+    }
+    AsyncFunction("startScan") {
+      self.sendEvent("onSnapshot", self.snapshot())
+    }
+    AsyncFunction("connect") { (_: String) in
+      throw NSError(domain: "AxmedHBand", code: 1, userInfo: [NSLocalizedDescriptionKey: "Bluetooth bracelet SDK is unavailable in iOS Simulator"])
+    }
+    AsyncFunction("cancelPending") {}
+    AsyncFunction("disconnect") {}
+    AsyncFunction("syncData") { (_: String, promise: Promise) in
+      promise.reject("simulatorUnsupported", "Bluetooth bracelet sync is unavailable in iOS Simulator")
+    }
+  }
+
+  private func snapshot() -> [String: Any] {
+    ["phase": "idle", "devices": [], "errorCode": "simulatorUnsupported"]
+  }
+}
+
+#else
+
 import VeepooBleSDK
 
 // Foreground-only MVP. All SDK access and mutable state are confined to main.
@@ -435,3 +466,5 @@ public class AxmedHBandModule: Module {
     sendEvent("onSyncProgress", ["requestId": requestID, "stage": stage, "progress": progress])
   }
 }
+
+#endif

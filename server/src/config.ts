@@ -27,7 +27,11 @@ const environmentSchema = z.object({
   SMTP_SECURE: booleanFromString,
   SMTP_USER: z.string().default(""),
   SMTP_PASSWORD: z.string().default(""),
-  SMTP_FROM: z.string().default("AxMed <no-reply@example.com>")
+  SMTP_FROM: z.string().default("AxMed <no-reply@example.com>"),
+  AWS_ACCESS_KEY: z.string().default(""),
+  AWS_SECRET_KEY: z.string().default(""),
+  AWS_BUCKET_NAME: z.string().default(""),
+  AWS_S3_REGION: z.string().default("")
 });
 
 const parsed = environmentSchema.safeParse(process.env);

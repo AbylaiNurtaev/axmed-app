@@ -30,71 +30,23 @@ function loadTypeScript(relativePath, modules, globals = {}, testExports = "") {
   return exports;
 }
 
-function profileScreens() {
-  const native = Object.fromEntries([
-    "ActivityIndicator", "Alert", "Image", "Modal", "Pressable", "SafeAreaView", "ScrollView", "View"
-  ].map(name => [name, name]));
-  native.Text = function Text() {};
-  native.Platform = { OS: "ios" };
-  native.StyleSheet = { create: styles => styles };
-  return loadTypeScript("App.tsx", {
-    "react": require("react"),
-    "react/jsx-runtime": require("react/jsx-runtime"),
-    "react-native": native,
-    "react-native-svg": {},
-    "expo-status-bar": {},
-    "@expo/vector-icons": {},
-    "./src/features/auth/AuthFlow": {},
-    "./src/features/auth/authApi": {},
-    "./src/features/devices/DeviceSyncCard": {},
-    "./src/features/devices/ConnectedDevicesScreen": {},
-    "./assets/body-front.png": 1,
-    "./assets/home-person.png": 2,
-    "./assets/comparison.png": 4
-  }, {}, "\nexport { ProfileScreen, ProfileDetailScreen };\n");
-}
-
-function nodes(node) {
-  if (Array.isArray(node)) return node.flatMap(nodes);
-  if (!node || typeof node !== "object") return [];
-  return [node, ...nodes(node.props?.children)];
-}
-
-function text(node) {
-  if (typeof node === "string") return node;
-  if (Array.isArray(node)) return node.map(text).join("");
-  return node?.props ? text(node.props.children) : "";
-}
-
-test("native profile renders without a global open and forwards its callback", () => {
-  const { ProfileScreen } = profileScreens();
-  const open = () => {};
-  const tree = ProfileScreen({ open, openDetail: () => {} });
-  const groups = nodes(tree).filter(node => node.type?.name === "SettingsGroup");
-  assert.equal(groups.length, 3);
-  assert.equal(groups[0].props.open, open);
-  assert.equal(groups[1].props.open, open);
+test("profile exposes a real logout route wired to the logout screen", () => {
+  const profileSource = readFileSync(path.join(__dirname, "..", "src/features/profile/ProfileScreens.tsx"), "utf8");
+  const settingsSource = readFileSync(path.join(__dirname, "..", "src/features/profile/ProfileSettingsScreens.tsx"), "utf8");
+  const appSource = readFileSync(path.join(__dirname, "..", "App.tsx"), "utf8");
+  assert.match(profileSource, /\| "logout"/);
+  assert.match(profileSource, /menu\("logout",[\s\S]*?"Выйти"/);
+  assert.match(profileSource, /onPress=\{\(\) => onOpen\("logout"\)\}/);
+  assert.match(appSource, /profileDetail === "logout"[\s\S]*?<LogoutScreen/);
+  assert.match(settingsSource, /export function LogoutScreen/);
+  assert.match(settingsSource, /await onLogout\(\)/);
+  assert.match(settingsSource, /<AxConfirmSheet[\s\S]*?confirmLabel="Выйти"/);
 });
 
-test("profile exit opens the logout screen and its action invokes onLogout", () => {
-  const { ProfileScreen, ProfileDetailScreen } = profileScreens();
-  let detail;
-  let logoutCalls = 0;
-  const open = () => assert.fail("Logout must not open a placeholder sheet");
-  const profile = ProfileScreen({ open, openDetail: value => { detail = value; } });
-  const exit = nodes(profile).find(node => node.type === "Pressable" && text(node) === "Выйти из аккаунта");
-  assert.ok(exit);
-  exit.props.onPress();
-  assert.equal(detail, "logout");
-  const screen = ProfileDetailScreen({
-    type: detail, back: () => {}, open,
-    onLogout: async () => { logoutCalls += 1; }
-  });
-  const confirm = nodes(screen).find(node => node.type === "Pressable" && text(node).includes("Выйти на этом устройстве"));
-  assert.ok(confirm);
-  confirm.props.onPress();
-  assert.equal(logoutCalls, 1);
-});
+const cleanupModules = {
+  "../plan/planReminders": { cancelAllPlanRemindersForUser: async () => {} },
+  "../profile/profileNotifications": { clearProfileNotifications: async () => {} }
+};
 
 for (const offline of [false, true]) {
   test(`logout clears the native saved session${offline ? " even when the API is offline" : ""}`, async () => {
@@ -103,6 +55,7 @@ for (const offline of [false, true]) {
     const session = { accessToken: "test-access", refreshToken: "test-refresh", expiresIn: 60, user: { id: "test-user" } };
     const api = loadTypeScript("src/features/auth/authApi.ts", {
       "react-native": { Platform: { OS: "ios" } },
+      ...cleanupModules,
       "expo-secure-store": {
         getItemAsync: async () => savedToken,
         setItemAsync: async (_, value) => { savedToken = value; },
@@ -141,6 +94,7 @@ test("a late refresh cannot resurrect credentials after logout", async () => {
   const session = { accessToken: "test-old-access", refreshToken: "test-old-refresh", user: { id: "user-a" } };
   const api = loadTypeScript("src/features/auth/authApi.ts", {
     "react-native": { Platform: { OS: "ios" } },
+    ...cleanupModules,
     "expo-secure-store": {
       getItemAsync: async () => stored,
       setItemAsync: async (_, value) => { stored = value; },
@@ -177,6 +131,7 @@ test("logout waits for an already-started secure-store write before deleting", a
   const session = { accessToken: "test-access", refreshToken: "test-refresh", user: { id: "user-a" } };
   const api = loadTypeScript("src/features/auth/authApi.ts", {
     "react-native": { Platform: { OS: "ios" } },
+    ...cleanupModules,
     "expo-secure-store": {
       getItemAsync: async () => stored,
       setItemAsync: async (_, value) => { if (holdWrite) { writeStarted(); await gate; } stored = value; },

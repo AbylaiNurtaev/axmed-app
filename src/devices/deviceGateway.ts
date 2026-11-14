@@ -10,3 +10,8 @@ deviceGateway.register(new ConnectionAdapter(
   Platform.OS === "ios" ? requireOptionalNativeModule<ConnectionTransport>("AxmedHBand") : null,
   Platform.OS === "ios" ? "nativeBuildRequired" : "iosOnly"
 ));
+deviceGateway.register(new ConnectionAdapter(
+  "lefu-scale", "scale",
+  Platform.OS === "ios" ? requireOptionalNativeModule<ConnectionTransport>("AxmedLefuScale") : null,
+  Platform.OS === "ios" ? "nativeBuildRequired" : "iosOnly"
+));

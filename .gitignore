@@ -11,6 +11,7 @@ yarn-error.log*
 .env.*
 !.env.example
 modules/axmed-hband/ios/Vendor/
+ios.generated-broken-*/
 # Local credentials, signing material and generated installation artifacts.
 credentials.json
 *.p8

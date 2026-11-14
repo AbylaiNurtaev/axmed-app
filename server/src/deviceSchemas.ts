@@ -4,20 +4,30 @@ const id = z.string().min(1).max(160);
 const units = { steps: "count", heartRate: "bpm", sleepDuration: "min", weight: "kg",
   distance: "km", activeCalories: "kcal", oxygenSaturation: "percent", bloodPressureSystolic: "mmHg",
   bloodPressureDiastolic: "mmHg", bodyTemperature: "celsius", hrv: "ms", stress: "score", met: "MET",
-  sleepDeep: "min", sleepLight: "min", sleepRem: "min", sleepAwake: "min" } as const;
+  sleepDeep: "min", sleepLight: "min", sleepRem: "min", sleepAwake: "min",
+  bodyFatPercentage: "percent", muscleMass: "kg", bodyWaterPercentage: "percent", proteinPercentage: "percent",
+  visceralFatLevel: "score", boneMass: "kg", basalMetabolicRate: "kcal", metabolicAge: "years", bodyScore: "score",
+  leftArmFatPercentage: "percent", rightArmFatPercentage: "percent", leftLegFatPercentage: "percent",
+  rightLegFatPercentage: "percent", trunkFatPercentage: "percent", leftArmMuscleMass: "kg",
+  rightArmMuscleMass: "kg", leftLegMuscleMass: "kg", rightLegMuscleMass: "kg", trunkMuscleMass: "kg" } as const;
 const ranges: Record<keyof typeof units, [number, number]> = {
   steps: [0, 100000], heartRate: [20, 300], sleepDuration: [1, 1440], weight: [0.1, 1000],
   distance: [0, 1000], activeCalories: [0, 30000], oxygenSaturation: [1, 100],
   bloodPressureSystolic: [30, 300], bloodPressureDiastolic: [10, 200], bodyTemperature: [20, 50],
-  hrv: [1, 500], stress: [0, 100], met: [0.1, 30], sleepDeep: [0, 1440], sleepLight: [0, 1440], sleepRem: [0, 1440], sleepAwake: [0, 1440]
+  hrv: [1, 500], stress: [0, 100], met: [0.1, 30], sleepDeep: [0, 1440], sleepLight: [0, 1440], sleepRem: [0, 1440], sleepAwake: [0, 1440],
+  bodyFatPercentage: [1, 75], muscleMass: [0.1, 300], bodyWaterPercentage: [1, 80], proteinPercentage: [1, 40],
+  visceralFatLevel: [1, 30], boneMass: [0.1, 20], basalMetabolicRate: [300, 6000], metabolicAge: [5, 120], bodyScore: [0, 100],
+  leftArmFatPercentage: [1, 75], rightArmFatPercentage: [1, 75], leftLegFatPercentage: [1, 75],
+  rightLegFatPercentage: [1, 75], trunkFatPercentage: [1, 75], leftArmMuscleMass: [0.1, 300],
+  rightArmMuscleMass: [0.1, 300], leftLegMuscleMass: [0.1, 300], rightLegMuscleMass: [0.1, 300], trunkMuscleMass: [0.1, 300]
 };
 export const readingSchema = z.object({
   sourceRecordId: id,
   metric: z.enum(Object.keys(units) as [keyof typeof units, ...(keyof typeof units)[]]),
   value: z.number().finite().min(0).max(100000),
-  unit: z.enum(["count", "bpm", "min", "kg", "km", "kcal", "percent", "mmHg", "celsius", "ms", "score", "MET"]),
+  unit: z.enum(["count", "bpm", "min", "kg", "km", "kcal", "percent", "mmHg", "celsius", "ms", "score", "MET", "years"]),
   aggregation: z.enum(["mean", "dailyTotal"]).optional(),
-  origin: z.enum(["automatic", "manual"]).optional(),
+  origin: z.enum(["automatic", "manual", "mock"]).optional(),
   recordedAt: z.iso.datetime(),
   periodEnd: z.iso.datetime().optional(),
   localDate: z.iso.date()

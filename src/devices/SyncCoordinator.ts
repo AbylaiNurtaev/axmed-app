@@ -7,10 +7,12 @@ export type SyncSnapshot = {
   batch?: DeviceSyncBatch;
   saved: boolean;
   error?: string;
+  liveValue?: number;
 };
 export interface SyncPersistence {
   save(batch: DeviceSyncBatch, signal: AbortSignal): Promise<void>;
   load(signal: AbortSignal): Promise<DeviceSyncBatch | null>;
+  prepare?(batch: DeviceSyncBatch, previous?: DeviceSyncBatch): DeviceSyncBatch;
 }
 
 // SDK-independent synchronization lifecycle. Only this coordinator owns an
@@ -54,17 +56,28 @@ export class SyncCoordinator {
     if (hadOwner) void this.adapter.disconnect();
     if (userId) void this.restore();
   }
-  private async restore() {
+  private async restore(reportError = false) {
     const epoch = this.epoch;
     const controller = new AbortController();
     this.abort = controller;
     try {
       const batch = await this.persistence.load(controller.signal);
-      if (epoch === this.epoch && batch) this.publish({ batch, saved: true });
-    } catch { /* Cached readings are optional; a fresh sync remains available. */ }
+      if (epoch === this.epoch) this.publish(batch ? { batch, saved: true, phase: "complete", error: undefined } : { phase: "idle", error: undefined });
+    } catch (error) {
+      if (reportError && epoch === this.epoch) {
+        const code = error && typeof error === "object" && "code" in error ? String(error.code) : error instanceof Error ? error.message : "syncFailed";
+        this.publish({ phase: "error", error: code });
+      }
+      // Initial cached readings are optional; manual refresh reports its error.
+    }
   }
   sync = (): Promise<void> => this.run(false);
   retrySave = (): Promise<void> => this.run(true);
+  refresh = (): Promise<void> => {
+    if (this.inFlight) return this.inFlight;
+    if (!this.owner) { this.publish({ phase: "error", error: "authRequired" }); return Promise.resolve(); }
+    return this.restore(true);
+  };
 
   private run(saveOnly: boolean): Promise<void> {
     if (this.inFlight) return this.inFlight;
@@ -80,14 +93,15 @@ export class SyncCoordinator {
         if (epoch !== this.epoch) return;
         let batch = saveOnly ? this.snapshot.batch : undefined;
         if (!saveOnly) {
-          this.publish({ phase: "reading", stage: "battery", progress: 0, error: undefined });
+          this.publish({ phase: "reading", stage: "battery", progress: 0, error: undefined, liveValue: undefined });
           this.removeProgress = this.adapter.subscribeSyncProgress?.(progress => {
             if (epoch === this.epoch && progress.requestId === requestId) {
-              this.publish({ stage: progress.stage, progress: Math.max(0, Math.min(100, progress.progress)) });
+              this.publish({ stage: progress.stage, progress: Math.max(0, Math.min(100, progress.progress)), liveValue: progress.value });
             }
           });
           if (!this.adapter.syncData) throw new Error("syncBuildRequired");
-          batch = await this.adapter.syncData(requestId);
+          const nativeBatch = await this.adapter.syncData(requestId);
+          batch = this.persistence.prepare?.(nativeBatch, this.snapshot.batch) ?? nativeBatch;
           if (epoch !== this.epoch) return;
           this.publish({ batch, saved: false });
         }
@@ -120,7 +134,7 @@ export class SyncCoordinator {
     this.removeProgress = undefined;
     this.inFlight = undefined;
     const wasReading = this.snapshot.phase === "reading";
-    this.publish({ phase: "idle", progress: 0, error: undefined });
+    this.publish({ phase: "idle", progress: 0, error: undefined, liveValue: undefined });
     if (wasReading) await this.adapter.disconnect();
   };
 }
