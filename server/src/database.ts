@@ -59,6 +59,34 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 CREATE INDEX IF NOT EXISTS refresh_tokens_user_idx ON refresh_tokens (user_id);
 ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS last_seen_at timestamptz NOT NULL DEFAULT now();
 
+CREATE TABLE IF NOT EXISTS login_attempts (
+  subject_hash char(64) PRIMARY KEY,
+  failures integer NOT NULL DEFAULT 0,
+  window_started_at timestamptz NOT NULL DEFAULT now(),
+  blocked_until timestamptz
+);
+CREATE TABLE IF NOT EXISTS password_reset_requests (
+  subject_hash char(64) PRIMARY KEY,
+  window_started_at timestamptz NOT NULL DEFAULT now(),
+  send_count integer NOT NULL DEFAULT 0,
+  verify_attempts integer NOT NULL DEFAULT 0,
+  last_sent_at timestamptz
+);
+CREATE TABLE IF NOT EXISTS password_reset_challenges (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code_hash char(64) NOT NULL,
+  expires_at timestamptz NOT NULL,
+  attempts integer NOT NULL DEFAULT 0,
+  verified_at timestamptz,
+  token_hash char(64),
+  token_expires_at timestamptz,
+  consumed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS password_reset_user_idx ON password_reset_challenges (user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS password_reset_token_idx ON password_reset_challenges (token_hash) WHERE token_hash IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS health_devices (
   id uuid PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,

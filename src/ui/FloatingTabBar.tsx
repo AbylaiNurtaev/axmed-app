@@ -13,7 +13,9 @@ export type AxTabItem<T extends string> = { key: T; label: string; icon: IconNam
 export function FloatingTabBar<T extends string>({ items, active, onChange, forceLight = false }: { items: ReadonlyArray<AxTabItem<T>>; active: T; onChange: (value: T) => void; forceLight?: boolean }) {
   const [width, setWidth] = useState(0);
   const theme = useAxTheme();
-  const colors = forceLight ? axLightColors : theme.colors;
+  const colors = forceLight
+    ? { ...axLightColors, green: "#111111", muted: "#6B6B6B", line: "#E3E3E3" }
+    : theme.colors;
   const index = Math.max(0, items.findIndex(item => item.key === active));
   const translateX = useSharedValue(0);
   const reduceMotion = useAxReducedMotion();
@@ -24,7 +26,7 @@ export function FloatingTabBar<T extends string>({ items, active, onChange, forc
   }, [cellWidth, index, reduceMotion, translateX]);
   const indicatorStyle = useAnimatedStyle(() => ({ width: Math.max(0, cellWidth), transform: [{ translateX: translateX.value }] }));
   const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
-  return <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.line }]} onLayout={onLayout}>
+  return <View accessibilityRole="tablist" style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.line }]} onLayout={onLayout}>
     {cellWidth > 0 ? <Animated.View pointerEvents="none" style={[styles.indicator, { backgroundColor: colors.green }, indicatorStyle]} /> : null}
     {items.map(item => {
       const selected = item.key === active;

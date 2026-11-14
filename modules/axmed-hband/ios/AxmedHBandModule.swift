@@ -61,6 +61,7 @@ public class AxmedHBandModule: Module {
     Events("onSnapshot", "onSyncProgress")
 
     AsyncFunction("getSnapshot") { self.snapshot() }.runOnQueue(.main)
+    AsyncFunction("getDeviceDiagnostics") { self.deviceDiagnostics() }.runOnQueue(.main)
     AsyncFunction("startScan") { self.startScan() }.runOnQueue(.main)
     AsyncFunction("connect") { (id: String) in self.connect(id) }.runOnQueue(.main)
     AsyncFunction("cancelPending") { self.cancelPending() }.runOnQueue(.main)
@@ -279,6 +280,53 @@ public class AxmedHBandModule: Module {
   }
 
   private func emit() { sendEvent("onSnapshot", snapshot()) }
+
+  // Read only the SDK metadata populated by the completed device handshake.
+  // Keep vendor values raw: zero has different meanings for different features.
+  // This neither starts measurements nor changes automatic monitoring settings.
+  private func deviceDiagnostics() -> [String: Any] {
+    var result: [String: Any] = [
+      "diagnosticsVersion": 1, "moduleSyncVersion": 2, "phase": phase,
+      "capturedAt": ISO8601DateFormatter().string(from: Date()), "available": false
+    ]
+    guard phase == "connected", let manager, let peripheral = manager.peripheralManage,
+          let device = manager.peripheralModel, device.peripheral?.state == .connected,
+          let selectedID, device.peripheral?.identifier.uuidString == selectedID else { return result }
+    result["available"] = true
+    result["name"] = device.deviceName ?? ""
+    result["firmwareVersion"] = device.deviceVersion ?? ""
+    result["firmwareTestVersion"] = device.deviceTestVersion ?? ""
+    result["historyCapacityDays"] = Int(device.saveDays)
+    result["featureTypes"] = [
+      "heartRate": Int(device.heartRateType), "bloodPressure": Int(device.bloodPressureType),
+      "oxygen": Int(device.oxygenType), "bloodOxygen": Int(device.bloodOxygenType),
+      "hrv": Int(device.hrvType), "sleep": Int(device.sleepType), "ecg": Int(device.ecgType),
+      "respiratoryRate": Int(device.resRateType), "temperature": Int(device.temperatureType),
+      "bloodGlucose": Int(device.bloodGlucoseType), "bloodComposition": Int(device.bloodAnalysisType),
+      "bodyComposition": Int(device.bodyCompositionType), "met": Int(device.metType),
+      "stress": Int(device.stressType), "gsr": Int(device.gsrType),
+      "emotion": Int(device.emotionType), "fatigue": Int(device.fatigueLevelType),
+      "healthGlance": Int(device.healthGlanceType), "automaticMonitoring": Int(device.autoMonitSwitchType),
+      "sport": Int(device.runningType), "sportStorageCount": Int(device.runningSaveTimes)
+    ]
+    result["manualTestTypesMask"] = peripheral.supportManualTestType.rawValue
+    result["hrvSupportsAllDay"] = device.hrvSupportAllDay
+    result["oxygenAutomaticDetectionState"] = Int(device.oxygenAutoDetectType)
+    result["wearMonitoringState"] = Int(device.wearMonitoringState)
+    // Preserve missing packets as missing, not as a negative capability result.
+    let packets: [(String, Data?)] = [
+      ("functions1", device.deviceFuctionData), ("functions2", device.deviceFuctionDataTwo),
+      ("functions3", device.deviceFuctionDataThird), ("functions4", device.deviceFuctionDataFour),
+      ("functions5", device.deviceFuctionDataFive),
+      ("switches1", device.deviceSwitchData), ("switches2", device.deviceSwitchTwoData)
+    ]
+    var packetHex: [String: String] = [:]
+    for (name, data) in packets {
+      if let data, !data.isEmpty { packetHex[name] = data.map { String(format: "%02X", $0) }.joined() }
+    }
+    result["vendorPacketsHex"] = packetHex
+    return result
+  }
 
   private func syncData(_ requestID: String, promise: Promise) {
     guard syncPromise == nil else { promise.reject("syncBusy", "Synchronization is already running"); return }

@@ -42,6 +42,7 @@ export function AxThemeProvider({ preference, textSize = "standard", reduceMotio
   highContrast?: boolean;
 }>) {
   useEffect(() => {
+    if (typeof Appearance.setColorScheme !== "function") return;
     const setScheme = Appearance.setColorScheme as (scheme: "light" | "dark" | null) => void;
     setScheme(preference === "system" ? null : preference);
     return () => setScheme(null);

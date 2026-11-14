@@ -23,6 +23,7 @@
     "api:test:plan": "cd server && node --import tsx --test --test-concurrency=1 --test-force-exit tests/plan.integration.ts",
     "api:test:profile": "cd server && node --import tsx --test --test-concurrency=1 --test-force-exit tests/profile.integration.ts",
     "api:test:security": "cd server && node --import tsx --test --test-concurrency=1 --test-force-exit tests/security.integration.ts",
+    "api:test:password-recovery": "node scripts/test-password-recovery.mjs",
     "devices:test-api": "npm run test:devices --prefix server",
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down"

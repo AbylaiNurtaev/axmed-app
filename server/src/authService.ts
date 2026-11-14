@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { config } from "./config.js";
 import { inTransaction, query } from "./database.js";
@@ -16,6 +16,9 @@ import {
   type SessionResponse
 } from "./security.js";
 import { verifySocialIdentity } from "./social.js";
+import { clearLoginAttempts, lockLoginAttempts, loginPause, loginPolicy } from "./loginThrottle.js";
+
+const dummyPasswordHash = hashPassword(randomBytes(32).toString("hex"));
 
 type UserRow = {
   id: string;
@@ -150,19 +153,30 @@ export async function verifyEmail(email: string, code: string, metadata: Request
 }
 
 export async function loginWithEmail(email: string, password: string, metadata: RequestMetadata) {
-  const result = await query<UserRow>("SELECT * FROM users WHERE email = $1", [email]);
-  const user = result.rows[0];
-  const passwordHash = user?.password_hash ?? await hashPassword("invalid-password-0");
-  const valid = await verifyPassword(password, passwordHash);
-
-  if (!user || !user.password_hash || !valid) {
-    throw new ApiError(401, "INVALID_CREDENTIALS", "Неверный email или пароль.");
-  }
-  if (!user.email_verified_at) {
-    throw new ApiError(403, "EMAIL_NOT_VERIFIED", "Сначала подтвердите email.");
-  }
-
-  return inTransaction((client) => createSession(client, toPublicUser(user), metadata));
+  const outcome = await inTransaction(async client => {
+    const attempts = await lockLoginAttempts(client, email);
+    const now = Date.now();
+    if (attempts.blocked_until && attempts.blocked_until.getTime() > now) {
+      return { error: loginPause(attempts.blocked_until) } as const;
+    }
+    const freshWindow = Boolean(attempts.blocked_until) || now - attempts.window_started_at.getTime() >= loginPolicy.windowMs;
+    const result = await client.query<UserRow>("SELECT * FROM users WHERE email = $1 FOR UPDATE", [email]);
+    const user = result.rows[0];
+    const valid = await verifyPassword(password, user?.password_hash ?? await dummyPasswordHash);
+    if (!user?.password_hash || !valid) {
+      const failures = (freshWindow ? 0 : attempts.failures) + 1;
+      const until = failures >= loginPolicy.attempts ? new Date(now + loginPolicy.pauseMs) : null;
+      await client.query(`UPDATE login_attempts SET failures = $2, blocked_until = $3,
+        window_started_at = CASE WHEN $4 THEN now() ELSE window_started_at END WHERE subject_hash = $1`,
+        [attempts.key, failures, until, freshWindow]);
+      return { error: until ? loginPause(until) : new ApiError(401, "INVALID_CREDENTIALS", "Неверный email или пароль.") } as const;
+    }
+    await clearLoginAttempts(client, attempts.key);
+    if (!user.email_verified_at) return { error: new ApiError(403, "EMAIL_NOT_VERIFIED", "Сначала подтвердите email.") } as const;
+    return createSession(client, toPublicUser(user), metadata);
+  });
+  if ("error" in outcome) throw outcome.error;
+  return outcome;
 }
 
 export async function authenticateSocial(
@@ -224,6 +238,10 @@ export async function authenticateSocial(
 
 export async function rotateRefreshToken(refreshToken: string, metadata: RequestMetadata) {
   const result = await inTransaction(async (client) => {
+    // Serialize refresh creation against password resets, which revoke all sessions.
+    const owner = await client.query<{ user_id: string }>("SELECT user_id FROM refresh_tokens WHERE token_hash = $1", [hashRefreshToken(refreshToken)]);
+    if (!owner.rows[0]) return null;
+    await client.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [owner.rows[0].user_id]);
     const tokenResult = await client.query<UserRow & { token_id: string; expires_at: Date; revoked_at: Date | null }>(
       `SELECT u.*, rt.id AS token_id, rt.expires_at, rt.revoked_at
        FROM refresh_tokens rt JOIN users u ON u.id = rt.user_id

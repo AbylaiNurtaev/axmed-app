@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { Gender } from "./types";
 import {
   AuthScaffold,
+  AuthHeader,
   InfoBanner,
   PageTitle,
   PrimaryButton,
@@ -11,7 +12,7 @@ import {
   StepHeader,
   Surface,
   authColors
-} from "./ui";
+} from "./onboardingUi";
 
 export function AboutScreen({
   onBack,
@@ -51,20 +52,21 @@ export function AboutScreen({
 
       <Text style={styles.fieldLabel}>Дата рождения</Text>
       <View style={[styles.dateField, !!error && styles.dateFieldError]}>
-        <Ionicons name="calendar-outline" size={27} color={authColors.text} />
+        <Ionicons name="calendar-outline" size={21} color={authColors.muted} />
         <TextInput
           accessibilityLabel="Дата рождения"
           keyboardType="number-pad"
           maxLength={10}
           onChangeText={(value) => { setBirthDate(formatBirthDate(value)); if (error) setError(""); }}
           placeholder="ДД.ММ.ГГГГ"
-          placeholderTextColor="#A6AEBA"
+          placeholderTextColor="#777777"
+          selectionColor={authColors.ink}
           style={styles.dateInput}
           value={birthDate}
         />
         {!!birthDate && (
-          <Pressable accessibilityLabel="Очистить дату" hitSlop={10} onPress={() => setBirthDate("")}>
-            <Ionicons name="close-circle" size={26} color="#C9CDD3" />
+          <Pressable accessibilityRole="button" accessibilityLabel="Очистить дату" hitSlop={10} onPress={() => setBirthDate("")}>
+            <Ionicons name="close-circle" size={26} color="#BBBBBB" />
           </Pressable>
         )}
       </View>
@@ -104,7 +106,7 @@ function GenderCard({
       onPress={onPress}
       style={[styles.genderCard, selected && styles.genderCardSelected]}
     >
-      <MaterialCommunityIcons name={icon} size={63} color={selected ? authColors.greenDark : "#565E6B"} />
+      <MaterialCommunityIcons name={icon} size={34} color={selected ? authColors.white : authColors.muted} />
       <Text style={[styles.genderText, selected && styles.genderTextSelected]}>{label}</Text>
     </Pressable>
   );
@@ -113,6 +115,7 @@ function GenderCard({
 export function AgeRestrictionScreen({ onFixDate, onExit }: { onFixDate: () => void; onExit: () => void }) {
   return (
     <AuthScaffold contentStyle={styles.restrictionContent}>
+      <AuthHeader onBack={onFixDate} />
       <View style={styles.restrictionMain}>
         <View style={styles.restrictionIcon}>
           <MaterialCommunityIcons name="account-lock-outline" size={62} color={authColors.danger} />
@@ -141,34 +144,26 @@ type ConsentKey = "terms" | "privacy" | "health";
 
 const consentItems: {
   key: ConsentKey;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
   title: string;
   description: string;
-  link: string;
   documentText: string;
 }[] = [
   {
     key: "terms",
-    icon: "file-document-outline",
     title: "Условия сервиса",
     description: "Правила использования AxMed",
-    link: "Условия сервиса",
     documentText: "AxMed помогает отслеживать показатели здоровья и получать персональные рекомендации.\n\nИспользуя приложение, вы соглашаетесь предоставлять данные, необходимые для работы сервиса, и использовать его только в законных целях.\n\nНе передавайте доступ к аккаунту другим людям. Условия могут обновляться — о важных изменениях мы сообщим в приложении."
   },
   {
     key: "privacy",
-    icon: "lock-outline",
     title: "Политика конфиденциальности",
     description: "Как мы защищаем ваши данные",
-    link: "Политика конфиденциальности",
     documentText: "Мы собираем данные, которые вы указываете в приложении, чтобы сохранять профиль, анализировать показатели и показывать рекомендации.\n\nМы не продаём персональные данные и не передаём их третьим лицам без законного основания или вашего согласия. Доступ к данным ограничен и защищён.\n\nВы можете запросить исправление или удаление своих данных через службу поддержки."
   },
   {
     key: "health",
-    icon: "heart-pulse",
     title: "Обработка данных о здоровье",
     description: "Согласие на анализ данных о здоровье",
-    link: "Обработка данных о здоровье",
     documentText: "Вы разрешаете AxMed обрабатывать сведения о самочувствии, измерениях и ответах в анкете для анализа динамики и подготовки персональных рекомендаций.\n\nРекомендации приложения не заменяют консультацию врача. При плохом самочувствии или резком ухудшении состояния обратитесь к медицинскому специалисту.\n\nСогласие можно отозвать через настройки профиля или службу поддержки."
   }
 ];
@@ -203,9 +198,6 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
                   onPress={() => openDocument(item)}
                   style={styles.consentDocument}
                 >
-                  <View style={styles.consentIcon}>
-                    <MaterialCommunityIcons name={item.icon} size={25} color={authColors.greenDark} />
-                  </View>
                   <View style={styles.consentCopy}>
                     <Text style={styles.consentTitle}>{item.title}</Text>
                     <Text style={styles.consentDescription}>{item.description}</Text>
@@ -223,15 +215,6 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
                   <Checkbox checked={checked[item.key]} />
                 </Pressable>
               </View>
-              <Pressable
-                accessibilityLabel={`Открыть документ: ${item.link}`}
-                accessibilityRole="link"
-                hitSlop={8}
-                onPress={() => openDocument(item)}
-                style={styles.consentDetails}
-              >
-                <Ionicons name="chevron-forward" size={22} color={authColors.text} />
-              </Pressable>
             </View>
           </Surface>
         ))}
@@ -247,7 +230,7 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
       </View>
 
       <Modal
-        animationType="slide"
+        animationType="none"
         onRequestClose={() => setActiveDocument(null)}
         transparent
         visible={!!activeDocument}
@@ -264,6 +247,7 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
               <Text style={styles.documentTitle}>{activeDocument?.title}</Text>
               <Pressable
                 accessibilityLabel="Закрыть"
+                accessibilityRole="button"
                 hitSlop={10}
                 onPress={() => setActiveDocument(null)}
                 style={styles.documentClose}
@@ -316,46 +300,44 @@ function calculateAge(value: string) {
 }
 
 const styles = StyleSheet.create({
-  fieldLabel: { color: authColors.ink, fontSize: 18, fontWeight: "700", marginBottom: 14 },
-  dateField: { height: 58, borderWidth: 1.5, borderColor: authColors.line, borderRadius: 15, paddingHorizontal: 17, flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: "rgba(255,255,255,0.96)" },
+  fieldLabel: { color: authColors.ink, fontSize: 12, fontWeight: "500", marginBottom: 8 },
+  dateField: { height: 56, borderWidth: 1, borderColor: authColors.line, borderRadius: 17, paddingHorizontal: 17, flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: "rgba(255,255,255,0.96)" },
   dateFieldError: { borderColor: authColors.danger },
-  dateInput: { flex: 1, height: "100%", color: authColors.ink, fontSize: 20 },
+  dateInput: { flex: 1, minWidth: 0, height: "100%", color: authColors.ink, fontSize: 16, outlineWidth: 0 },
   error: { color: authColors.danger, fontSize: 13, marginTop: 7 },
-  helper: { color: authColors.muted, fontSize: 14, marginTop: 12 },
-  genderLabel: { marginTop: 42 },
-  genderRow: { flexDirection: "row", gap: 14 },
-  genderCard: { flex: 1, minHeight: 138, borderWidth: 1.5, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", gap: 10 },
-  genderCardSelected: { borderColor: authColors.green, backgroundColor: "#F2FBF8" },
-  genderText: { color: "#565E6B", fontSize: 18 },
-  genderTextSelected: { color: authColors.greenDark, fontWeight: "600" },
+  helper: { color: authColors.muted, fontSize: 12, lineHeight: 18, marginTop: 9 },
+  genderLabel: { marginTop: 30 },
+  genderRow: { flexDirection: "row", gap: 12 },
+  genderCard: { flex: 1, minHeight: 112, borderWidth: 1, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", gap: 10 },
+  genderCardSelected: { borderColor: authColors.green, backgroundColor: "#111111" },
+  genderText: { color: "#6B6B6B", fontSize: 15 },
+  genderTextSelected: { color: authColors.white, fontWeight: "500" },
   flexSpacer: { flex: 1, minHeight: 28 },
   bottomAction: { marginTop: 20 },
-  restrictionContent: { justifyContent: "space-between", paddingTop: 72 },
-  restrictionMain: { alignItems: "stretch" },
-  restrictionIcon: { width: 126, height: 126, borderRadius: 63, backgroundColor: authColors.dangerSoft, alignSelf: "center", alignItems: "center", justifyContent: "center", marginBottom: 30 },
+  restrictionContent: { justifyContent: "space-between" },
+  restrictionMain: { flexGrow: 1, alignItems: "stretch", justifyContent: "center", paddingVertical: 28 },
+  restrictionIcon: { width: 96, height: 96, borderRadius: 30, backgroundColor: authColors.dangerSoft, alignSelf: "center", alignItems: "center", justifyContent: "center", marginBottom: 30 },
   restrictionActions: { gap: 14 },
   consentHeading: { marginBottom: -6 },
-  consentList: { gap: 8, marginBottom: 14 },
-  consentCard: { padding: 12, borderRadius: 16 },
+  consentList: { gap: 12, marginBottom: 14 },
+  consentCard: { padding: 16, borderRadius: 22 },
   consentRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   consentToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
   consentDocument: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
-  consentIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
   consentCopy: { flex: 1, minWidth: 0 },
-  consentTitle: { color: authColors.ink, fontSize: 14, lineHeight: 18, fontWeight: "700" },
+  consentTitle: { color: authColors.ink, fontSize: 14, lineHeight: 20, fontWeight: "500" },
   consentDescription: { color: authColors.text, fontSize: 12, lineHeight: 16, marginTop: 2 },
-  checkboxButton: { width: 32, height: 42, alignItems: "center", justifyContent: "center" },
-  consentDetails: { width: 28, height: 42, alignItems: "center", justifyContent: "center", marginRight: -5 },
-  checkbox: { width: 24, height: 24, borderRadius: 5, borderWidth: 1.5, borderColor: "#AEB6C1", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+  checkboxButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  checkbox: { width: 24, height: 24, borderRadius: 5, borderWidth: 1.5, borderColor: "#B5B5B5", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   checkboxChecked: { backgroundColor: authColors.greenDark, borderColor: authColors.greenDark },
   acceptAll: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 18, marginBottom: 16, paddingHorizontal: 2 },
   acceptAllText: { flex: 1, color: authColors.ink, fontSize: 13, lineHeight: 19, fontWeight: "600" },
-  consentActions: { gap: 6 },
-  documentOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(7,18,37,0.35)" },
-  documentSheet: { maxHeight: "82%", borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: authColors.white, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 24 },
-  documentHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: "#D6DCE2", alignSelf: "center", marginBottom: 16 },
+  consentActions: { marginTop: "auto", paddingTop: 20, gap: 6 },
+  documentOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.35)" },
+  documentSheet: { width: "100%", maxWidth: 480, alignSelf: "center", maxHeight: "82%", borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: authColors.white, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 24 },
+  documentHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: "#DCDCDC", alignSelf: "center", marginBottom: 16 },
   documentHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 },
-  documentTitle: { flex: 1, color: authColors.ink, fontSize: 22, lineHeight: 28, fontWeight: "800" },
+  documentTitle: { flex: 1, color: authColors.ink, fontSize: 22, lineHeight: 28, fontWeight: "500" },
   documentClose: { width: 40, height: 40, borderRadius: 20, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },
   documentBody: { color: authColors.text, fontSize: 15, lineHeight: 23, paddingBottom: 4 },
   documentAction: { marginTop: 16 }

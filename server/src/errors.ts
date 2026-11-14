@@ -5,7 +5,8 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly code: string,
-    message: string
+    message: string,
+    public readonly retryAfterSeconds?: number
   ) {
     super(message);
     this.name = "ApiError";
@@ -14,7 +15,9 @@ export class ApiError extends Error {
 
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
   if (error instanceof ApiError) {
-    response.status(error.status).json({ error: { code: error.code, message: error.message } });
+    if (error.retryAfterSeconds !== undefined) response.setHeader("Retry-After", error.retryAfterSeconds);
+    response.status(error.status).json({ error: { code: error.code, message: error.message,
+      ...(error.retryAfterSeconds !== undefined ? { retryAfterSeconds: error.retryAfterSeconds } : {}) } });
     return;
   }
 
