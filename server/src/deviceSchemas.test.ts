@@ -40,3 +40,16 @@ test("extended metrics keep exact units and reject raw/scaled/sentinel values", 
   assert.equal(readingSchema.safeParse({ ...reading, aggregation: "mean" }).success, false);
   assert.equal(readingSchema.safeParse({ ...reading, metric: "sleepDeep", unit: "min", value: 10 }).success, false);
 });
+
+test("temporary scale composition metrics use explicit units and mock provenance", () => {
+  const values = [
+    ["bodyFatPercentage", "percent", 22.8], ["muscleMass", "kg", 58.7], ["bodyWaterPercentage", "percent", 55.1],
+    ["proteinPercentage", "percent", 17.4], ["visceralFatLevel", "score", 8], ["boneMass", "kg", 3.2],
+    ["basalMetabolicRate", "kcal", 1742], ["metabolicAge", "years", 29], ["bodyScore", "score", 78],
+    ["leftArmFatPercentage", "percent", 20.8], ["rightArmMuscleMass", "kg", 3.42], ["trunkMuscleMass", "kg", 30.18]
+  ];
+  for (const [metric, unit, value] of values) {
+    assert.ok(readingSchema.safeParse({ ...reading, metric, unit, value, origin: "mock" }).success, String(metric));
+    assert.equal(readingSchema.safeParse({ ...reading, metric, unit: "min", value, origin: "mock" }).success, false);
+  }
+});

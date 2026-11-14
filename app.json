@@ -10,7 +10,7 @@
     },
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -20,7 +20,7 @@
       "appleTeamId": "SAZ93YMRD7",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSBluetoothAlwaysUsageDescription": "AxMed использует Bluetooth для поиска и подключения вашего фитнес-браслета."
+        "NSBluetoothAlwaysUsageDescription": "AxMed использует Bluetooth для поиска фитнес-браслета и получения измерений с весов."
       }
     },
     "android": {
@@ -39,7 +39,17 @@
         }
       ],
       "expo-secure-store",
-      "./plugins/with-fmdb-system-header"
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "AxMed использует выбранное фото только для обновления аватара профиля.",
+          "cameraPermission": "AxMed использует камеру, чтобы сделать фото профиля.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-notifications",
+      "./plugins/with-fmdb-system-header",
+      "expo-sharing"
     ]
   }
 }

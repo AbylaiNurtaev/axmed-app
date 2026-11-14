@@ -46,7 +46,12 @@ export class ConnectionAdapter implements DeviceAdapter {
     this.revision += 1;
     if (!this.transport) { this.fail(this.unavailableCode); return; }
     try { await operation(this.transport); }
-    catch { this.fail("nativeUnavailable"); }
+    catch (error) {
+      const code = error && typeof error === "object" && "code" in error
+        ? String(error.code)
+        : "nativeUnavailable";
+      this.fail(code === "Error" ? "nativeUnavailable" : code);
+    }
   }
   startScan = () => this.invoke(transport => transport.startScan());
   connect = (deviceId: string) => this.invoke(transport => transport.connect(deviceId));

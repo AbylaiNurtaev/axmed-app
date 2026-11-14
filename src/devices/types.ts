@@ -22,16 +22,20 @@ export interface DeviceAdapter {
 
 export type Metric = "steps" | "heartRate" | "sleepDuration" | "weight"
   | "distance" | "activeCalories" | "oxygenSaturation" | "bloodPressureSystolic" | "bloodPressureDiastolic"
-  | "bodyTemperature" | "hrv" | "stress" | "met" | "sleepDeep" | "sleepLight" | "sleepRem" | "sleepAwake";
+  | "bodyTemperature" | "hrv" | "stress" | "met" | "sleepDeep" | "sleepLight" | "sleepRem" | "sleepAwake"
+  | "bodyFatPercentage" | "muscleMass" | "bodyWaterPercentage" | "proteinPercentage"
+  | "visceralFatLevel" | "boneMass" | "basalMetabolicRate" | "metabolicAge" | "bodyScore"
+  | "leftArmFatPercentage" | "rightArmFatPercentage" | "leftLegFatPercentage" | "rightLegFatPercentage" | "trunkFatPercentage"
+  | "leftArmMuscleMass" | "rightArmMuscleMass" | "leftLegMuscleMass" | "rightLegMuscleMass" | "trunkMuscleMass";
 export type DeviceReading = {
   sourceRecordId: string;
   metric: Metric;
   value: number;
-  unit: "count" | "bpm" | "min" | "kg" | "km" | "kcal" | "percent" | "mmHg" | "celsius" | "ms" | "score" | "MET";
+  unit: "count" | "bpm" | "min" | "kg" | "km" | "kcal" | "percent" | "mmHg" | "celsius" | "ms" | "score" | "MET" | "years";
   // An array with no per-element times is a mean at the vendor record's time,
   // never an invented instantaneous reading. Old bridges omit this field.
   aggregation?: "mean" | "dailyTotal";
-  origin?: "automatic" | "manual";
+  origin?: "automatic" | "manual" | "mock";
   recordedAt: string;
   periodEnd?: string;
   localDate: string;
@@ -48,8 +52,9 @@ export type DeviceSyncBatch = {
   syncVersion?: number;
   warnings?: string[];
 };
-export type SyncStage = "battery" | "history" | "oxygen" | "hrv" | "temperature" | "manual" | "activity" | "complete";
-export type SyncProgress = { requestId: string; stage: SyncStage; progress: number };
+export type SyncStage = "battery" | "history" | "oxygen" | "hrv" | "temperature" | "manual" | "activity"
+  | "scalePreparing" | "scaleUnstable" | "scaleStable" | "scaleResult" | "complete";
+export type SyncProgress = { requestId: string; stage: SyncStage; progress: number; value?: number; unit?: "kg" };
 export interface SyncTransport {
   syncData(requestId: string): Promise<DeviceSyncBatch>;
   addListener(event: "onSyncProgress", listener: (progress: SyncProgress) => void): { remove(): void };

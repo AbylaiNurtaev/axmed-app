@@ -248,6 +248,62 @@ export async function revokeRefreshToken(refreshToken: string) {
   );
 }
 
+export type ActiveSession = {
+  id: string;
+  current: boolean;
+  device: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+};
+
+export async function listActiveSessions(userId: string, currentSessionId: string): Promise<ActiveSession[]> {
+  const result = await query<{ id: string; user_agent: string | null; created_at: Date; last_seen_at: Date; expires_at: Date }>(
+    `SELECT id, user_agent, created_at, last_seen_at, expires_at FROM refresh_tokens
+      WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > now()
+      ORDER BY last_seen_at DESC`, [userId]
+  );
+  return result.rows.map(row => ({
+    id: row.id,
+    current: row.id === currentSessionId,
+    device: sessionDevice(row.user_agent),
+    createdAt: row.created_at.toISOString(),
+    lastSeenAt: row.last_seen_at.toISOString(),
+    expiresAt: row.expires_at.toISOString()
+  }));
+}
+
+export async function changePassword(userId: string, currentSessionId: string, currentPassword: string, newPassword: string) {
+  const result = await query<{ password_hash: string | null }>("SELECT password_hash FROM users WHERE id = $1", [userId]);
+  const hash = result.rows[0]?.password_hash;
+  if (!hash) throw new ApiError(409, "PASSWORD_NOT_CONFIGURED", "Для этого способа входа пароль пока не настроен.");
+  if (!await verifyPassword(currentPassword, hash)) throw new ApiError(400, "CURRENT_PASSWORD_INVALID", "Текущий пароль указан неверно.");
+  const nextHash = await hashPassword(newPassword);
+  await inTransaction(async client => {
+    await client.query("UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1", [userId, nextHash]);
+    await client.query("UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND id <> $2 AND revoked_at IS NULL", [userId, currentSessionId]);
+  });
+}
+
+export async function revokeSession(userId: string, sessionId: string) {
+  const result = await query("UPDATE refresh_tokens SET revoked_at = COALESCE(revoked_at, now()) WHERE id = $1 AND user_id = $2 RETURNING id", [sessionId, userId]);
+  if (!result.rowCount) throw new ApiError(404, "SESSION_NOT_FOUND", "Сессия не найдена.");
+}
+
+export async function revokeAllSessions(userId: string) {
+  await query("UPDATE refresh_tokens SET revoked_at = COALESCE(revoked_at, now()) WHERE user_id = $1 AND revoked_at IS NULL", [userId]);
+}
+
+function sessionDevice(userAgent: string | null) {
+  if (!userAgent) return "Неизвестное устройство";
+  if (/iPhone|iOS/i.test(userAgent)) return "iPhone";
+  if (/iPad/i.test(userAgent)) return "iPad";
+  if (/Android/i.test(userAgent)) return "Android";
+  if (/Macintosh|Mac OS/i.test(userAgent)) return "Mac";
+  if (/Windows/i.test(userAgent)) return "Windows";
+  return userAgent.slice(0, 80);
+}
+
 function toPublicUser(user: UserRow): PublicUser {
   return {
     id: user.id,

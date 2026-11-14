@@ -51,11 +51,13 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   expires_at timestamptz NOT NULL,
   revoked_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
   user_agent text,
   ip_address text
 );
 
 CREATE INDEX IF NOT EXISTS refresh_tokens_user_idx ON refresh_tokens (user_id);
+ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS last_seen_at timestamptz NOT NULL DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS health_devices (
   id uuid PRIMARY KEY,
@@ -88,6 +90,8 @@ ALTER TABLE device_readings ADD COLUMN IF NOT EXISTS origin text;
 ALTER TABLE health_devices ADD COLUMN IF NOT EXISTS sync_version integer;
 ALTER TABLE health_devices ADD COLUMN IF NOT EXISTS sync_warnings jsonb;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date date;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS gender text CHECK (gender IS NULL OR gender IN ('male', 'female'));
@@ -114,8 +118,131 @@ CREATE TABLE IF NOT EXISTS profile_goals (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE profile_goals ADD COLUMN IF NOT EXISTS metric_key text NOT NULL DEFAULT 'custom';
+ALTER TABLE profile_goals ADD COLUMN IF NOT EXISTS start_value numeric(12, 2) NOT NULL DEFAULT 0;
+UPDATE profile_goals SET start_value = current_value WHERE start_value = 0 AND current_value <> 0;
+ALTER TABLE profile_goals ADD COLUMN IF NOT EXISTS frequency text NOT NULL DEFAULT 'daily';
+ALTER TABLE profile_goals ADD COLUMN IF NOT EXISTS reminder_enabled boolean NOT NULL DEFAULT false;
+ALTER TABLE profile_goals ADD COLUMN IF NOT EXISTS reminder_time text;
+ALTER TABLE profile_goals ADD COLUMN IF NOT EXISTS next_action text NOT NULL DEFAULT '';
+ALTER TABLE profile_goals ADD COLUMN IF NOT EXISTS description text NOT NULL DEFAULT '';
+ALTER TABLE profile_goals ADD COLUMN IF NOT EXISTS progress_source text NOT NULL DEFAULT 'manual';
+ALTER TABLE profile_goals ADD COLUMN IF NOT EXISTS source_recorded_at timestamptz;
+
+CREATE TABLE IF NOT EXISTS goal_checkins (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  goal_id uuid NOT NULL REFERENCES profile_goals(id) ON DELETE CASCADE,
+  completed_on date NOT NULL,
+  completed_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (goal_id, completed_on)
+);
+
 CREATE INDEX IF NOT EXISTS profile_goals_user_order_idx
   ON profile_goals (user_id, status, sort_order, created_at DESC);
+CREATE INDEX IF NOT EXISTS goal_checkins_user_date_idx
+  ON goal_checkins (user_id, completed_on DESC);
+
+CREATE TABLE IF NOT EXISTS plan_tasks (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  goal_id uuid REFERENCES profile_goals(id) ON DELETE SET NULL,
+  title text NOT NULL,
+  notes text NOT NULL DEFAULT '',
+  due_at timestamptz,
+  due_local_date date,
+  time_zone text NOT NULL DEFAULT 'UTC',
+  recurrence text NOT NULL DEFAULT 'none' CHECK (recurrence IN ('none', 'daily', 'weekdays', 'weekly', 'custom')),
+  recurrence_days jsonb NOT NULL DEFAULT '[]'::jsonb,
+  reminder_enabled boolean NOT NULL DEFAULT false,
+  reminder_minutes_before integer NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS plan_task_events (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  task_id uuid NOT NULL REFERENCES plan_tasks(id) ON DELETE CASCADE,
+  occurrence_date date NOT NULL,
+  status text NOT NULL CHECK (status IN ('completed', 'skipped')),
+  occurred_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (task_id, occurrence_date)
+);
+
+CREATE TABLE IF NOT EXISTS plan_habits (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  goal_id uuid REFERENCES profile_goals(id) ON DELETE SET NULL,
+  title text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  icon text NOT NULL DEFAULT 'leaf-outline',
+  color text NOT NULL DEFAULT '#237354',
+  schedule_type text NOT NULL DEFAULT 'daily' CHECK (schedule_type IN ('daily', 'weekdays', 'days', 'timesPerWeek', 'custom')),
+  schedule_days jsonb NOT NULL DEFAULT '[]'::jsonb,
+  target_per_week integer NOT NULL DEFAULT 7,
+  reminder_enabled boolean NOT NULL DEFAULT false,
+  reminder_time text,
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused', 'archived')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS plan_habit_events (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  habit_id uuid NOT NULL REFERENCES plan_habits(id) ON DELETE CASCADE,
+  local_date date NOT NULL,
+  status text NOT NULL CHECK (status IN ('completed', 'skipped')),
+  occurred_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (habit_id, local_date)
+);
+
+CREATE TABLE IF NOT EXISTS goal_activity_events (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  goal_id uuid NOT NULL REFERENCES profile_goals(id) ON DELETE CASCADE,
+  event_key text NOT NULL,
+  event_type text NOT NULL,
+  source text NOT NULL,
+  value numeric(12, 2),
+  unit text,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  occurred_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, event_key)
+);
+
+CREATE TABLE IF NOT EXISTS plan_point_events (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_key text NOT NULL,
+  event_type text NOT NULL,
+  source_type text NOT NULL,
+  source_id text NOT NULL,
+  points integer NOT NULL CHECK (points >= 0 AND points <= 1000),
+  local_date date NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  reversed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, event_key)
+);
+
+CREATE TABLE IF NOT EXISTS plan_achievements (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  achievement_key text NOT NULL,
+  unlocked_at timestamptz NOT NULL DEFAULT now(),
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  UNIQUE (user_id, achievement_key)
+);
+
+CREATE INDEX IF NOT EXISTS plan_tasks_user_date_idx ON plan_tasks (user_id, due_local_date, created_at DESC);
+CREATE INDEX IF NOT EXISTS plan_task_events_user_date_idx ON plan_task_events (user_id, occurrence_date DESC);
+CREATE INDEX IF NOT EXISTS plan_habits_user_idx ON plan_habits (user_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS plan_habit_events_user_date_idx ON plan_habit_events (user_id, local_date DESC);
+CREATE INDEX IF NOT EXISTS goal_activity_events_goal_idx ON goal_activity_events (goal_id, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS plan_point_events_user_date_idx ON plan_point_events (user_id, local_date DESC);
 `;
 
 export async function migrateDatabase() {

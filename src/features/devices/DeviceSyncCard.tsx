@@ -24,7 +24,9 @@ export function DeviceSyncCard({ onConnect, expanded = false }: { onConnect: () 
   const busy = sync.phase === "reading" || sync.phase === "saving";
   const unsaved = Boolean(sync.batch && !sync.saved);
   const stageLabels = { battery: "Читаем заряд", history: "Основная история", oxygen: "Кислород", hrv: "HRV",
-    temperature: "Температура", manual: "Ручные измерения", activity: "Активность", complete: "Чтение завершено" };
+    temperature: "Температура", manual: "Ручные измерения", activity: "Активность", complete: "Чтение завершено",
+    scalePreparing: "Подготавливаем весы", scaleUnstable: "Ожидаем устойчивый вес", scaleStable: "Вес зафиксирован",
+    scaleResult: "Результат получен" };
   const status = sync.phase === "reading"
     ? `${stageLabels[sync.stage ?? "history"]} · ${sync.progress}%`
     : sync.phase === "saving" ? "Сохраняем в аккаунте…"

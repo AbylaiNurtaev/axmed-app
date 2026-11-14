@@ -34,8 +34,10 @@ test("sync is single-flight, reports matching progress and saves only a complete
   const requestId = f.calls[0][1];
   f.emit({ requestId: "stale", progress: 90, stage: "history" });
   assert.equal(f.sync.getSnapshot().progress, 0);
-  f.emit({ requestId, progress: 40, stage: "history" });
+  f.emit({ requestId, progress: 40, stage: "scaleUnstable", value: 81.24, unit: "kg" });
   assert.equal(f.sync.getSnapshot().progress, 40);
+  assert.equal(f.sync.getSnapshot().stage, "scaleUnstable");
+  assert.equal(f.sync.getSnapshot().liveValue, 81.24);
   assert.equal(f.calls.filter(call => call[0] === "save").length, 0);
   f.read.resolve(batch);
   await first;

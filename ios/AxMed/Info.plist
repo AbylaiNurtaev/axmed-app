@@ -60,6 +60,8 @@
 	</dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>AxMed использует Bluetooth для поиска и подключения вашего фитнес-браслета.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>AxMed использует камеру, чтобы сделать фото профиля.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_expo._tcp</string>
@@ -68,6 +70,8 @@
 	<string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Expo Dev Launcher uses the local network to discover and connect to development servers running on your computer.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>AxMed использует выбранное фото только для обновления аватара профиля.</string>
 	<key>RCTMetroPort</key>
 	<string>$(RCT_METRO_PORT)</string>
 	<key>RCTNewArchEnabled</key>
@@ -94,8 +98,6 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>UIUserInterfaceStyle</key>
-	<string>Light</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 </dict>
