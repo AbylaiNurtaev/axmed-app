@@ -1,3 +1,4 @@
+import { deviceBindings } from "../../devices/deviceBindings";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useState, useSyncExternalStore } from "react";
@@ -39,8 +40,8 @@ export function ConnectedDevicesScreen({ onBack, startPairing = false }: { onBac
     if (!disconnect || busy) return;
     setBusy(true);
     try {
-      if (disconnect === "bracelet") { await deviceSync.cancel(); await bracelet.disconnect(); }
-      else { await scaleSync.cancel(); await scale.disconnect(); }
+      if (disconnect === "bracelet") { await deviceSync.cancel(); await deviceBindings.disconnect("fitness-band"); }
+      else { await scaleSync.cancel(); await deviceBindings.disconnect("scale"); }
       setNotice({ message: "Устройство отключено", tone: "success" });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setDisconnect(undefined);
@@ -51,7 +52,7 @@ export function ConnectedDevicesScreen({ onBack, startPairing = false }: { onBac
   return <View style={[styles.screen, { backgroundColor: colors.background }]}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}><AxIconButton icon="arrow-back" label="Назад" tone="neutral" onPress={onBack} /><View style={styles.flex}><Text accessibilityRole="header" style={[styles.title, { color: colors.ink }]}>Устройства</Text><Text style={[styles.subtitle, { color: colors.muted }]}>Подключение, диагностика и синхронизация</Text></View></View>
-      <View style={[styles.summary, { backgroundColor: colors.ink }]}><View><Text style={[styles.summaryLabel, { color: colors.muted }]}>Сейчас подключено</Text><Text style={[styles.summaryValue, { color: colors.white }]}>{connected} из 2</Text></View><View style={[styles.bluetoothBadge, { backgroundColor: connected ? colors.green : colors.surfaceMuted }]}><Ionicons name="bluetooth" size={18} color={connected ? colors.white : colors.muted} /><Text style={[styles.bluetoothText, { color: connected ? colors.white : colors.muted }]}>{connected ? "Активно" : "Ожидание"}</Text></View></View>
+      <View style={[styles.summary, { backgroundColor: "#111111" }]}><View><Text style={[styles.summaryLabel, { color: colors.muted }]}>Сейчас подключено</Text><Text style={[styles.summaryValue, { color: colors.white }]}>{connected} из 2</Text></View><View style={[styles.bluetoothBadge, { backgroundColor: connected ? colors.greenSoft : colors.surfaceMuted }]}><Ionicons name="bluetooth" size={18} color={connected ? colors.green : colors.muted} /><Text style={[styles.bluetoothText, { color: connected ? colors.green : colors.muted }]}>{connected ? "Активно" : "Ожидание"}</Text></View></View>
       <Text style={[styles.section, { color: colors.ink }]}>Ваши устройства</Text>
       <DeviceCard
         icon="watch-outline" title={selectedName(braceletConnection, braceletData.batch?.device.name, "Фитнес-браслет AxMed")}

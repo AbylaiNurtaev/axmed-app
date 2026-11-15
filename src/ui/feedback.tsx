@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState, type PropsWithChildren } from "react";
-import { AccessibilityInfo, findNodeHandle, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, findNodeHandle, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { AxButton, AxIconButton } from "./primitives";
 import { axColors, axMotion, axRadius, axSpace, axType } from "./tokens";
@@ -22,8 +22,8 @@ export function AxSnackbar({ visible, message, tone = "success", action, onActio
     return () => clearTimeout(timer);
   }, [action, message, visible]);
   if (!displayed) return null;
-  const color = tone === "error" ? colors.danger : tone === "neutral" ? colors.blue : colors.green;
-  return <Animated.View entering={FadeIn.duration(reduceMotion ? 0 : axMotion.standard)} exiting={FadeOut.duration(reduceMotion ? 0 : axMotion.quick)} style={[styles.snackbar, { backgroundColor: dark ? "#243029" : colors.ink }]} accessibilityRole="alert" accessibilityLabel={message} accessibilityLiveRegion="polite">
+  const color = colors.white;
+  return <Animated.View entering={FadeIn.duration(reduceMotion ? 0 : axMotion.standard)} exiting={FadeOut.duration(reduceMotion ? 0 : axMotion.quick)} style={[styles.snackbar, { backgroundColor: dark ? "#303030" : colors.ink }]} accessibilityRole="alert" accessibilityLabel={message} accessibilityLiveRegion="polite">
     <View style={[styles.snackbarIcon, { backgroundColor: `${color}20` }]}><Ionicons name={tone === "error" ? "alert-circle-outline" : tone === "neutral" ? "information-circle-outline" : "checkmark-circle-outline"} size={19} color={color} /></View>
     <Text maxFontSizeMultiplier={1.3} style={[styles.snackbarText, { color: colors.white }]}>{message}</Text>
     {action && onAction ? <Pressable accessibilityRole="button" accessibilityLabel={action} onPress={onAction} style={styles.snackbarActionHit}><Text maxFontSizeMultiplier={1.3} style={[styles.snackbarAction, { color }]}>{action}</Text></Pressable> : null}
@@ -35,7 +35,7 @@ export function AxBottomSheet({ visible, title, subtitle, onClose, children }: P
   const reduceMotion = useAxReducedMotion();
   const titleRef = useRef<Text>(null);
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || Platform.OS === "web") return;
     const timer = setTimeout(() => {
       const handle = findNodeHandle(titleRef.current);
       if (handle) AccessibilityInfo.setAccessibilityFocus(handle);

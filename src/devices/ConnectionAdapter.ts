@@ -17,7 +17,9 @@ export class ConnectionAdapter implements DeviceAdapter {
     this.unavailableCode = unavailableCode;
     if (transport) {
       // One native subscription for the app lifetime; screen subscriptions are removable.
-      this.nativeSubscription = transport.addListener("onSnapshot", snapshot => this.update(snapshot));
+      // Both native modules use this event name. Read this module's own state
+      // instead of trusting an event payload that may come from another emitter.
+      this.nativeSubscription = transport.addListener("onSnapshot", () => this.refreshNativeSnapshot());
       const revision = this.revision;
       void transport.getSnapshot().then(snapshot => {
         if (revision === this.revision) this.update(snapshot);
@@ -33,11 +35,24 @@ export class ConnectionAdapter implements DeviceAdapter {
   };
   private update(snapshot: ConnectionSnapshot) {
     this.revision += 1;
-    const hasSelectedDevice = snapshot.devices.some(device => device.id === snapshot.selectedDeviceId);
+    const devices = [...new Map(snapshot.devices
+      .filter(device => device.kind === this.kind && device.adapterId === this.id)
+      .map(device => [device.id, device])).values()];
+    const hasSelectedDevice = devices.some(device => device.id === snapshot.selectedDeviceId);
     this.snapshot = snapshot.phase === "connected" && !hasSelectedDevice
       ? { phase: "error", devices: [], errorCode: "invalidNativeState" }
-      : snapshot;
+      : { ...snapshot, devices };
     this.listeners.forEach(listener => listener());
+  }
+  private refreshNativeSnapshot() {
+    const transport = this.transport;
+    if (!transport) return;
+    const revision = ++this.revision;
+    void transport.getSnapshot().then(snapshot => {
+      if (revision === this.revision) this.update(snapshot);
+    }).catch(() => {
+      if (revision === this.revision) this.fail("nativeUnavailable");
+    });
   }
   private fail(errorCode: string) {
     this.update({ phase: "error", devices: this.snapshot.devices, errorCode });

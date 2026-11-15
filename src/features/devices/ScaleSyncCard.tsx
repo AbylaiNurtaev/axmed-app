@@ -1,3 +1,4 @@
+import { deviceBindings } from "../../devices/deviceBindings";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -51,7 +52,7 @@ export function ScaleSyncCard() {
 
   const startSearch = () => {
     setHasSearched(true);
-    void scale.startScan();
+    void deviceBindings.scan("scale");
   };
   const primaryAction = () => {
     if (busy) void scaleSync.cancel();
@@ -81,7 +82,7 @@ export function ScaleSyncCard() {
       key={device.id}
       accessibilityRole="button"
       accessibilityLabel="Выбрать умные весы"
-      onPress={() => void scale.connect(device.id)}
+      onPress={() => void deviceBindings.connect("scale", device.id)}
       style={({ pressed }) => [styles.device, pressed && styles.pressed]}
     >
       <Ionicons name="bluetooth" size={20} color={authColors.greenDark} />
@@ -103,7 +104,7 @@ export function ScaleSyncCard() {
       style={({ pressed }) => [styles.button, (searching || unavailable) && styles.disabled, pressed && styles.pressed]}>
       <Text style={styles.buttonText}>{primaryLabel}</Text>
     </Pressable>
-    {connected && !busy && <Pressable accessibilityRole="button" onPress={() => void scale.disconnect()} style={styles.disconnect}>
+    {connected && !busy && <Pressable accessibilityRole="button" onPress={() => void deviceBindings.disconnect("scale")} style={styles.disconnect}>
       <Text style={styles.disconnectText}>Отключить весы</Text>
     </Pressable>}
     <Text style={styles.note}>Вес считывается с устройства. Показатели состава тела пока демонстрационные и будут заменены расчётом LEFU; они не являются медицинским заключением.</Text>
@@ -111,19 +112,19 @@ export function ScaleSyncCard() {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: "#F7F6F1", borderRadius: 20, padding: 18, gap: 10, marginBottom: 18 },
+  card: { backgroundColor: "#F8F8F8", borderRadius: 20, padding: 18, gap: 10, marginBottom: 18 },
   heading: { flexDirection: "row", alignItems: "center", gap: 10 },
-  icon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#EAF5EF" },
+  icon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#F0F0F0" },
   copy: { flex: 1 },
   title: { color: authColors.ink, fontSize: 18, lineHeight: 24, fontWeight: "700" },
   secondary: { color: authColors.muted, fontSize: 12, lineHeight: 18 },
   weight: { color: authColors.ink, fontSize: 22, fontWeight: "700" },
   unit: { color: authColors.muted, fontSize: 12, fontWeight: "500" },
-  tip: { flexDirection: "row", alignItems: "flex-start", gap: 9, padding: 12, borderRadius: 14, backgroundColor: "#EAF5EF" },
+  tip: { flexDirection: "row", alignItems: "flex-start", gap: 9, padding: 12, borderRadius: 14, backgroundColor: "#F0F0F0" },
   tipText: { flex: 1, color: authColors.text, fontSize: 13, lineHeight: 19 },
   status: { flexDirection: "row", alignItems: "center", gap: 9, paddingVertical: 5 },
   statusText: { flex: 1, color: authColors.text, fontSize: 13, lineHeight: 19 },
-  success: { flexDirection: "row", alignItems: "center", gap: 8, padding: 11, borderRadius: 13, backgroundColor: "#EAF5EF" },
+  success: { flexDirection: "row", alignItems: "center", gap: 8, padding: 11, borderRadius: 13, backgroundColor: "#F0F0F0" },
   successText: { flex: 1, color: authColors.greenDark, fontSize: 12, lineHeight: 18, fontWeight: "600" },
   device: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: authColors.line, borderRadius: 15, padding: 12, backgroundColor: "#FFF" },
   deviceName: { color: authColors.ink, fontSize: 15, fontWeight: "600" },

@@ -1,6 +1,14 @@
 import { z } from "zod";
 
 const id = z.string().min(1).max(160);
+export const deviceBindingSchema = z.object({
+  id,
+  name: z.string().trim().min(1).max(120),
+  adapterId: z.enum(["hband", "lefu-scale"]),
+  kind: z.enum(["fitness-band", "scale"])
+}).strict().refine(device => device.adapterId === (device.kind === "scale" ? "lefu-scale" : "hband"),
+  "Adapter does not match device kind");
+export type DeviceBindingInput = z.infer<typeof deviceBindingSchema>;
 const units = { steps: "count", heartRate: "bpm", sleepDuration: "min", weight: "kg",
   distance: "km", activeCalories: "kcal", oxygenSaturation: "percent", bloodPressureSystolic: "mmHg",
   bloodPressureDiastolic: "mmHg", bodyTemperature: "celsius", hrv: "ms", stress: "score", met: "MET",

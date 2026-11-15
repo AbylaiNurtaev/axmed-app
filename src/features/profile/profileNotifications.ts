@@ -60,7 +60,7 @@ async function ensureChannel() {
     name: "Напоминания AxMed",
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 160],
-    lightColor: "#237354"
+    lightColor: "#111111"
   });
 }
 

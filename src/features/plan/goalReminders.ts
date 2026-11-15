@@ -40,7 +40,7 @@ export async function scheduleGoalReminder(goal: Pick<ProfileGoal, "id" | "title
       name: "Напоминания о целях",
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 180],
-      lightColor: "#237354"
+      lightColor: "#111111"
     });
   }
 

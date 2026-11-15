@@ -4,10 +4,10 @@ import { axColors } from "../../ui/tokens";
 export type BodySegmentKey = "leftArm" | "rightArm" | "trunk" | "leftLeg" | "rightLeg";
 
 export function ScaleBodyDiagram({ selected, onSelect }: { selected: BodySegmentKey; onSelect: (segment: BodySegmentKey) => void }) {
-  const fill = (segment: BodySegmentKey) => selected === segment ? axColors.green : "#DDE7E1";
-  const stroke = (segment: BodySegmentKey) => selected === segment ? "#195E43" : "#BFCBC4";
+  const fill = (segment: BodySegmentKey) => selected === segment ? axColors.green : "#E8E8E8";
+  const stroke = (segment: BodySegmentKey) => selected === segment ? "#111111" : "#C8C8C8";
   return <Svg accessibilityRole="image" accessibilityLabel="Схема сегментов тела" width="100%" height={310} viewBox="0 0 220 310">
-    <Circle cx="110" cy="29" r="22" fill="#E8EEE9" stroke="#BFCBC4" strokeWidth="2" />
+    <Circle cx="110" cy="29" r="22" fill="#F0F0F0" stroke="#C8C8C8" strokeWidth="2" />
     <Path d="M92 57 C82 63 77 82 79 113 L85 173 C86 185 94 192 110 192 C126 192 134 185 135 173 L141 113 C143 82 138 63 128 57 C117 52 103 52 92 57 Z" fill={fill("trunk")} stroke={stroke("trunk")} strokeWidth="2.5" onPress={() => onSelect("trunk")} />
     <G onPress={() => onSelect("leftArm")}>
       <Path d="M82 69 C70 69 62 77 58 91 L39 159 C36 170 40 178 48 180 C56 181 61 175 64 165 L84 102 C88 89 91 73 82 69 Z" fill={fill("leftArm")} stroke={stroke("leftArm")} strokeWidth="2.5" />

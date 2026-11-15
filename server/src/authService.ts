@@ -209,6 +209,9 @@ export async function authenticateSocial(
     if (!user && input.mode === "signIn") {
       throw new ApiError(404, "ACCOUNT_NOT_FOUND", "Аккаунт не найден. Сначала создайте его.");
     }
+    if (user && input.mode === "signUp") {
+      throw new ApiError(409, "ACCOUNT_EXISTS", "Аккаунт уже существует. Войдите в существующий аккаунт.");
+    }
 
     if (!user) {
       const created = await client.query<UserRow>(

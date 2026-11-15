@@ -220,7 +220,7 @@ export function ProfileMainScreen({ profile, loading, onRefresh, onOpen, onProfi
     <AxReveal><AxCard style={styles.profileHero}>
       <AxPressable accessibilityLabel="Изменить фото профиля" onPress={() => { setAvatarError(undefined); setAvatarSheet(true); }} style={styles.avatarButton}>
         {loading && !profile.id ? <AxSkeleton width={88} height={88} radius={44} /> : avatarUri ? <Image source={{ uri: avatarUri }} style={styles.avatar} /> : <View style={styles.avatarFallback}><Text maxFontSizeMultiplier={1.3} style={styles.avatarInitials}>{initials(displayName)}</Text></View>}
-        <View style={styles.avatarEdit}><Ionicons name="camera" size={15} color={axColors.white} /></View>
+        <View style={styles.avatarEdit}><Ionicons name="camera" size={15} color={axColors.onAccent} /></View>
       </AxPressable>
       <View style={styles.heroIdentity}><Text maxFontSizeMultiplier={1.3} style={styles.profileName} numberOfLines={2}>{displayName}</Text><Text maxFontSizeMultiplier={1.3} style={styles.profileContact} numberOfLines={1}>{contact}</Text><View style={styles.profileStatus}><View style={styles.statusDot} /><Text maxFontSizeMultiplier={1.3} style={styles.statusText}>{completion === 100 ? "Профиль заполнен" : `Профиль заполнен на ${completion}%`}</Text></View></View>
       <AxIconButton icon="create-outline" label="Редактировать личные данные" tone="neutral" onPress={() => onOpen("personal")} />
@@ -389,8 +389,8 @@ export function ProfileInfoScreen({ type, onBack }: { type: "help" | "privacy" |
 }
 
 function ProfileField({ label, error, helper, icon, ...props }: ComponentProps<typeof TextInput> & { label: string; error?: string; helper?: string; icon?: IconName }) {
-  const { dark } = useAxTheme();
-  return <View style={styles.field}><Text maxFontSizeMultiplier={1.3} style={styles.fieldLabel}>{label}</Text><View style={[styles.inputWrap, error && styles.inputError, props.editable === false && styles.inputDisabled]}>{icon ? <Ionicons name={icon} size={19} color={error ? axColors.danger : axColors.muted} /> : null}<TextInput maxFontSizeMultiplier={1.3} {...props} accessibilityLabel={props.accessibilityLabel ?? label} accessibilityHint={error ?? helper} accessibilityState={{ disabled: props.editable === false }} keyboardAppearance={dark ? "dark" : "light"} placeholderTextColor={axColors.muted} style={styles.input} /></View>{error || helper ? <Text maxFontSizeMultiplier={1.3} accessibilityLiveRegion={error ? "polite" : "none"} style={[styles.fieldHelper, error && styles.fieldError]}>{error ?? helper}</Text> : null}</View>;
+  const { dark, colors } = useAxTheme();
+  return <View style={styles.field}><Text maxFontSizeMultiplier={1.3} style={styles.fieldLabel}>{label}</Text><View style={[styles.inputWrap, error && styles.inputError, props.editable === false && styles.inputDisabled]}>{icon ? <Ionicons name={icon} size={19} color={error ? axColors.danger : axColors.muted} /> : null}<TextInput selectionColor={colors.ink} maxFontSizeMultiplier={1.3} {...props} accessibilityLabel={props.accessibilityLabel ?? label} accessibilityHint={error ?? helper} accessibilityState={{ disabled: props.editable === false }} keyboardAppearance={dark ? "dark" : "light"} placeholderTextColor={axColors.muted} style={styles.input} /></View>{error || helper ? <Text maxFontSizeMultiplier={1.3} accessibilityLiveRegion={error ? "polite" : "none"} style={[styles.fieldHelper, error && styles.fieldError]}>{error ?? helper}</Text> : null}</View>;
 }
 
 function AvatarAction({ icon, title, subtitle, danger, onPress }: { icon: IconName; title: string; subtitle?: string; danger?: boolean; onPress: () => void }) {

@@ -1,3 +1,4 @@
+import { useAuthStyles, type AuthColors } from "./authTheme";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
@@ -18,19 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 
-export const authColors = {
-  green: "#00A87E",
-  greenDark: "#008F70",
-  greenLight: "#20C99A",
-  ink: "#071225",
-  text: "#3E485B",
-  muted: "#727C8E",
-  line: "#DFE5E9",
-  soft: "#EDF9F5",
-  white: "#FFFFFF",
-  danger: "#E5484D",
-  dangerSoft: "#FFF0F0"
-} as const;
+export { authColors } from "./authTheme";
 
 export function AuthScaffold({
   children,
@@ -43,11 +32,12 @@ export function AuthScaffold({
   decorVariant?: "none" | "entry" | "welcome";
   noScroll?: boolean;
 }) {
+  const { styles, dark } = useAuthStyles(createStyles);
   const content = <View style={[styles.content, contentStyle]}>{children}</View>;
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar style="dark" />
+      <StatusBar style={dark ? "light" : "dark"} />
       <View style={styles.screen}>
         <BackgroundDecor variant={decorVariant} />
         <KeyboardAvoidingView
@@ -72,6 +62,7 @@ export function AuthScaffold({
 }
 
 function BackgroundDecor({ variant }: { variant: "none" | "entry" | "welcome" }) {
+  const { styles } = useAuthStyles(createStyles);
   if (variant === "none") return null;
 
   const isWelcome = variant === "welcome";
@@ -85,14 +76,15 @@ function BackgroundDecor({ variant }: { variant: "none" | "entry" | "welcome" })
       <View style={isWelcome ? styles.welcomePlusTwo : styles.plusTwo}><Text style={styles.plus}>+</Text></View>
       {isWelcome ? <View style={styles.welcomePlusThree}><Text style={styles.plusSmall}>+</Text></View> : null}
       <Svg width="100%" height={isWelcome ? 138 : 180} viewBox="0 0 430 180" style={styles.wave} preserveAspectRatio="none">
-        <Path d="M0 72 C96 112 136 160 224 128 C310 96 346 42 430 74 L430 180 L0 180 Z" fill={isWelcome ? "#EFFAF7" : "#EAF8F4"} />
-        <Path d="M0 122 C86 86 142 178 232 158 C320 138 356 93 430 110 L430 180 L0 180 Z" fill={isWelcome ? "#DDF5EE" : "#D7F2EA"} />
+        <Path d="M0 72 C96 112 136 160 224 128 C310 96 346 42 430 74 L430 180 L0 180 Z" fill={isWelcome ? "#F8F8F8" : "#F8F8F8"} />
+        <Path d="M0 122 C86 86 142 178 232 158 C320 138 356 93 430 110 L430 180 L0 180 Z" fill={isWelcome ? "#F0F0F0" : "#E8E8E8"} />
       </Svg>
     </>
   );
 }
 
 export function AxMedLogo({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   const iconSize = compact ? 56 : hero ? 60 : 72;
   return (
     <View style={[styles.logoWrap, compact && styles.logoWrapCompact, hero && styles.logoWrapHero]}>
@@ -100,7 +92,7 @@ export function AxMedLogo({ compact = false, hero = false }: { compact?: boolean
         <View style={[styles.crossHorizontal, compact && styles.crossHorizontalCompact, hero && styles.crossHorizontalHero]} />
         <View style={[styles.crossVertical, compact && styles.crossVerticalCompact, hero && styles.crossVerticalHero]} />
         <Svg width={iconSize} height={iconSize} viewBox="0 0 72 72" style={styles.logoPulse}>
-          <Path d="M8 37 H25 L31 23 L39 49 L45 34 L52 37 H64" stroke="#fff" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M8 37 H25 L31 23 L39 49 L45 34 L52 37 H64" stroke={authColors.onAccent} strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       </View>
       <Text style={[styles.logoText, compact && styles.logoTextCompact, hero && styles.logoTextHero]}>AxMed</Text>
@@ -109,6 +101,7 @@ export function AxMedLogo({ compact = false, hero = false }: { compact?: boolean
 }
 
 export function BackButton({ onPress }: { onPress: () => void }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return (
     <Pressable accessibilityRole="button" accessibilityLabel="Назад" hitSlop={12} onPress={onPress} style={styles.backButton}>
       <Ionicons name="chevron-back" size={32} color={authColors.ink} />
@@ -127,6 +120,7 @@ export function StepHeader({
   labelTotal?: number;
   onBack: () => void;
 }) {
+  const { styles } = useAuthStyles(createStyles);
   return (
     <View style={styles.stepHeader}>
       <BackButton onPress={onBack} />
@@ -151,6 +145,7 @@ export function PageTitle({
   centered?: boolean;
   compact?: boolean;
 }) {
+  const { styles } = useAuthStyles(createStyles);
   return (
     <View style={[styles.pageHeading, compact && styles.pageHeadingCompact, centered && styles.centered]}>
       <Text style={[styles.pageTitle, compact && styles.pageTitleCompact, centered && styles.textCentered]}>{title}</Text>
@@ -172,6 +167,7 @@ export function PrimaryButton({
   icon?: keyof typeof Ionicons.glyphMap;
   variant?: "default" | "welcome" | "entry";
 }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -186,12 +182,12 @@ export function PrimaryButton({
       ]}
     >
       <LinearGradient
-        colors={["#009F78", "#04B98A", "#35D0A6"]}
+        colors={[authColors.green, authColors.greenPressed, authColors.greenPressed]}
         end={{ x: 1, y: 0 }}
         start={{ x: 0, y: 0 }}
         style={styles.buttonGradient}
       />
-      {!!icon && <Ionicons name={icon} size={24} color="#fff" />}
+      {!!icon && <Ionicons name={icon} size={24} color={authColors.onAccent} />}
       <Text style={[styles.primaryButtonText, variant === "welcome" && styles.welcomeButtonText, variant === "entry" && styles.entryButtonText]}>{title}</Text>
     </Pressable>
   );
@@ -210,6 +206,7 @@ export function SecondaryButton({
   darkText?: boolean;
   variant?: "default" | "welcome" | "entry";
 }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -233,6 +230,7 @@ export function SecondaryButton({
 }
 
 export function LinkButton({ title, onPress, icon }: { title: string; onPress: () => void; icon?: keyof typeof Ionicons.glyphMap }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.linkButton}>
       {!!icon && <Ionicons name={icon} size={22} color={authColors.green} />}
@@ -255,13 +253,14 @@ export function FormField({
   rightIconAccessibilityLabel?: string;
   onRightIconPress?: () => void;
 }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return (
     <View>
       <View style={[styles.formField, !!error && styles.formFieldError]}>
         <Ionicons name={icon} size={25} color={error ? authColors.danger : authColors.greenDark} />
-        <TextInput
+        <TextInput selectionColor={authColors.ink}
           {...props}
-          placeholderTextColor="#A6AEBA"
+          placeholderTextColor="#B0B0B0"
           style={[styles.input, props.style]}
         />
         {rightIcon && onRightIconPress ? (
@@ -292,6 +291,7 @@ export function InfoBanner({
   icon?: keyof typeof MaterialCommunityIcons.glyphMap;
   danger?: boolean;
 }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   const color = danger ? authColors.danger : authColors.greenDark;
   return (
     <View style={[styles.infoBanner, danger && styles.infoBannerDanger]}>
@@ -305,27 +305,28 @@ export function InfoBanner({
 }
 
 export function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { styles } = useAuthStyles(createStyles);
   return <View style={[styles.surface, style]}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: authColors.white },
-  screen: { flex: 1, backgroundColor: authColors.white, overflow: "hidden" },
+const createStyles = (authColors: AuthColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: authColors.surface },
+  screen: { flex: 1, backgroundColor: authColors.surface, overflow: "hidden" },
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1 },
   content: { width: "100%", maxWidth: 430, alignSelf: "center", flexGrow: 1, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 32 },
-  ringOne: { position: "absolute", width: 420, height: 420, borderRadius: 210, borderWidth: 1, borderColor: "#E9F7F3", top: -230, alignSelf: "center" },
-  ringTwo: { position: "absolute", width: 280, height: 280, borderRadius: 140, borderWidth: 1, borderColor: "#ECF8F5", top: -160, alignSelf: "center" },
-  welcomeRingOuter: { position: "absolute", width: 520, height: 520, borderRadius: 260, borderWidth: 1, borderColor: "#E9F7F3", top: 22, alignSelf: "center" },
-  welcomeRingMiddle: { position: "absolute", width: 380, height: 380, borderRadius: 190, borderWidth: 1, borderColor: "#EDF9F6", top: 76, alignSelf: "center" },
-  welcomeRingInner: { position: "absolute", width: 252, height: 252, borderRadius: 126, borderWidth: 1, borderColor: "#F1FAF8", top: 116, alignSelf: "center" },
+  ringOne: { position: "absolute", width: 420, height: 420, borderRadius: 210, borderWidth: 1, borderColor: authColors.line, top: -230, alignSelf: "center" },
+  ringTwo: { position: "absolute", width: 280, height: 280, borderRadius: 140, borderWidth: 1, borderColor: authColors.line, top: -160, alignSelf: "center" },
+  welcomeRingOuter: { position: "absolute", width: 520, height: 520, borderRadius: 260, borderWidth: 1, borderColor: authColors.line, top: 22, alignSelf: "center" },
+  welcomeRingMiddle: { position: "absolute", width: 380, height: 380, borderRadius: 190, borderWidth: 1, borderColor: authColors.line, top: 76, alignSelf: "center" },
+  welcomeRingInner: { position: "absolute", width: 252, height: 252, borderRadius: 126, borderWidth: 1, borderColor: authColors.line, top: 116, alignSelf: "center" },
   plusOne: { position: "absolute", top: 70, left: 30 },
   plusTwo: { position: "absolute", top: 160, right: 34 },
   welcomePlusOne: { position: "absolute", top: 72, left: 66 },
   welcomePlusTwo: { position: "absolute", top: 126, right: 48 },
   welcomePlusThree: { position: "absolute", top: "48%", right: 54 },
-  plus: { color: "#C4F0E4", fontSize: 28, fontWeight: "700" },
-  plusSmall: { color: "#C7F0E5", fontSize: 22, fontWeight: "700" },
+  plus: { color: authColors.muted, fontSize: 28, fontWeight: "700" },
+  plusSmall: { color: authColors.muted, fontSize: 22, fontWeight: "700" },
   wave: { position: "absolute", left: 0, right: 0, bottom: 0 },
   logoWrap: { alignItems: "center", gap: 10 },
   logoWrapCompact: { gap: 6 },
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
   backButton: { width: 38, height: 44, justifyContent: "center", alignItems: "flex-start" },
   stepHeader: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 24 },
   steps: { flex: 1, flexDirection: "row", gap: 7 },
-  step: { flex: 1, height: 5, borderRadius: 4, backgroundColor: "#E7E9EC" },
+  step: { flex: 1, height: 5, borderRadius: 4, backgroundColor: authColors.soft },
   stepActive: { backgroundColor: authColors.greenDark },
   stepText: { color: authColors.text, fontSize: 14, minWidth: 82, textAlign: "right" },
   pageHeading: { marginBottom: 28 },
@@ -357,8 +358,8 @@ const styles = StyleSheet.create({
   textCentered: { textAlign: "center" },
   primaryButton: { minHeight: 58, borderRadius: 15, paddingHorizontal: 20, backgroundColor: authColors.green, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", shadowColor: authColors.greenDark, shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 4 },
   buttonGradient: { position: "absolute", inset: 0, borderRadius: 15 },
-  primaryButtonText: { color: authColors.white, fontSize: 19, fontWeight: "700", textAlign: "center" },
-  secondaryButton: { minHeight: 58, borderRadius: 15, borderWidth: 1.5, borderColor: authColors.green, paddingHorizontal: 18, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.88)" },
+  primaryButtonText: { color: authColors.onAccent, fontSize: 19, fontWeight: "700", textAlign: "center" },
+  secondaryButton: { minHeight: 58, borderRadius: 15, borderWidth: 1.5, borderColor: authColors.green, paddingHorizontal: 18, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center", backgroundColor: authColors.surface },
   secondaryButtonText: { color: authColors.green, fontSize: 18, fontWeight: "700", textAlign: "center" },
   welcomeButton: { minHeight: 50, borderRadius: 14 },
   welcomeButtonText: { fontSize: 17 },
@@ -369,7 +370,7 @@ const styles = StyleSheet.create({
   linkButtonText: { color: authColors.greenDark, fontSize: 17, fontWeight: "600", textAlign: "center" },
   pressed: { opacity: 0.78, transform: [{ scale: 0.995 }] },
   disabled: { opacity: 0.42, shadowOpacity: 0 },
-  formField: { height: 54, borderWidth: 1.5, borderColor: authColors.green, borderRadius: 15, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, backgroundColor: "rgba(255,255,255,0.9)" },
+  formField: { height: 54, borderWidth: 1.5, borderColor: authColors.green, borderRadius: 15, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, backgroundColor: authColors.surface },
   formFieldError: { borderColor: authColors.danger },
   input: { flex: 1, height: "100%", color: authColors.ink, fontSize: 18 },
   fieldIconButton: { width: 32, height: 40, alignItems: "center", justifyContent: "center", marginRight: -7 },
@@ -379,5 +380,5 @@ const styles = StyleSheet.create({
   infoCopy: { flex: 1 },
   infoTitle: { fontSize: 16, lineHeight: 21, fontWeight: "700", marginBottom: 4 },
   infoText: { color: authColors.text, fontSize: 13, lineHeight: 18 },
-  surface: { borderWidth: 1, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.94)", shadowColor: authColors.ink, shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 3 }
+  surface: { borderWidth: 1, borderColor: authColors.line, borderRadius: 18, backgroundColor: authColors.surface, shadowColor: authColors.ink, shadowOpacity: 0.07, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 3 }
 });

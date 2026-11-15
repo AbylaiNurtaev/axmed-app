@@ -1,3 +1,4 @@
+import { useAuthStyles, type AuthColors } from "./authTheme";
 import { Ionicons } from "@expo/vector-icons";
 import {
   AppleAuthenticationButton,
@@ -5,25 +6,24 @@ import {
   AppleAuthenticationButtonType
 } from "expo-apple-authentication";
 import { StatusBar } from "expo-status-bar";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView,
   StyleSheet, Text, TextInput, useWindowDimensions, View
 } from "react-native";
 import type { TextInputProps } from "react-native";
-import Svg, { Path } from "react-native-svg";
 import { AuthApiError } from "./authApi";
 import { SocialAuthError } from "./socialAuth";
 import type { SocialProvider } from "./socialAuth";
 import type { AuthMode } from "./types";
 import { countdownLabel, useSecondsRemaining } from "./useSecondsRemaining";
 
-const colors = { background: "#F7F7F7", ink: "#111111", muted: "#6B6B6B", border: "#E3E3E3" };
 const emailPattern = /^(?=.{3,254}$)(?=.{1,64}@)[a-z0-9]+(?:[._%+-][a-z0-9]+)*@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 
 export function AuthChoiceScreen({
-  initialMode,
+  mode,
+  onModeChange,
   initialEmail = "",
   notice,
   onForgotPassword,
@@ -31,7 +31,8 @@ export function AuthChoiceScreen({
   onContinueEmail,
   onSocialContinue
 }: {
-  initialMode: AuthMode;
+  mode: AuthMode;
+  onModeChange: (mode: AuthMode) => void;
   initialEmail?: string;
   notice?: string;
   onForgotPassword: (email: string) => void;
@@ -39,10 +40,10 @@ export function AuthChoiceScreen({
   onContinueEmail: (email: string, mode: AuthMode, password: string) => Promise<void> | void;
   onSocialContinue: (mode: AuthMode, provider: SocialProvider) => Promise<void>;
 }) {
+  const { styles, colors, dark } = useAuthStyles(createStyles);
   const { height, width } = useWindowDimensions();
   const isCompact = height < 740;
   const narrow = width < 375;
-  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,6 +62,29 @@ export function AuthChoiceScreen({
   const confirmationInput = useRef<TextInput>(null);
   const busy = emailLoading || socialLoading !== null;
   const pauseSeconds = useSecondsRemaining(loginPauses[email.trim().toLowerCase()] ?? 0);
+
+  useEffect(() => {
+    setError("");
+    setPasswordError("");
+    setConfirmPasswordError("");
+    setPasswordVisible(false);
+    setConfirmPasswordVisible(false);
+    setSubmitError("");
+    setSocialError("");
+  }, [mode]);
+
+  const showExistingAccount = () => {
+    const title = "Аккаунт уже существует";
+    const message = "Этот аккаунт уже зарегистрирован в AxMed. Войдите в существующий аккаунт.";
+    if (Platform.OS === "web") {
+      if (globalThis.confirm(`${title}\n\n${message}\n\nПерейти ко входу?`)) onModeChange("signIn");
+    } else {
+      Alert.alert(title, message, [
+        { text: "Отмена", style: "cancel" },
+        { text: "Войти", onPress: () => onModeChange("signIn") }
+      ]);
+    }
+  };
 
   const continueWithEmail = async () => {
     if (pendingEmail.current || (mode === "signIn" && pauseSeconds > 0)) return;
@@ -90,6 +114,10 @@ export function AuthChoiceScreen({
     try {
       await onContinueEmail(normalizedEmail, mode, password);
     } catch (submitFailure) {
+      if (isSignUp && submitFailure instanceof AuthApiError && submitFailure.code === "ACCOUNT_EXISTS") {
+        showExistingAccount();
+        return;
+      }
       if (mode === "signIn" && submitFailure instanceof AuthApiError && submitFailure.retryAfterSeconds) {
         setLoginPauses(current => ({ ...current, [normalizedEmail]: Date.now() + submitFailure.retryAfterSeconds! * 1000 }));
         setSubmitError("");
@@ -120,6 +148,17 @@ export function AuthChoiceScreen({
       await onSocialContinue(mode, provider);
     } catch (socialAuthError) {
       if (socialAuthError instanceof SocialAuthError && socialAuthError.code === "cancelled") return;
+      if (mode === "signUp" && socialAuthError instanceof AuthApiError && socialAuthError.code === "ACCOUNT_EXISTS") {
+        showExistingAccount();
+        return;
+      }
+      if (socialAuthError instanceof AuthApiError && socialAuthError.code === "ACCOUNT_NOT_FOUND") {
+        const title = "Аккаунт не найден";
+        const message = `В AxMed нет аккаунта, связанного с выбранным аккаунтом ${provider}. Сначала зарегистрируйтесь.`;
+        if (Platform.OS === "web") globalThis.alert(`${title}\n\n${message}`);
+        else Alert.alert(title, message, [{ text: "Понятно" }]);
+        return;
+      }
       setSocialError(
         socialAuthError instanceof SocialAuthError
           ? socialAuthError.userMessage
@@ -132,7 +171,7 @@ export function AuthChoiceScreen({
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar style="dark" />
+      <StatusBar style={dark ? "light" : "dark"} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
@@ -143,11 +182,6 @@ export function AuthChoiceScreen({
                 <Ionicons name="arrow-back" size={21} color={colors.ink} />
               </Pressable>
               <View accessible accessibilityLabel="AxMed" style={styles.brand}>
-                <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.brandMark}>
-                  <Svg width={22} height={22} viewBox="0 0 24 24">
-                    <Path d="M12 4.5V19.5M4.5 12H19.5" stroke={colors.background} strokeWidth={3.2} strokeLinecap="round" />
-                  </Svg>
-                </View>
                 <Text style={styles.wordmark}>AxMed</Text>
               </View>
             </View>
@@ -155,9 +189,6 @@ export function AuthChoiceScreen({
             <View style={[styles.introduction, isCompact && styles.introductionCompact]}>
               <Text allowFontScaling accessibilityRole="header" style={[styles.title, narrow && styles.titleNarrow]}>
                 {isSignUp ? "Регистрация" : "Вход"}
-              </Text>
-              <Text allowFontScaling style={styles.subtitle}>
-                {isSignUp ? "Ваше здоровье — в вашем ритме.\nНачните с личного аккаунта." : "С возвращением.\nПродолжим заботиться о себе."}
               </Text>
             </View>
 
@@ -226,8 +257,8 @@ export function AuthChoiceScreen({
                   {submitTitle}
                 </Text>
                 <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.buttonArrow}>
-                  {emailLoading ? <ActivityIndicator size="small" color="#FFFFFF" />
-                    : <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />}
+                  {emailLoading ? <ActivityIndicator size="small" color={colors.onAccent} />
+                    : <Ionicons name="arrow-forward" size={20} color={colors.onAccent} />}
                 </View>
               </Pressable>
               {submitError && (isSignUp || pauseSeconds === 0) ? <InlineError message={submitError} /> : null}
@@ -254,15 +285,7 @@ export function AuthChoiceScreen({
               <Text allowFontScaling style={styles.footerHint}>{isSignUp ? "Уже есть аккаунт?" : "Нет аккаунта?"}</Text>
               <Pressable accessibilityRole="button" disabled={busy}
                 style={({ pressed }) => [styles.switchMode, pressed && styles.linkPressed, busy && styles.disabled]}
-                onPress={() => {
-                  setMode(isSignUp ? "signIn" : "signUp");
-                  setError("");
-                  setPasswordError("");
-                  setConfirmPasswordError("");
-                  setPasswordVisible(false);
-                  setConfirmPasswordVisible(false);
-                  setSubmitError("");
-                }}>
+                onPress={() => onModeChange(isSignUp ? "signIn" : "signUp")}>
                 <Text allowFontScaling style={styles.switchModeText}>{isSignUp ? "Войти" : "Зарегистрироваться"}</Text>
               </Pressable>
             </View>
@@ -282,13 +305,14 @@ function EntryField({ label, inputRef, error, hint, rightIcon, rightIconLabel, o
   rightIconLabel?: string;
   onRightIconPress?: () => void;
 }) {
+  const { styles, colors, dark } = useAuthStyles(createStyles);
   const [focused, setFocused] = useState(false);
   return (
     <View>
       <Text allowFontScaling style={styles.fieldLabel}>{label}</Text>
       <View style={[styles.field, focused && styles.fieldFocused, !!error && styles.fieldError]}>
-        <TextInput {...props} ref={inputRef} allowFontScaling autoCorrect={false}
-          placeholderTextColor="#777777" selectionColor={colors.ink}
+        <TextInput keyboardAppearance={dark ? "dark" : "light"} {...props} ref={inputRef} allowFontScaling autoCorrect={false}
+          placeholderTextColor={colors.muted} selectionColor={colors.ink}
           onFocus={event => { setFocused(true); props.onFocus?.(event); }}
           onBlur={event => { setFocused(false); props.onBlur?.(event); }}
           style={[styles.input, props.style]} />
@@ -305,6 +329,7 @@ function EntryField({ label, inputRef, error, hint, rightIcon, rightIconLabel, o
 }
 
 function InlineError({ message }: { message: string }) {
+  const { styles, colors } = useAuthStyles(createStyles);
   return (
     <View accessibilityRole="alert" style={styles.error}>
       <Ionicons name="alert-circle-outline" size={16} color={colors.ink} />
@@ -320,11 +345,12 @@ function SocialButton({ provider, title, loading, disabled, onPress }: {
   disabled: boolean;
   onPress: () => void;
 }) {
+  const { styles, colors, dark } = useAuthStyles(createStyles);
   if (provider === "Apple" && Platform.OS === "ios") {
     return (
       <View pointerEvents={disabled ? "none" : "auto"} style={[styles.appleContainer, disabled && styles.disabled]}>
         <AppleAuthenticationButton buttonType={AppleAuthenticationButtonType.CONTINUE}
-          buttonStyle={AppleAuthenticationButtonStyle.WHITE_OUTLINE} cornerRadius={27}
+          buttonStyle={dark ? AppleAuthenticationButtonStyle.BLACK : AppleAuthenticationButtonStyle.WHITE_OUTLINE} cornerRadius={27}
           onPress={onPress} style={styles.appleButton} />
         {loading ? <View style={styles.appleLoading}><ActivityIndicator size="small" color={colors.ink} /></View> : null}
       </View>
@@ -345,32 +371,30 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AuthColors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   keyboard: { flex: 1 },
   scroll: { flexGrow: 1, alignItems: "center" },
   content: { width: "100%", maxWidth: 480, flexGrow: 1, paddingHorizontal: 28, paddingTop: 20, paddingBottom: 10 },
   contentCompact: { paddingTop: 14, paddingBottom: 8 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16 },
-  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#FFFFFF", borderWidth: 1,
+  backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1,
     borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
-  brandMark: { width: 31, height: 31, borderRadius: 10, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   wordmark: { fontSize: 24, fontWeight: "600", color: colors.ink, letterSpacing: -1.1 },
   introduction: { marginTop: 28, marginBottom: 25 },
   introductionCompact: { marginTop: 22, marginBottom: 22 },
   title: { color: colors.ink, fontSize: 39, lineHeight: 47, fontWeight: "500", letterSpacing: -1.8 },
   titleNarrow: { fontSize: 33, lineHeight: 41, letterSpacing: -1.5 },
-  subtitle: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 10 },
   notice: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 16,
-    borderWidth: 1, borderColor: colors.border, backgroundColor: "#FFFFFF", marginBottom: 20 },
+    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 20 },
   noticeText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.ink },
   fields: { gap: 14 },
   fieldLabel: { color: colors.ink, fontSize: 12, lineHeight: 16, fontWeight: "500", marginBottom: 7 },
   field: { minHeight: 54, borderRadius: 17, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: "#FFFFFF", flexDirection: "row", alignItems: "center", paddingLeft: 16, paddingRight: 6 },
+    backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", paddingLeft: 16, paddingRight: 6 },
   fieldFocused: { borderColor: colors.ink },
-  fieldError: { borderColor: colors.ink, backgroundColor: "#EFEFEF" },
+  fieldError: { borderColor: colors.ink, backgroundColor: colors.soft },
   input: { minWidth: 0, flex: 1, minHeight: 52, paddingVertical: 12, paddingRight: 10,
     fontSize: 15, color: colors.ink, ...Platform.select({ web: { outlineWidth: 0 } }) },
   eyeButton: { width: 44, height: 44, justifyContent: "center", alignItems: "center" },
@@ -382,29 +406,29 @@ const styles = StyleSheet.create({
   primaryButton: { minHeight: 58, paddingLeft: 23, paddingRight: 10, paddingVertical: 9, borderRadius: 30,
     backgroundColor: colors.ink, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12,
     shadowColor: "#000000", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.09, shadowRadius: 10, elevation: 2 },
-  primaryButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "500", flexShrink: 1 },
-  primaryPressed: { backgroundColor: "#2A2A2A" },
-  buttonArrow: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: "#444444",
+  primaryButtonText: { color: colors.onAccent, fontSize: 15, fontWeight: "500", flexShrink: 1 },
+  primaryPressed: { backgroundColor: colors.greenPressed },
+  buttonArrow: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: colors.line,
     alignItems: "center", justifyContent: "center" },
   error: { flexDirection: "row", alignItems: "flex-start", gap: 7, marginTop: 8 },
-  errorText: { flex: 1, color: "#333333", fontSize: 12, lineHeight: 17 },
+  errorText: { flex: 1, color: colors.text, fontSize: 12, lineHeight: 17 },
   divider: { flexDirection: "row", alignItems: "center", gap: 15, marginVertical: 18 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: "#E0E0E0" },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.soft },
   dividerText: { color: colors.muted, fontSize: 11 },
   socialButtons: { gap: 10 },
   socialButton: { minHeight: 52, borderRadius: 27, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: "#FFFFFF", flexDirection: "row", alignItems: "center", justifyContent: "center",
+    backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10, paddingHorizontal: 18, paddingVertical: 10 },
   socialButtonText: { color: colors.ink, fontSize: 14, fontWeight: "500", flexShrink: 1 },
   appleContainer: { width: "100%", height: 52 },
   appleButton: { width: "100%", height: 52 },
-  appleLoading: { position: "absolute", inset: 0, borderRadius: 27, backgroundColor: "#FFFFFF",
+  appleLoading: { position: "absolute", inset: 0, borderRadius: 27, backgroundColor: colors.surface,
     alignItems: "center", justifyContent: "center" },
   footer: { marginTop: "auto", paddingTop: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, flexWrap: "wrap" },
   footerHint: { fontSize: 13, color: colors.muted },
   switchMode: { minHeight: 44, justifyContent: "center", paddingHorizontal: 5 },
   switchModeText: { fontSize: 13, fontWeight: "600", color: colors.ink },
-  surfacePressed: { backgroundColor: "#ECECEC" },
+  surfacePressed: { backgroundColor: colors.soft },
   linkPressed: { opacity: 0.55 },
   disabled: { opacity: 0.5, shadowOpacity: 0 }
 });

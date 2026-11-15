@@ -1,5 +1,7 @@
+import { useAuthStyles, type AuthColors } from "./authTheme";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -7,24 +9,20 @@ import {
   Text, TextInput, useWindowDimensions, View
 } from "react-native";
 import type { StyleProp, TextInputProps, ViewStyle } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { RegistrationProgress } from "./RegistrationProgress";
 
 // Keep the existing names compatible with the shared device-connection screen.
-export const authColors = {
-  background: "#F7F7F7", ink: "#111111", text: "#444444", muted: "#6B6B6B",
-  line: "#E3E3E3", soft: "#EFEFEF", white: "#FFFFFF",
-  green: "#111111", greenDark: "#111111", greenLight: "#505050",
-  danger: "#333333", dangerSoft: "#ECECEC"
-} as const;
+export { authColors } from "./authTheme";
 
 export function AuthScaffold({ children, contentStyle, noScroll = false }: {
   children: ReactNode; contentStyle?: StyleProp<ViewStyle>; noScroll?: boolean;
 }) {
+  const { styles, dark } = useAuthStyles(createStyles);
   const { height } = useWindowDimensions();
   const content = <View style={[styles.content, height < 740 && styles.contentCompact, contentStyle]}>{children}</View>;
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar style="dark" />
+      <StatusBar style={dark ? "light" : "dark"} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
         {noScroll ? content : (
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled"
@@ -36,19 +34,16 @@ export function AuthScaffold({ children, contentStyle, noScroll = false }: {
 }
 
 export function AxMedLogo() {
+  const { styles } = useAuthStyles(createStyles);
   return (
     <View accessible accessibilityLabel="AxMed" style={styles.brand}>
-      <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.brandMark}>
-        <Svg width={22} height={22} viewBox="0 0 24 24">
-          <Path d="M12 4.5V19.5M4.5 12H19.5" stroke="#FFFFFF" strokeWidth={3.2} strokeLinecap="round" />
-        </Svg>
-      </View>
       <Text style={styles.wordmark}>AxMed</Text>
     </View>
   );
 }
 
 export function BackButton({ onPress }: { onPress: () => void }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return <Pressable accessibilityRole="button" accessibilityLabel="Назад" onPress={onPress}
     style={({ pressed }) => [styles.backButton, pressed && styles.surfacePressed]}>
     <Ionicons name="arrow-back" size={21} color={authColors.ink} />
@@ -56,6 +51,7 @@ export function BackButton({ onPress }: { onPress: () => void }) {
 }
 
 export function AuthHeader({ onBack }: { onBack?: () => void }) {
+  const { styles } = useAuthStyles(createStyles);
   return <View style={styles.header}>
     {onBack ? <BackButton onPress={onBack} /> : <View />}
     <AxMedLogo />
@@ -68,14 +64,7 @@ export function StepHeader({ current, total = 4, labelTotal = total, onBack }: {
   return (
     <View>
       <AuthHeader onBack={onBack} />
-      <View accessible accessibilityLabel={'Шаг ' + current + ' из ' + labelTotal} style={styles.progress}>
-        <Text allowFontScaling style={styles.stepText}>Шаг {current} из {labelTotal}</Text>
-        <View style={styles.steps}>
-          {Array.from({ length: total }, (_, index) => (
-            <View key={index} style={[styles.step, index < current && styles.stepActive]} />
-          ))}
-        </View>
-      </View>
+      <RegistrationProgress current={current} total={total} labelTotal={labelTotal} />
     </View>
   );
 }
@@ -83,6 +72,7 @@ export function StepHeader({ current, total = 4, labelTotal = total, onBack }: {
 export function PageTitle({ title, subtitle, centered = false, compact = false }: {
   title: string; subtitle?: string; centered?: boolean; compact?: boolean;
 }) {
+  const { styles } = useAuthStyles(createStyles);
   const { width } = useWindowDimensions();
   return <View style={styles.heading}>
     <Text allowFontScaling accessibilityRole="header"
@@ -97,19 +87,26 @@ type ButtonProps = {
 };
 
 export function PrimaryButton({ title, onPress, disabled = false, icon }: ButtonProps) {
+  const { styles, authColors } = useAuthStyles(createStyles);
+  const handlePress = () => {
+    if (disabled) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onPress();
+  };
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled }}
-      disabled={disabled} onPress={onPress}
+      disabled={disabled} onPress={handlePress}
       style={({ pressed }) => [styles.primary, pressed && styles.primaryPressed, disabled && styles.disabled]}>
       <Text allowFontScaling style={styles.primaryText}>{title}</Text>
       <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.buttonArrow}>
-        <Ionicons name={icon ?? "arrow-forward"} size={20} color="#FFFFFF" />
+        <Ionicons name={icon ?? "arrow-forward"} size={20} color={authColors.onAccent} />
       </View>
     </Pressable>
   );
 }
 
 export function SecondaryButton({ title, onPress, disabled = false, icon }: ButtonProps & { darkText?: boolean }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled }}
     disabled={disabled} onPress={onPress}
     style={({ pressed }) => [styles.secondary, pressed && styles.surfacePressed, disabled && styles.disabled]}>
@@ -119,6 +116,7 @@ export function SecondaryButton({ title, onPress, disabled = false, icon }: Butt
 }
 
 export function LinkButton({ title, onPress, icon, disabled = false }: ButtonProps) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled }}
     disabled={disabled} onPress={onPress}
     style={({ pressed }) => [styles.link, pressed && styles.pressed, disabled && styles.disabled]}>
@@ -131,12 +129,13 @@ export function FormField({ label, icon, error, rightIcon, rightIconAccessibilit
   label?: string; icon?: keyof typeof Ionicons.glyphMap; error?: string;
   rightIcon?: keyof typeof Ionicons.glyphMap; rightIconAccessibilityLabel?: string; onRightIconPress?: () => void;
 }) {
+  const { styles, authColors, dark } = useAuthStyles(createStyles);
   const [focused, setFocused] = useState(false);
   return <View>
     {label ? <Text allowFontScaling style={styles.label}>{label}</Text> : null}
     <View style={[styles.field, focused && styles.fieldFocused, !!error && styles.fieldError]}>
       {!label && icon ? <Ionicons name={icon} size={20} color={authColors.muted} /> : null}
-      <TextInput {...props} allowFontScaling autoCorrect={false} placeholderTextColor="#777777"
+      <TextInput keyboardAppearance={dark ? "dark" : "light"} {...props} allowFontScaling autoCorrect={false} placeholderTextColor={authColors.muted}
         selectionColor={authColors.ink} style={[styles.input, props.style]}
         onFocus={event => { setFocused(true); props.onFocus?.(event); }}
         onBlur={event => { setFocused(false); props.onBlur?.(event); }} />
@@ -153,6 +152,7 @@ export function CodeInput({ value, onChangeText, onSubmitEditing, editable = tru
   value: string; onChangeText: (value: string) => void; onSubmitEditing?: () => void;
   editable?: boolean; label?: string; error?: boolean;
 }) {
+  const { styles } = useAuthStyles(createStyles);
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.codeContainer}>
@@ -175,6 +175,7 @@ export function CodeInput({ value, onChangeText, onSubmitEditing, editable = tru
 export function InfoBanner({ title, text, icon = "shield-check-outline" }: {
   title: string; text: string; icon?: keyof typeof MaterialCommunityIcons.glyphMap; danger?: boolean;
 }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return <View style={styles.info}>
     <MaterialCommunityIcons name={icon} size={24} color={authColors.ink} />
     <View style={styles.infoCopy}>
@@ -185,25 +186,20 @@ export function InfoBanner({ title, text, icon = "shield-check-outline" }: {
 }
 
 export function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { styles } = useAuthStyles(createStyles);
   return <View style={[styles.surface, style]}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (authColors: AuthColors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: authColors.background },
   keyboard: { flex: 1 }, scroll: { flexGrow: 1 },
   content: { width: "100%", maxWidth: 480, alignSelf: "center", flexGrow: 1, paddingHorizontal: 28, paddingTop: 20, paddingBottom: 18 },
   contentCompact: { paddingTop: 14, paddingBottom: 12 },
   header: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 28 },
   brand: { flexDirection: "row", alignItems: "center", gap: 9 },
-  brandMark: { width: 31, height: 31, borderRadius: 10, backgroundColor: authColors.ink, alignItems: "center", justifyContent: "center" },
   wordmark: { fontSize: 24, fontWeight: "600", letterSpacing: -1.1, color: authColors.ink },
   backButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: authColors.line,
-    backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
-  progress: { flexDirection: "row", alignItems: "center", gap: 18, marginBottom: 26 },
-  stepText: { color: authColors.muted, fontSize: 11, lineHeight: 16 },
-  steps: { flex: 1, flexDirection: "row", gap: 6 },
-  step: { flex: 1, height: 3, borderRadius: 2, backgroundColor: "#E1E1E1" },
-  stepActive: { backgroundColor: authColors.ink },
+    backgroundColor: authColors.surface, alignItems: "center", justifyContent: "center" },
   heading: { marginBottom: 26 },
   title: { fontSize: 36, lineHeight: 43, fontWeight: "500", letterSpacing: -1.5, color: authColors.ink },
   titleCompact: { fontSize: 30, lineHeight: 37, letterSpacing: -1.1 },
@@ -212,19 +208,19 @@ const styles = StyleSheet.create({
   primary: { minHeight: 58, borderRadius: 30, paddingVertical: 9, paddingLeft: 23, paddingRight: 10,
     backgroundColor: authColors.ink, flexDirection: "row", gap: 12, alignItems: "center", justifyContent: "space-between",
     shadowColor: "#000000", shadowOpacity: 0.09, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 2 },
-  primaryText: { color: "#FFFFFF", fontSize: 15, lineHeight: 21, fontWeight: "500", flexShrink: 1 },
-  buttonArrow: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: "#444444", alignItems: "center", justifyContent: "center" },
-  primaryPressed: { backgroundColor: "#2A2A2A" },
+  primaryText: { color: authColors.onAccent, fontSize: 15, lineHeight: 21, fontWeight: "500", flexShrink: 1 },
+  buttonArrow: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: authColors.line, alignItems: "center", justifyContent: "center" },
+  primaryPressed: { backgroundColor: authColors.greenPressed },
   secondary: { minHeight: 54, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 28, borderWidth: 1, borderColor: authColors.line,
-    backgroundColor: "#FFFFFF", flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center" },
+    backgroundColor: authColors.surface, flexDirection: "row", gap: 10, alignItems: "center", justifyContent: "center" },
   secondaryText: { color: authColors.ink, fontSize: 14, lineHeight: 20, fontWeight: "500", textAlign: "center", flexShrink: 1 },
   link: { minHeight: 44, paddingVertical: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   linkText: { color: authColors.ink, fontSize: 13, lineHeight: 19, fontWeight: "500", textAlign: "center", flexShrink: 1 },
-  pressed: { opacity: 0.55 }, surfacePressed: { backgroundColor: "#ECECEC" }, disabled: { opacity: 0.45, shadowOpacity: 0 },
+  pressed: { opacity: 0.55 }, surfacePressed: { backgroundColor: authColors.soft }, disabled: { opacity: 0.45, shadowOpacity: 0 },
   label: { fontSize: 12, lineHeight: 16, fontWeight: "500", color: authColors.ink, marginBottom: 7 },
   field: { minHeight: 54, borderWidth: 1, borderColor: authColors.line, borderRadius: 17, paddingLeft: 16, paddingRight: 6,
-    flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#FFFFFF" },
-  fieldFocused: { borderColor: authColors.ink }, fieldError: { borderColor: authColors.ink, backgroundColor: "#EFEFEF" },
+    flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: authColors.surface },
+  fieldFocused: { borderColor: authColors.ink }, fieldError: { borderColor: authColors.ink, backgroundColor: authColors.soft },
   input: { flex: 1, minWidth: 0, minHeight: 52, paddingVertical: 12, paddingRight: 10, fontSize: 15, color: authColors.ink,
     ...Platform.select({ web: { outlineWidth: 0 } }) },
   eyeButton: { width: 44, height: 44, justifyContent: "center", alignItems: "center" },
@@ -232,15 +228,15 @@ const styles = StyleSheet.create({
   codeContainer: { position: "relative" },
   codeRow: { flexDirection: "row", gap: 7 },
   codeBox: { flex: 1, minWidth: 0, height: 62, borderWidth: 1, borderColor: authColors.line, borderRadius: 14,
-    backgroundColor: "#FFFFFF", justifyContent: "center", alignItems: "center" },
+    backgroundColor: authColors.surface, justifyContent: "center", alignItems: "center" },
   codeBoxFocused: { borderColor: authColors.ink },
   codeDigit: { color: authColors.ink, fontSize: 25, fontWeight: "500", fontVariant: ["tabular-nums"] },
   codeInput: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.02, color: "transparent",
     ...Platform.select({ web: { outlineWidth: 0 } }) },
   info: { flexDirection: "row", alignItems: "flex-start", gap: 12, borderWidth: 1, borderColor: authColors.line,
-    borderRadius: 20, backgroundColor: "#FFFFFF", padding: 18 },
+    borderRadius: 20, backgroundColor: authColors.surface, padding: 18 },
   infoCopy: { flex: 1, minWidth: 0 },
   infoTitle: { color: authColors.ink, fontSize: 14, lineHeight: 20, fontWeight: "600", marginBottom: 6 },
   infoText: { color: authColors.muted, fontSize: 13, lineHeight: 20 },
-  surface: { borderWidth: 1, borderColor: authColors.line, borderRadius: 22, backgroundColor: "#FFFFFF" }
+  surface: { borderWidth: 1, borderColor: authColors.line, borderRadius: 22, backgroundColor: authColors.surface }
 });
