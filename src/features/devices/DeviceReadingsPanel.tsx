@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { TabSwipeScrollView as ScrollView } from "../../ui/SwipeTabs";
 import { readingSummary, syncWarningMessage } from "../../devices/readingSummary";
 import type { DeviceReading, DeviceSyncBatch, Metric } from "../../devices/types";
 import { authColors } from "../auth/ui";
@@ -99,22 +100,22 @@ const styles = StyleSheet.create({
   panel: { gap: 12, paddingBottom: 12 },
   title: { fontSize: 21, fontWeight: "700", color: authColors.ink },
   dates: { gap: 8 },
-  chip: { paddingHorizontal: 13, minHeight: 44, justifyContent: "center", borderRadius: 22, backgroundColor: "#F3F5F7" },
+  chip: { paddingHorizontal: 13, minHeight: 44, justifyContent: "center", borderRadius: 22, backgroundColor: "#F8F8F8" },
   selected: { backgroundColor: authColors.greenDark },
   chipLabel: { fontSize: 13, color: authColors.text },
   selectedLabel: { color: "#FFF", fontWeight: "600" },
   section: { fontSize: 14, fontWeight: "600", color: authColors.ink, marginTop: 4 },
-  activity: { backgroundColor: "#F2FAF7", padding: 14, borderRadius: 16, flexDirection: "row", gap: 8 },
+  activity: { backgroundColor: "#F8F8F8", padding: 14, borderRadius: 16, flexDirection: "row", gap: 8 },
   activityItem: { flex: 1 },
   activityValue: { fontSize: 20, fontWeight: "700", color: authColors.ink, marginBottom: 5 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  tile: { width: "48%", flexGrow: 1, padding: 14, borderWidth: 1, borderColor: "#E6EDEB", borderRadius: 16, gap: 7, backgroundColor: "#FFF" },
+  tile: { width: "48%", flexGrow: 1, padding: 14, borderWidth: 1, borderColor: "#E8E8E8", borderRadius: 16, gap: 7, backgroundColor: "#FFF" },
   wide: { width: "100%" },
   label: { fontSize: 13, lineHeight: 18, fontWeight: "600", color: authColors.text },
   value: { fontSize: 25, lineHeight: 32, fontWeight: "700", color: authColors.ink },
   unit: { fontSize: 13, fontWeight: "400", color: authColors.muted },
   caption: { fontSize: 11, lineHeight: 16, color: authColors.muted },
-  sleep: { padding: 16, backgroundColor: "#F4F4FC", borderRadius: 16, gap: 8 },
+  sleep: { padding: 16, backgroundColor: "#F8F8F8", borderRadius: 16, gap: 8 },
   stages: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 4 },
   stage: { width: "45%", gap: 3 },
   stageValue: { fontSize: 14, fontWeight: "600", color: authColors.ink },

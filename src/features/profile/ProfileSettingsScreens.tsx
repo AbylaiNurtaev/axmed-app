@@ -2,13 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Children, isValidElement, memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ComponentProps, ReactNode } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import Animated, { FadeIn, interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { deviceSync } from "../../devices/deviceSync";
 import { scaleSync } from "../../devices/scaleSync";
 import type { DeviceReading } from "../../devices/types";
 import { AxBottomSheet, AxConfirmSheet, AxSnackbar } from "../../ui/feedback";
-import { AxButton, AxCard, AxFilterChip, AxIconButton, AxPressable, AxStatePanel } from "../../ui/primitives";
+import { AxSwitch, AxButton, AxCard, AxFilterChip, AxIconButton, AxPressable, AxStatePanel } from "../../ui/primitives";
 import { axMotion, axRadius, axSpace, axType } from "../../ui/tokens";
 import { useAxTheme, type AxThemePreference } from "../../ui/theme";
 import {
@@ -36,7 +36,7 @@ type Notice = { message: string; tone: "success" | "error" | "neutral" };
 type MedicalContextDraft = { conditions: string; medications: string; allergies: string; lastCheckup: string; notes: string };
 const appearanceThemes: ReadonlyArray<{ key: AxThemePreference; title: string; subtitle: string; icon: IconName }> = [
   { key: "system", title: "Системная", subtitle: "Следует за iOS или Android", icon: "phone-portrait-outline" },
-  { key: "light", title: "Светлая", subtitle: "Тёплый светлый фон", icon: "sunny-outline" },
+  { key: "light", title: "Светлая", subtitle: "Светлый фон и чёрные акценты", icon: "sunny-outline" },
   { key: "dark", title: "Тёмная", subtitle: "Спокойная тёмная палитра", icon: "moon-outline" }
 ];
 
@@ -105,11 +105,11 @@ const ThemePreview = memo(function ThemePreview({ item, selected, loading, onPre
   const progress = useSharedValue(selected ? 1 : 0);
   useEffect(() => { progress.value = withTiming(selected ? 1 : 0, { duration: reduceMotion ? 0 : axMotion.standard }); }, [progress, reduceMotion, selected]);
   const border = useAnimatedStyle(() => ({ borderColor: interpolateColor(progress.value, [0, 1], [colors.line, colors.green]), borderWidth: 1 + progress.value }));
-  const previewDark = item.key === "dark" || item.key === "system" && colors.background !== "#F5F6F2";
+  const previewDark = item.key === "dark" || item.key === "system" && colors.background !== "#F7F7F7";
   return <AxPressable accessibilityLabel={`${item.title} тема`} accessibilityState={{ selected }} haptic disabled={loading} onPress={onPress} style={styles.themeCell}>
     <Animated.View style={[styles.themeCard, { backgroundColor: colors.surface }, border]}>
-      <View style={[styles.themeMock, { backgroundColor: previewDark ? "#111713" : "#F5F6F2" }]}><View style={[styles.mockBar, { backgroundColor: previewDark ? "#26322B" : "#FFFFFF" }]} /><View style={styles.mockRow}><View style={[styles.mockTile, { backgroundColor: previewDark ? "#1B251F" : "#FFFFFF" }]} /><View style={[styles.mockTile, { backgroundColor: previewDark ? "#1B251F" : "#FFFFFF" }]} /></View></View>
-      <View style={styles.themeCopy}><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={[styles.rowTitle, { color: colors.ink }]}>{item.title}</Text><Text maxFontSizeMultiplier={1.3} style={[styles.rowSubtitle, { color: colors.muted }]} numberOfLines={2}>{item.subtitle}</Text></View>{loading ? <ActivityIndicator size="small" color={colors.green} /> : selected ? <Animated.View entering={FadeIn.duration(reduceMotion ? 0 : 180)} style={[styles.themeCheck, { backgroundColor: colors.green }]}><Ionicons name="checkmark" size={14} color="#FFFFFF" /></Animated.View> : <Ionicons name={item.icon} size={18} color={colors.muted} />}</View>
+      <View style={[styles.themeMock, { backgroundColor: previewDark ? "#111111" : "#F7F7F7" }]}><View style={[styles.mockBar, { backgroundColor: previewDark ? "#303030" : "#FFFFFF" }]} /><View style={styles.mockRow}><View style={[styles.mockTile, { backgroundColor: previewDark ? "#202020" : "#FFFFFF" }]} /><View style={[styles.mockTile, { backgroundColor: previewDark ? "#202020" : "#FFFFFF" }]} /></View></View>
+      <View style={styles.themeCopy}><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={[styles.rowTitle, { color: colors.ink }]}>{item.title}</Text><Text maxFontSizeMultiplier={1.3} style={[styles.rowSubtitle, { color: colors.muted }]} numberOfLines={2}>{item.subtitle}</Text></View>{loading ? <ActivityIndicator size="small" color={colors.green} /> : selected ? <Animated.View entering={FadeIn.duration(reduceMotion ? 0 : 180)} style={[styles.themeCheck, { backgroundColor: colors.green }]}><Ionicons name="checkmark" size={14} color={colors.onAccent} /></Animated.View> : <Ionicons name={item.icon} size={18} color={colors.muted} />}</View>
     </Animated.View>
   </AxPressable>;
 });
@@ -176,7 +176,7 @@ function ScheduleEditor({ settings, loading, onSave }: { settings: ProfileNotifi
   const [time, setTime] = useState(settings.notificationTime);
   const [days, setDays] = useState(settings.notificationDays);
   const dayOptions = [1, 2, 3, 4, 5, 6, 7];
-  return <View style={styles.sheetStack}><Text maxFontSizeMultiplier={1.3} style={[styles.inputLabel, { color: colors.text }]}>Время</Text><TextInput maxFontSizeMultiplier={1.3} accessibilityLabel="Время уведомлений" value={time} onChangeText={value => setTime(formatTime(value))} keyboardType="number-pad" keyboardAppearance={colors.background === "#101512" ? "dark" : "light"} maxLength={5} style={[styles.timeInput, { color: colors.ink, backgroundColor: colors.surface, borderColor: colors.line }]} placeholder="09:00" placeholderTextColor={colors.muted} /><Text maxFontSizeMultiplier={1.3} style={[styles.inputLabel, { color: colors.text }]}>Дни недели</Text><View style={styles.dayGrid}>{dayOptions.map(day => <AxFilterChip key={day} label={dayShort(day)} selected={days.includes(day)} onPress={() => setDays(current => current.includes(day) ? current.filter(value => value !== day) : [...current, day].sort())} />)}</View><AxButton label="Сохранить расписание" loading={loading} disabled={!/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || days.length === 0} onPress={() => onSave({ notificationTime: time, notificationDays: days })} /></View>;
+  return <View style={styles.sheetStack}><Text maxFontSizeMultiplier={1.3} style={[styles.inputLabel, { color: colors.text }]}>Время</Text><TextInput selectionColor={colors.ink} maxFontSizeMultiplier={1.3} accessibilityLabel="Время уведомлений" value={time} onChangeText={value => setTime(formatTime(value))} keyboardType="number-pad" keyboardAppearance={colors.background === "#111111" ? "dark" : "light"} maxLength={5} style={[styles.timeInput, { color: colors.ink, backgroundColor: colors.surface, borderColor: colors.line }]} placeholder="09:00" placeholderTextColor={colors.muted} /><Text maxFontSizeMultiplier={1.3} style={[styles.inputLabel, { color: colors.text }]}>Дни недели</Text><View style={styles.dayGrid}>{dayOptions.map(day => <AxFilterChip key={day} label={dayShort(day)} selected={days.includes(day)} onPress={() => setDays(current => current.includes(day) ? current.filter(value => value !== day) : [...current, day].sort())} />)}</View><AxButton label="Сохранить расписание" loading={loading} disabled={!/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || days.length === 0} onPress={() => onSave({ notificationTime: time, notificationDays: days })} /></View>;
 }
 
 export function GeneralSettingsScreen(props: CommonProps) {
@@ -290,7 +290,7 @@ function SettingsShell({ title, subtitle, onBack, children }: { title: string; s
 
 function SettingSwitch({ icon, title, subtitle, value, loading, onChange, last = false }: { icon: IconName; title: string; subtitle: string; value: boolean; loading?: boolean; onChange: (value: boolean) => void; last?: boolean }) {
   const { colors } = useAxTheme();
-  return <View style={[styles.settingRow, !last && { borderBottomWidth: 1, borderBottomColor: colors.line }]}><View style={[styles.rowIcon, { backgroundColor: value ? colors.greenSoft : colors.surfaceMuted }]}><Ionicons name={icon} size={20} color={value ? colors.green : colors.muted} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={[styles.rowTitle, { color: colors.ink }]}>{title}</Text><Text maxFontSizeMultiplier={1.3} style={[styles.rowSubtitle, { color: colors.muted }]}>{subtitle}</Text></View>{loading ? <ActivityIndicator accessibilityLabel={`Сохранение: ${title}`} size="small" color={colors.green} /> : <Switch accessibilityLabel={title} accessibilityState={{ checked: value }} value={value} onValueChange={onChange} trackColor={{ false: colors.lineStrong, true: colors.green }} thumbColor="#FFFFFF" />}</View>;
+  return <View style={[styles.settingRow, !last && { borderBottomWidth: 1, borderBottomColor: colors.line }]}><View style={[styles.rowIcon, { backgroundColor: value ? colors.greenSoft : colors.surfaceMuted }]}><Ionicons name={icon} size={20} color={value ? colors.green : colors.muted} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={[styles.rowTitle, { color: colors.ink }]}>{title}</Text><Text maxFontSizeMultiplier={1.3} style={[styles.rowSubtitle, { color: colors.muted }]}>{subtitle}</Text></View>{loading ? <ActivityIndicator accessibilityLabel={`Сохранение: ${title}`} size="small" color={colors.green} /> : <AxSwitch accessibilityLabel={title} accessibilityState={{ checked: value }} value={value} onValueChange={onChange} />}</View>;
 }
 
 function ChoiceRow({ icon, title, subtitle, value, onPress, loading, last = false }: { icon: IconName; title: string; subtitle?: string; value: string; onPress: () => void; loading?: boolean; last?: boolean }) {
@@ -301,12 +301,12 @@ function ChoiceRow({ icon, title, subtitle, value, onPress, loading, last = fals
 function SecureInput({ label, value, onChange, helper }: { label: string; value: string; onChange: (value: string) => void; helper?: string }) {
   const { colors } = useAxTheme();
   const [visible, setVisible] = useState(false);
-  return <View><Text maxFontSizeMultiplier={1.3} style={[styles.inputLabel, { color: colors.text }]}>{label}</Text><View style={[styles.passwordInput, { backgroundColor: colors.surface, borderColor: colors.line }]}><Ionicons name="lock-closed-outline" size={18} color={colors.muted} /><TextInput maxFontSizeMultiplier={1.3} accessibilityLabel={label} accessibilityHint={helper} value={value} onChangeText={onChange} secureTextEntry={!visible} autoCapitalize="none" autoCorrect={false} keyboardAppearance={colors.background === "#101512" ? "dark" : "light"} style={[styles.passwordText, { color: colors.ink }]} placeholder="••••••••" placeholderTextColor={colors.muted} /><AxPressable accessibilityLabel={visible ? "Скрыть пароль" : "Показать пароль"} onPress={() => setVisible(current => !current)} style={styles.eyeButton}><Ionicons name={visible ? "eye-off-outline" : "eye-outline"} size={19} color={colors.muted} /></AxPressable></View>{helper ? <Text maxFontSizeMultiplier={1.3} style={[styles.rowSubtitle, { color: colors.muted }]}>{helper}</Text> : null}</View>;
+  return <View><Text maxFontSizeMultiplier={1.3} style={[styles.inputLabel, { color: colors.text }]}>{label}</Text><View style={[styles.passwordInput, { backgroundColor: colors.surface, borderColor: colors.line }]}><Ionicons name="lock-closed-outline" size={18} color={colors.muted} /><TextInput selectionColor={colors.ink} maxFontSizeMultiplier={1.3} accessibilityLabel={label} accessibilityHint={helper} value={value} onChangeText={onChange} secureTextEntry={!visible} autoCapitalize="none" autoCorrect={false} keyboardAppearance={colors.background === "#111111" ? "dark" : "light"} style={[styles.passwordText, { color: colors.ink }]} placeholder="••••••••" placeholderTextColor={colors.muted} /><AxPressable accessibilityLabel={visible ? "Скрыть пароль" : "Показать пароль"} onPress={() => setVisible(current => !current)} style={styles.eyeButton}><Ionicons name={visible ? "eye-off-outline" : "eye-outline"} size={19} color={colors.muted} /></AxPressable></View>{helper ? <Text maxFontSizeMultiplier={1.3} style={[styles.rowSubtitle, { color: colors.muted }]}>{helper}</Text> : null}</View>;
 }
 
 function MedicalField({ label, multiline = true, ...props }: ComponentProps<typeof TextInput> & { label: string; multiline?: boolean }) {
   const { colors, dark } = useAxTheme();
-  return <View><Text maxFontSizeMultiplier={1.3} style={[styles.inputLabel, { color: colors.text }]}>{label}</Text><TextInput maxFontSizeMultiplier={1.3} {...props} accessibilityLabel={label} multiline={multiline} maxLength={500} keyboardAppearance={dark ? "dark" : "light"} placeholderTextColor={colors.muted} style={[styles.medicalInput, !multiline && styles.medicalInputSingle, { color: colors.ink, backgroundColor: colors.surfaceMuted, borderColor: colors.line }]} /></View>;
+  return <View><Text maxFontSizeMultiplier={1.3} style={[styles.inputLabel, { color: colors.text }]}>{label}</Text><TextInput selectionColor={colors.ink} maxFontSizeMultiplier={1.3} {...props} accessibilityLabel={label} multiline={multiline} maxLength={500} keyboardAppearance={dark ? "dark" : "light"} placeholderTextColor={colors.muted} style={[styles.medicalInput, !multiline && styles.medicalInputSingle, { color: colors.ink, backgroundColor: colors.surfaceMuted, borderColor: colors.line }]} /></View>;
 }
 
 function useOptimisticPreference(props: CommonProps, setBusy: (key?: string) => void, setNotice: (notice?: Notice) => void) {

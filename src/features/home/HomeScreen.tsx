@@ -1,11 +1,7 @@
+import { useAxStyles, type AxThemeColors } from "../../ui/theme";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
-
-export const homeColors = {
-  background: "#F7F7F7", ink: "#111111", muted: "#6B6B6B",
-  line: "#E3E3E3", soft: "#EFEFEF", white: "#FFFFFF"
-} as const;
 
 type HomeMetric = {
   label: string;
@@ -16,10 +12,11 @@ type HomeMetric = {
   points: readonly number[];
 };
 
-export function HomeScreen({ name, score, status, metrics, onOpenProfile, onOpenMetrics }: {
-  name: string; score: number; status: string; metrics: readonly HomeMetric[];
-  onOpenProfile: () => void; onOpenMetrics: () => void;
+export function HomeScreen({ score, status, metrics, onOpenMetrics }: {
+  score: number; status: string; metrics: readonly HomeMetric[];
+  onOpenMetrics: () => void;
 }) {
+  const { styles, colors: homeColors } = useAxStyles(createStyles);
   const { width, fontScale } = useWindowDimensions();
   const narrow = width < 375;
   const singleColumn = fontScale > 1.3;
@@ -27,25 +24,6 @@ export function HomeScreen({ name, score, status, metrics, onOpenProfile, onOpen
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
       <View style={styles.content}>
-        <View style={styles.header}>
-          <View accessible accessibilityLabel="AxMed" style={styles.brand}>
-            <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.brandMark}>
-              <Svg width={22} height={22} viewBox="0 0 24 24">
-                <Path d="M12 4.5V19.5M4.5 12H19.5" stroke="#FFFFFF" strokeWidth={3.2} strokeLinecap="round" />
-              </Svg>
-            </View>
-            <Text allowFontScaling style={styles.wordmark}>AxMed</Text>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Открыть профиль" onPress={onOpenProfile}
-            style={({ pressed }) => [styles.profileButton, pressed && styles.pressed]}>
-            <Ionicons name="person-outline" size={21} color={homeColors.ink} />
-          </Pressable>
-        </View>
-
-        <Text allowFontScaling accessibilityRole="header" style={[styles.greeting, narrow && styles.greetingNarrow]}>
-          Привет, {name}!
-        </Text>
-
         <Pressable accessibilityRole="button" accessibilityLabel={`Ваше состояние: ${score} из 100. ${status}`}
           accessibilityHint="Открыть показатели и отчёты" onPress={onOpenMetrics}
           style={({ pressed }) => [styles.summary, pressed && styles.summaryPressed]}>
@@ -89,6 +67,7 @@ export function HomeScreen({ name, score, status, metrics, onOpenProfile, onOpen
 }
 
 function HealthRing({ value }: { value: number }) {
+  const { styles } = useAxStyles(createStyles);
   const circumference = 2 * Math.PI * 45;
   const progress = Math.max(0, Math.min(100, value)) / 100;
   return (
@@ -110,6 +89,7 @@ const formatValue = (value: string) => value.replace(".", ",").replace("-", "−
 function MetricCard({ metric, narrow, singleColumn, onPress }: {
   metric: HomeMetric; narrow: boolean; singleColumn: boolean; onPress: () => void;
 }) {
+  const { styles, colors: homeColors } = useAxStyles(createStyles);
   return (
     <Pressable accessibilityRole="button"
       accessibilityLabel={`${metric.label}: ${formatValue(metric.value)} ${metric.unit}. Изменение: ${formatValue(metric.delta)}`}
@@ -132,6 +112,7 @@ function MetricCard({ metric, narrow, singleColumn, onPress }: {
 }
 
 function MetricTrend({ points }: { points: readonly number[] }) {
+  const { styles, colors: homeColors } = useAxStyles(createStyles);
   if (points.length < 2) return null;
   const min = Math.min(...points);
   const range = Math.max(...points) - min || 1;
@@ -141,27 +122,19 @@ function MetricTrend({ points }: { points: readonly number[] }) {
   return (
     <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.trend}>
       <Svg width="100%" height={28} viewBox="0 0 128 28" preserveAspectRatio="none">
-        <Path d="M3 25 H125" stroke="#ECECEC" strokeWidth={1} />
-        <Path d={path} fill="none" stroke="#777777" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M3 25 H125" stroke={homeColors.line} strokeWidth={1} />
+        <Path d={path} fill="none" stroke={homeColors.muted} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx={last.x} cy={last.y} r={2.3} fill={homeColors.ink} />
       </Svg>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (homeColors: AxThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: homeColors.background },
   scroll: { flexGrow: 1, alignItems: "center" },
   content: { width: "100%", maxWidth: 480, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 116 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16 },
-  brand: { flexDirection: "row", alignItems: "center", gap: 9 },
-  brandMark: { width: 31, height: 31, borderRadius: 10, backgroundColor: homeColors.ink, alignItems: "center", justifyContent: "center" },
-  wordmark: { color: homeColors.ink, fontSize: 24, fontWeight: "600", letterSpacing: -1.1 },
-  profileButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: homeColors.white,
-    borderWidth: 1, borderColor: homeColors.line, alignItems: "center", justifyContent: "center" },
-  greeting: { color: homeColors.ink, fontSize: 30, lineHeight: 38, letterSpacing: -1.1, fontWeight: "500", marginTop: 26, marginBottom: 22 },
-  greetingNarrow: { fontSize: 26, lineHeight: 34, letterSpacing: -0.9 },
-  summary: { backgroundColor: homeColors.ink, borderRadius: 28, padding: 22 },
+  summary: { backgroundColor: "#111111", borderWidth: 1, borderColor: homeColors.line, borderRadius: 28, padding: 22 },
   summaryHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   summaryTitle: { color: "#E6E6E6", fontSize: 14, lineHeight: 20, fontWeight: "500", flexShrink: 1 },
   summaryArrow: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: "#3C3C3C", alignItems: "center", justifyContent: "center" },
@@ -182,10 +155,10 @@ const styles = StyleSheet.create({
   allButton: { minWidth: 60, minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 7 },
   allText: { color: homeColors.ink, fontSize: 12, lineHeight: 18, fontWeight: "500" },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
-  metric: { width: "48.2%", backgroundColor: homeColors.white, borderWidth: 1, borderColor: homeColors.line, borderRadius: 23, padding: 16 },
+  metric: { width: "48.2%", backgroundColor: homeColors.surface, borderWidth: 1, borderColor: homeColors.line, borderRadius: 23, padding: 16 },
   metricNarrow: { padding: 13 }, metricFull: { width: "100%" },
   metricHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap" },
-  metricIcon: { width: 30, height: 30, borderRadius: 10, backgroundColor: homeColors.soft, alignItems: "center", justifyContent: "center" },
+  metricIcon: { width: 30, height: 30, borderRadius: 10, backgroundColor: homeColors.surfaceMuted, alignItems: "center", justifyContent: "center" },
   delta: { color: homeColors.muted, fontSize: 11, lineHeight: 16, fontWeight: "500" },
   metricName: { color: homeColors.muted, fontSize: 12, lineHeight: 17, minHeight: 34, marginTop: 13 },
   valueRow: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", columnGap: 5 },

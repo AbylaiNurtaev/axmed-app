@@ -5,8 +5,11 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   type LayoutChangeEvent,
+  Platform,
   Pressable,
   StyleSheet,
+  Switch,
+  type SwitchProps,
   Text,
   View,
   type AccessibilityRole,
@@ -29,6 +32,17 @@ import { useAxReducedMotion, useAxTheme } from "./theme";
 type IconName = ComponentProps<typeof Ionicons>["name"];
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+export function AxSwitch(props: SwitchProps) {
+  const { colors } = useAxTheme();
+  // React Native Web uses a separate active-thumb prop; its default is teal.
+  const webColors = Platform.OS === "web" ? { activeThumbColor: colors.onAccent } : {};
+  return <Switch {...props} {...webColors}
+    trackColor={{ false: colors.lineStrong, true: colors.ink }}
+    thumbColor={props.value ? colors.onAccent : colors.white}
+    ios_backgroundColor={colors.lineStrong}
+  />;
+}
 
 export function AxPressable({ children, onPress, disabled, style, accessibilityLabel, accessibilityRole = "button", accessibilityState, haptic = false, scale = 0.98 }: PropsWithChildren<{
   onPress?: () => void;
@@ -138,8 +152,8 @@ export function AxFilterChip({ label, selected, onPress, icon }: { label: string
   const { colors, dark } = useAxTheme();
   const selectedBackground = dark ? colors.green : colors.ink;
   return <AxPressable accessibilityLabel={label} accessibilityState={{ selected }} haptic onPress={onPress} style={[styles.chip, { backgroundColor: selected ? selectedBackground : colors.surfaceMuted, borderColor: selected ? selectedBackground : colors.line }]}>
-    {icon ? <Ionicons name={icon} size={14} color={selected ? colors.white : colors.muted} /> : null}
-    <Text maxFontSizeMultiplier={1.3} style={[styles.chipText, { color: selected ? colors.white : colors.muted }]}>{label}</Text>
+    {icon ? <Ionicons name={icon} size={14} color={selected ? colors.onAccent : colors.muted} /> : null}
+    <Text maxFontSizeMultiplier={1.3} style={[styles.chipText, { color: selected ? colors.onAccent : colors.muted }]}>{label}</Text>
   </AxPressable>;
 }
 
@@ -200,10 +214,10 @@ export function AxSkeleton({ width = "100%", height = 16, radius = axRadius.md }
 }
 
 function buttonColors(variant: ButtonVariant, colors: ReturnType<typeof useAxTheme>["colors"]) {
-  return variant === "primary" ? { background: colors.green, foreground: colors.white, border: colors.green }
+  return variant === "primary" ? { background: colors.green, foreground: colors.onAccent, border: colors.green }
     : variant === "secondary" ? { background: colors.greenSoft, foreground: colors.green, border: colors.greenSoft }
     : variant === "outline" ? { background: colors.surface, foreground: colors.green, border: colors.green }
-    : variant === "danger" ? { background: colors.danger, foreground: colors.white, border: colors.danger }
+    : variant === "danger" ? { background: colors.danger, foreground: colors.onAccent, border: colors.danger }
     : { background: "transparent", foreground: colors.green, border: "transparent" };
 }
 function badgeColors(tone: "neutral" | "success" | "warning" | "danger" | "blue", colors: ReturnType<typeof useAxTheme>["colors"]) {
@@ -224,7 +238,7 @@ const styles = StyleSheet.create({
   iconButton: { width: 48, height: 48, borderRadius: axRadius.md, alignItems: "center", justifyContent: "center" },
   card: { borderRadius: axRadius.lg, padding: axSpace.x4, backgroundColor: axColors.surface, borderWidth: 1, borderColor: axColors.line },
   cardSoft: { backgroundColor: axColors.surfaceMuted },
-  cardAccent: { backgroundColor: axColors.greenSoft, borderColor: "#D4E8DD" },
+  cardAccent: { backgroundColor: axColors.greenSoft, borderColor: "#E0E0E0" },
   badge: { minHeight: 25, maxWidth: 140, paddingHorizontal: axSpace.x2, borderRadius: axRadius.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
   badgeText: { ...axType.label, fontSize: 9 },
   screenHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: axSpace.x3 },
@@ -238,8 +252,8 @@ const styles = StyleSheet.create({
   chip: { minHeight: 44, paddingHorizontal: axSpace.x3, borderRadius: axRadius.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, backgroundColor: axColors.surfaceMuted, borderWidth: 1, borderColor: axColors.line },
   chipSelected: { backgroundColor: axColors.ink, borderColor: axColors.ink },
   chipText: { ...axType.caption, color: axColors.muted, fontWeight: "700" },
-  chipTextSelected: { color: axColors.white },
-  segmented: { minHeight: 48, padding: 4, borderRadius: axRadius.md, flexDirection: "row", backgroundColor: "#E9ECE8" },
+  chipTextSelected: { color: axColors.onAccent },
+  segmented: { minHeight: 48, padding: 4, borderRadius: axRadius.md, flexDirection: "row", backgroundColor: "#E8E8E8" },
   segment: { flex: 1, minWidth: 0, borderRadius: 13, alignItems: "center", justifyContent: "center", paddingHorizontal: 5 },
   segmentIndicator: { position: "absolute", left: 4, top: 4, bottom: 4, borderRadius: 13, backgroundColor: axColors.surface },
   segmentText: { ...axType.caption, color: axColors.muted, fontWeight: "700" },

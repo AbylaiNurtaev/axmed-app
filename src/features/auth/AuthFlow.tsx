@@ -1,17 +1,20 @@
 import { ReactNode, useRef, useState } from "react";
 import { PanResponder, StyleSheet, View } from "react-native";
+import { useSharedValue } from "react-native-reanimated";
 import { AuthChoiceScreen, VerificationScreen, WelcomeScreen } from "./entryScreens";
 import { AboutScreen, AgeRestrictionScreen, ConsentsScreen } from "./profileScreens";
 import { BodyDataScreen, ConnectionErrorScreen } from "./setupScreens";
 import { SetupCompleteScreen } from "./SetupCompleteScreen";
-import { BraceletConnectionScreen } from "./BraceletConnectionScreen";
+import { OnboardingDevicesScreen } from "./OnboardingDevicesScreen";
 import { signInWithSocialProvider } from "./socialAuth";
 import type { SocialAuthCredential, SocialProvider } from "./socialAuth";
-import { AuthMode, AuthRoute, BodyMeasurements, Gender } from "./types";
+import { AuthMode, AuthRoute, BodyMeasurements, Gender, RegistrationBasics } from "./types";
 import type { VerificationResult } from "./authApi";
 import { PasswordRecoveryScreen } from "./PasswordRecoveryScreen";
+import { RegistrationProgressContext } from "./RegistrationProgress";
 
 type OnboardingProfilePatch = {
+  firstName?: string;
   birthDate?: string | null;
   gender?: Gender | null;
   medicalProfile?: Record<string, unknown>;
@@ -50,20 +53,34 @@ export function AuthFlow({
 }: AuthFlowProps) {
   const [route, setRoute] = useState<AuthRoute>({ name: "welcome" });
   const [measurements, setMeasurements] = useState<BodyMeasurements>(initialMeasurements);
+  const [basics, setBasics] = useState<RegistrationBasics>({ firstName: "", birthDate: "15.04.1990", gender: "male" });
+  const savingBasics = useRef(false);
   const [sessionCreated, setSessionCreated] = useState(false);
+  const authModeHistory = useRef<AuthMode[]>([]);
+  const registrationProgress = useSharedValue(0);
 
-  const openAuth = (mode: AuthMode) => setRoute({ name: "auth", mode });
+  const openAuth = (mode: AuthMode) => {
+    registrationProgress.value = 0;
+    authModeHistory.current = [];
+    setRoute({ name: "auth", mode });
+  };
   const previousRoute = getPreviousRoute(route);
   const goBack = () => {
-    if (!previousRoute) return;
+    if (savingBasics.current) return;
+    const previousMode = route.name === "auth" ? authModeHistory.current.pop() : undefined;
+    const destination: AuthRoute | null = route.name === "auth" && previousMode
+      ? { ...route, mode: previousMode }
+      : previousRoute;
+    if (!destination) return;
+    if (destination.name === "auth") registrationProgress.value = 0;
     if (route.name === "auth" && sessionCreated) {
       void onLogout().finally(() => {
         setSessionCreated(false);
-        setRoute(previousRoute);
+        setRoute(destination);
       });
       return;
     }
-    setRoute(previousRoute);
+    setRoute(destination);
   };
   const exitAccount = async () => {
     await onLogout();
@@ -71,7 +88,9 @@ export function AuthFlow({
     setRoute({ name: "welcome" });
   };
   const withSwipeBack = (screen: ReactNode) => (
-    <SwipeBackGesture onBack={goBack}>{screen}</SwipeBackGesture>
+    <RegistrationProgressContext.Provider value={registrationProgress}>
+      <SwipeBackGesture onBack={goBack}>{screen}</SwipeBackGesture>
+    </RegistrationProgressContext.Provider>
   );
   const continueWithSocial = async (mode: AuthMode, provider: SocialProvider) => {
     const credential = await signInWithSocialProvider(provider);
@@ -102,7 +121,11 @@ export function AuthFlow({
   if (route.name === "auth") {
     return withSwipeBack(
       <AuthChoiceScreen
-        initialMode={route.mode}
+        mode={route.mode}
+        onModeChange={mode => {
+          authModeHistory.current.push(route.mode);
+          setRoute({ ...route, mode });
+        }}
         initialEmail={route.email}
         notice={route.notice}
         onBack={goBack}
@@ -139,10 +162,16 @@ export function AuthFlow({
   if (route.name === "about") {
     return withSwipeBack(
       <AboutScreen
+        values={basics}
+        onChange={setBasics}
         onBack={goBack}
-        onContinue={(birthDate, gender) => {
-          setRoute({ name: "consents" });
-          void onSaveProfile({ birthDate: toIsoDate(birthDate), gender });
+        onContinue={async () => {
+          if (savingBasics.current) return;
+          savingBasics.current = true;
+          try {
+            await onSaveProfile({ firstName: basics.firstName.trim(), birthDate: toIsoDate(basics.birthDate), gender: basics.gender });
+            setRoute({ name: "consents" });
+          } finally { savingBasics.current = false; }
         }}
         onUnderAge={() => setRoute({ name: "ageRestriction" })}
       />
@@ -184,9 +213,11 @@ export function AuthFlow({
 
   if (route.name === "dataSource") {
     return withSwipeBack(
-      <BraceletConnectionScreen
+      <OnboardingDevicesScreen
+        kind={route.kind}
+        onSelect={kind => setRoute({ name: "dataSource", kind })}
+        onChooseAnother={() => setRoute({ name: "dataSource" })}
         onBack={goBack}
-        onSkip={() => setRoute({ name: "firstResult" })}
         onContinue={() => setRoute({ name: "firstResult" })}
       />
     );
@@ -256,7 +287,7 @@ function getPreviousRoute(route: AuthRoute): AuthRoute | null {
     case "bodyData":
       return { name: "consents" };
     case "dataSource":
-      return { name: "bodyData" };
+      return route.kind ? { name: "dataSource" } : { name: "bodyData" };
     case "connectionError":
       return { name: "dataSource" };
     default:

@@ -7,7 +7,6 @@ import {
   RefreshControl,
   SectionList,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   useWindowDimensions,
@@ -22,6 +21,7 @@ import Animated, {
   withTiming
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
+import { TabSwipeScrollView } from "../../ui/SwipeTabs";
 import {
   completeProfileGoalAction,
   createProfileGoal,
@@ -41,7 +41,7 @@ import {
 } from "../auth/authApi";
 import { AxBottomSheet, AxConfirmSheet, AxSnackbar } from "../../ui/feedback";
 import { AxReveal } from "../../ui/motion";
-import { AxBadge, AxButton, AxCard, AxFilterChip, AxPressable, AxScreenHeader, AxSectionHeader, AxSkeleton, AxStatePanel } from "../../ui/primitives";
+import { AxSwitch, AxBadge, AxButton, AxCard, AxFilterChip, AxPressable, AxScreenHeader, AxSectionHeader, AxSkeleton, AxStatePanel } from "../../ui/primitives";
 import { axColors, axRadius, axSpace, axType } from "../../ui/tokens";
 import { useAxReducedMotion } from "../../ui/theme";
 import { cancelGoalReminder, ensureGoalReminderPermission, scheduleGoalReminder } from "./goalReminders";
@@ -411,7 +411,7 @@ function GoalsSummary({ goals, activeGoals, progress, onCreate }: { goals: Profi
   return <AxReveal><View style={styles.goalsSummary}>
     <View style={styles.goalsSummaryIcon}><Ionicons name="flag-outline" size={22} color={axColors.green} /></View>
     <View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.goalsSummaryTitle}>{activeGoals.length} {activeGoals.length === 1 ? "активная цель" : "активных целей"}</Text><Text maxFontSizeMultiplier={1.3} style={styles.goalsSummaryMeta}>{progress}% общего прогресса · {completed} завершено</Text></View>
-    <AxPressable accessibilityLabel="Создать цель" onPress={() => onCreate()} style={styles.goalsSummaryAdd}><Ionicons name="add" size={22} color={axColors.white} /></AxPressable>
+    <AxPressable accessibilityLabel="Создать цель" onPress={() => onCreate()} style={styles.goalsSummaryAdd}><Ionicons name="add" size={22} color={axColors.onAccent} /></AxPressable>
   </View></AxReveal>;
 }
 
@@ -434,7 +434,7 @@ function ProgressRing({ value }: { value: number }) {
   const reduceMotion = useAxReducedMotion();
   useEffect(() => { progress.value = withTiming(value / 100, { duration: reduceMotion ? 0 : 360, easing: Easing.out(Easing.cubic) }); }, [progress, reduceMotion, value]);
   const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: circumference * (1 - progress.value) }));
-  return <View style={styles.ringWrap}><Svg width={104} height={104} viewBox="0 0 104 104"><Circle cx="52" cy="52" r={radius} stroke="#31443A" strokeWidth="9" fill="none" /><AnimatedCircle cx="52" cy="52" r={radius} stroke="#79D7AB" strokeWidth="9" fill="none" strokeLinecap="round" strokeDasharray={`${circumference} ${circumference}`} animatedProps={animatedProps} rotation="-90" origin="52, 52" /></Svg><Text maxFontSizeMultiplier={1.3} style={styles.ringText}>{value}%</Text></View>;
+  return <View style={styles.ringWrap}><Svg width={104} height={104} viewBox="0 0 104 104"><Circle cx="52" cy="52" r={radius} stroke="#404040" strokeWidth="9" fill="none" /><AnimatedCircle cx="52" cy="52" r={radius} stroke="#FFFFFF" strokeWidth="9" fill="none" strokeLinecap="round" strokeDasharray={`${circumference} ${circumference}`} animatedProps={animatedProps} rotation="-90" origin="52, 52" /></Svg><Text maxFontSizeMultiplier={1.3} style={styles.ringText}>{value}%</Text></View>;
 }
 
 function AnimatedNumber({ value }: { value: number }) {
@@ -447,8 +447,8 @@ function AnimatedNumber({ value }: { value: number }) {
 
 const GoalCard = memo(function GoalCard({ goal, completed, onPress }: { goal: ProfileGoal; completed: boolean; onPress: () => void }) {
   return <AxCard onPress={onPress} accessibilityLabel={`Открыть цель ${goal.title}`} style={[styles.goalCard, completed && styles.goalCardCompleted]}>
-    <View style={[styles.goalIcon, { backgroundColor: `${goal.color}18` }]}><MaterialCommunityIcons name={goal.icon as IconName} size={23} color={goal.color} /></View>
-    <View style={styles.goalMain}><View style={styles.goalTop}><Text maxFontSizeMultiplier={1.3} style={styles.goalTitle} numberOfLines={2}>{goal.title}</Text><AxBadge label={completed ? "Завершена" : statusLabel(goal.status)} tone={completed ? "success" : goal.status === "paused" ? "warning" : "blue"} /></View><Text maxFontSizeMultiplier={1.3} style={styles.goalSubtitle} numberOfLines={1}>{goal.nextAction || goal.category}</Text><GoalProgress progress={goal.progress} color={goal.color} /><View style={styles.goalMeta}><Text maxFontSizeMultiplier={1.3} style={styles.goalValue}>{formatValue(goal.currentValue)} / {formatValue(goal.targetValue)} {goal.unit}</Text><Text maxFontSizeMultiplier={1.3} style={styles.goalDue}>{dueLabel(goal.dueDate)}</Text></View></View>
+    <View style={[styles.goalIcon, { backgroundColor: axColors.surfaceMuted }]}><MaterialCommunityIcons name={goal.icon as IconName} size={23} color={axColors.ink} /></View>
+    <View style={styles.goalMain}><View style={styles.goalTop}><Text maxFontSizeMultiplier={1.3} style={styles.goalTitle} numberOfLines={2}>{goal.title}</Text><AxBadge label={completed ? "Завершена" : statusLabel(goal.status)} tone={completed ? "success" : goal.status === "paused" ? "warning" : "blue"} /></View><Text maxFontSizeMultiplier={1.3} style={styles.goalSubtitle} numberOfLines={1}>{goal.nextAction || goal.category}</Text><GoalProgress progress={goal.progress} color={axColors.ink} /><View style={styles.goalMeta}><Text maxFontSizeMultiplier={1.3} style={styles.goalValue}>{formatValue(goal.currentValue)} / {formatValue(goal.targetValue)} {goal.unit}</Text><Text maxFontSizeMultiplier={1.3} style={styles.goalDue}>{dueLabel(goal.dueDate)}</Text></View></View>
     <Ionicons name="chevron-forward" size={18} color={axColors.muted} />
   </AxCard>;
 });
@@ -463,11 +463,11 @@ function GoalProgress({ progress, color }: { progress: number; color: string }) 
 
 function OverviewTask({ task, last, busy, onToggle }: { task: PlanTask; last: boolean; busy: boolean; onToggle: (task: PlanTask) => void }) {
   const completed = task.todayStatus === "completed";
-  return <View style={[styles.taskRow, last && styles.noBorder]}><AxPressable accessibilityLabel={completed ? "Вернуть задачу" : "Выполнить задачу"} disabled={busy} onPress={() => onToggle(task)} style={[styles.taskCheck, completed && styles.taskCheckDone]}>{busy ? <ActivityIndicator size="small" color={completed ? axColors.white : axColors.green} /> : <Ionicons name={completed ? "checkmark" : "ellipse-outline"} size={21} color={completed ? axColors.white : axColors.muted} />}</AxPressable><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={[styles.taskTitle, completed && styles.taskTitleDone]} numberOfLines={2}>{task.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.taskMeta} numberOfLines={1}>{task.dueAt ? new Date(task.dueAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : "Без времени"}{task.notes ? ` · ${task.notes}` : ""}</Text></View>{task.reminderEnabled ? <Ionicons name="notifications-outline" size={17} color={axColors.muted} /> : null}</View>;
+  return <View style={[styles.taskRow, last && styles.noBorder]}><AxPressable accessibilityLabel={completed ? "Вернуть задачу" : "Выполнить задачу"} disabled={busy} onPress={() => onToggle(task)} style={[styles.taskCheck, completed && styles.taskCheckDone]}>{busy ? <ActivityIndicator size="small" color={completed ? axColors.onAccent : axColors.green} /> : <Ionicons name={completed ? "checkmark" : "ellipse-outline"} size={21} color={completed ? axColors.onAccent : axColors.muted} />}</AxPressable><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={[styles.taskTitle, completed && styles.taskTitleDone]} numberOfLines={2}>{task.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.taskMeta} numberOfLines={1}>{task.dueAt ? new Date(task.dueAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : "Без времени"}{task.notes ? ` · ${task.notes}` : ""}</Text></View>{task.reminderEnabled ? <Ionicons name="notifications-outline" size={17} color={axColors.muted} /> : null}</View>;
 }
 
 function OverviewHabitCard({ habit, onPress }: { habit: PlanHabit; onPress: () => void }) {
-  return <AxPressable accessibilityLabel={`Открыть привычку ${habit.title}`} onPress={onPress} style={[styles.habitCard, { backgroundColor: `${habit.color}12` }]}><MaterialCommunityIcons name={habit.icon as IconName} size={20} color={habit.color} /><Text maxFontSizeMultiplier={1.3} style={styles.habitTitle} numberOfLines={2}>{habit.title}</Text><View style={styles.habitBottom}><Text maxFontSizeMultiplier={1.3} style={styles.habitSeries}>{habit.streakDays} дн.</Text><Ionicons name="arrow-forward" size={15} color={habit.color} /></View></AxPressable>;
+  return <AxPressable accessibilityLabel={`Открыть привычку ${habit.title}`} onPress={onPress} style={[styles.habitCard, { backgroundColor: axColors.surfaceMuted }]}><MaterialCommunityIcons name={habit.icon as IconName} size={20} color={axColors.ink} /><Text maxFontSizeMultiplier={1.3} style={styles.habitTitle} numberOfLines={2}>{habit.title}</Text><View style={styles.habitBottom}><Text maxFontSizeMultiplier={1.3} style={styles.habitSeries}>{habit.streakDays} дн.</Text><Ionicons name="arrow-forward" size={15} color={axColors.ink} /></View></AxPressable>;
 }
 
 function OverviewEmpty({ icon, text, action, onPress }: { icon: ComponentProps<typeof Ionicons>["name"]; text: string; action: string; onPress: () => void }) {
@@ -475,7 +475,7 @@ function OverviewEmpty({ icon, text, action, onPress }: { icon: ComponentProps<t
 }
 
 function MilestoneCard({ goal, onPress }: { goal: ProfileGoal; onPress: () => void }) {
-  return <AxCard onPress={onPress} accessibilityLabel={`Ближайшая цель ${goal.title}`} tone="accent" style={styles.milestone}><View style={[styles.milestoneIcon, { backgroundColor: goal.color }]}><Ionicons name="flag" size={22} color={axColors.white} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.milestoneLabel}>БЛИЖАЙШАЯ ТОЧКА</Text><Text maxFontSizeMultiplier={1.3} style={styles.milestoneTitle} numberOfLines={2}>{goal.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.milestoneMeta}>{goal.progress}% · {dueLabel(goal.dueDate)}</Text></View><Ionicons name="arrow-forward" size={20} color={axColors.green} /></AxCard>;
+  return <AxCard onPress={onPress} accessibilityLabel={`Ближайшая цель ${goal.title}`} tone="accent" style={styles.milestone}><View style={[styles.milestoneIcon, { backgroundColor: axColors.ink }]}><Ionicons name="flag" size={22} color={axColors.onAccent} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.milestoneLabel}>БЛИЖАЙШАЯ ТОЧКА</Text><Text maxFontSizeMultiplier={1.3} style={styles.milestoneTitle} numberOfLines={2}>{goal.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.milestoneMeta}>{goal.progress}% · {dueLabel(goal.dueDate)}</Text></View><Ionicons name="arrow-forward" size={20} color={axColors.green} /></AxCard>;
 }
 
 function EmptyPlan({ onCreate, goalsOnly = false }: { onCreate: (template?: GoalTemplate) => void; goalsOnly?: boolean }) {
@@ -497,7 +497,7 @@ function EmptyPlan({ onCreate, goalsOnly = false }: { onCreate: (template?: Goal
 }
 
 function TemplateMini({ template, onPress }: { template: GoalTemplate; onPress: () => void }) {
-  return <AxPressable accessibilityLabel={`Создать цель: ${template.title}`} onPress={onPress} style={styles.templateMini}><View style={[styles.templateMiniIcon, { backgroundColor: `${template.color}18` }]}><MaterialCommunityIcons name={template.icon as IconName} size={20} color={template.color} /></View><Text maxFontSizeMultiplier={1.3} style={styles.templateMiniTitle} numberOfLines={3}>{template.title}</Text><Ionicons name="arrow-forward" size={14} color={template.color} /></AxPressable>;
+  return <AxPressable accessibilityLabel={`Создать цель: ${template.title}`} onPress={onPress} style={styles.templateMini}><View style={[styles.templateMiniIcon, { backgroundColor: axColors.surfaceMuted }]}><MaterialCommunityIcons name={template.icon as IconName} size={20} color={axColors.ink} /></View><Text maxFontSizeMultiplier={1.3} style={styles.templateMiniTitle} numberOfLines={3}>{template.title}</Text><Ionicons name="arrow-forward" size={14} color={axColors.ink} /></AxPressable>;
 }
 
 function GoalGuideItem({ icon, label }: { icon: ComponentProps<typeof Ionicons>["name"]; label: string }) {
@@ -523,16 +523,16 @@ function GoalDetailSheet({ goal, busy, onClose, onEdit, onStatus, onToggleToday,
   const extended = goal as PlanGoal | undefined;
   return <AxBottomSheet visible={Boolean(goal)} title={goal?.title ?? "Цель"} subtitle={goal ? `${goal.category} · ${frequencyLabel(goal.frequency)}` : undefined} onClose={onClose}>
     {goal ? <Animated.ScrollView style={styles.detailScroll} contentContainerStyle={styles.detailBody} showsVerticalScrollIndicator={false}>
-      <View style={styles.detailProgress}><ProgressRingLight value={goal.progress} color={goal.color} /><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.detailCurrent}>{formatValue(goal.currentValue)} <Text maxFontSizeMultiplier={1.3} style={styles.detailUnit}>{goal.unit}</Text></Text><Text maxFontSizeMultiplier={1.3} style={styles.detailTarget}>Цель: {formatValue(goal.targetValue)} {goal.unit}</Text></View></View>
+      <View style={styles.detailProgress}><ProgressRingLight value={goal.progress} color={axColors.ink} /><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.detailCurrent}>{formatValue(goal.currentValue)} <Text maxFontSizeMultiplier={1.3} style={styles.detailUnit}>{goal.unit}</Text></Text><Text maxFontSizeMultiplier={1.3} style={styles.detailTarget}>Цель: {formatValue(goal.targetValue)} {goal.unit}</Text></View></View>
       {goal.description ? <Text maxFontSizeMultiplier={1.3} style={styles.detailDescription}>{goal.description}</Text> : null}
       <View style={styles.sourceRow}><AxBadge label={sourceLabel(goal.progressSource)} tone={goal.progressSource === "manual" ? "neutral" : "success"} icon={goal.progressSource === "scale" ? "scale-outline" : goal.progressSource === "bracelet" ? "watch-outline" : "create-outline"} /><Text maxFontSizeMultiplier={1.3} style={styles.sourceText}>{goal.sourceRecordedAt ? `Обновлено ${new Date(goal.sourceRecordedAt).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : "Ожидает первого обновления"}</Text></View>
       <View style={styles.detailGrid}><DetailFact icon="calendar-outline" label="Срок" value={dueLabel(goal.dueDate)} /><DetailFact icon="repeat-outline" label="Ритм" value={frequencyLabel(goal.frequency)} /><DetailFact icon="flame-outline" label="Серия" value={`${goal.streakDays} дней`} /><DetailFact icon="notifications-outline" label="Напоминание" value={goal.reminderEnabled && goal.reminderTime ? goal.reminderTime : "Выключено"} /></View>
-      <View style={styles.nextAction}><View style={[styles.nextIcon, { backgroundColor: `${goal.color}18` }]}><Ionicons name="arrow-forward" size={19} color={goal.color} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.nextLabel}>Следующее действие</Text><Text maxFontSizeMultiplier={1.3} style={styles.nextText}>{goal.nextAction || "Добавьте действие при редактировании"}</Text></View></View>
+      <View style={styles.nextAction}><View style={[styles.nextIcon, { backgroundColor: axColors.surfaceMuted }]}><Ionicons name="arrow-forward" size={19} color={axColors.ink} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.nextLabel}>Следующее действие</Text><Text maxFontSizeMultiplier={1.3} style={styles.nextText}>{goal.nextAction || "Добавьте действие при редактировании"}</Text></View></View>
       {goal.status === "active" ? <AxButton label={goal.completedToday ? "Отменить действие сегодня" : "Выполнить действие сегодня"} icon={goal.completedToday ? "arrow-undo-outline" : "checkmark-circle-outline"} variant="secondary" onPress={() => onToggleToday(goal, !goal.completedToday)} loading={busy} /> : null}
-      <View style={styles.manualProgress}><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.nextLabel}>Обновить вручную</Text><Text maxFontSizeMultiplier={1.3} style={styles.manualHint}>Автоданные браслета или весов позже снова обновят связанный показатель.</Text></View><TextInput maxFontSizeMultiplier={1.3} accessibilityLabel="Текущее значение цели" value={manualValue} onChangeText={setManualValue} keyboardType="decimal-pad" style={styles.manualInput} /><AxButton label="Сохранить" compact fullWidth={false} onPress={() => void onManualProgress(goal, parseNumber(manualValue))} disabled={busy || !Number.isFinite(parseNumber(manualValue))} /></View>
+      <View style={styles.manualProgress}><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.nextLabel}>Обновить вручную</Text><Text maxFontSizeMultiplier={1.3} style={styles.manualHint}>Автоданные браслета или весов позже снова обновят связанный показатель.</Text></View><TextInput selectionColor={axColors.ink} maxFontSizeMultiplier={1.3} accessibilityLabel="Текущее значение цели" value={manualValue} onChangeText={setManualValue} keyboardType="decimal-pad" style={styles.manualInput} /><AxButton label="Сохранить" compact fullWidth={false} onPress={() => void onManualProgress(goal, parseNumber(manualValue))} disabled={busy || !Number.isFinite(parseNumber(manualValue))} /></View>
       <View style={styles.linkedSummary}><DetailLink icon="analytics-outline" label="Показатель" value={metricOptions.find(item => item.key === goal.metricKey)?.label ?? "Свой"} /><DetailLink icon="checkbox-outline" label="Задачи" value={`${extended?.tasks?.length ?? 0}`} /><DetailLink icon="leaf-outline" label="Привычки" value={`${extended?.habits?.length ?? 0}`} /></View>
       {extended?.tasks?.length ? <><Text maxFontSizeMultiplier={1.3} style={styles.detailSectionTitle}>Связанные задачи</Text>{extended.tasks.slice(0, 4).map(task => <View key={task.id} style={styles.historyRow}><Ionicons name={task.todayStatus === "completed" ? "checkmark-circle" : "ellipse-outline"} size={18} color={task.todayStatus === "completed" ? axColors.green : axColors.muted} /><Text maxFontSizeMultiplier={1.3} style={styles.historyText}>{task.title}</Text></View>)}</> : null}
-      {extended?.habits?.length ? <><Text maxFontSizeMultiplier={1.3} style={styles.detailSectionTitle}>Связанные привычки</Text>{extended.habits.slice(0, 4).map(habit => <View key={habit.id} style={styles.historyRow}><Ionicons name="leaf-outline" size={18} color={habit.color} /><Text maxFontSizeMultiplier={1.3} style={styles.historyText}>{habit.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.historyMeta}>{habit.streakDays} дн.</Text></View>)}</> : null}
+      {extended?.habits?.length ? <><Text maxFontSizeMultiplier={1.3} style={styles.detailSectionTitle}>Связанные привычки</Text>{extended.habits.slice(0, 4).map(habit => <View key={habit.id} style={styles.historyRow}><Ionicons name="leaf-outline" size={18} color={axColors.ink} /><Text maxFontSizeMultiplier={1.3} style={styles.historyText}>{habit.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.historyMeta}>{habit.streakDays} дн.</Text></View>)}</> : null}
       {extended?.history?.length ? <><Text maxFontSizeMultiplier={1.3} style={styles.detailSectionTitle}>История действий</Text>{extended.history.slice(0, 8).map((event, index) => <View key={`${event.occurredAt}-${index}`} style={styles.historyRow}><View style={styles.historyDot} /><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.historyText}>{historyLabel(event.type, event.source)}</Text><Text maxFontSizeMultiplier={1.3} style={styles.historyMeta}>{new Date(event.occurredAt).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}{event.value === null ? "" : ` · ${formatValue(event.value)} ${event.unit ?? ""}`}</Text></View></View>)}</> : null}
       <View style={styles.detailActions}><AxButton label="Редактировать" icon="create-outline" variant="secondary" onPress={() => onEdit(goal)} disabled={busy} /><AxButton label={goal.status === "completed" ? "Вернуть в активные" : "Завершить цель"} icon={goal.status === "completed" ? "refresh-outline" : "checkmark-circle-outline"} onPress={() => onStatus(goal, goal.status === "completed" ? "active" : "completed")} loading={busy} /><AxButton label="Удалить" icon="trash-outline" variant="ghost" onPress={onDelete} disabled={busy} /></View>
     </Animated.ScrollView> : null}
@@ -614,7 +614,7 @@ function TemplateStep({ onSelect }: { onSelect: (template: GoalTemplate) => void
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof categories)[number]>("Все");
   const filtered = useMemo(() => goalTemplates.filter(template => (category === "Все" || template.categoryGroup === category) && `${template.title} ${template.description} ${template.tracking}`.toLocaleLowerCase("ru-RU").includes(query.trim().toLocaleLowerCase("ru-RU"))), [category, query]);
-  return <View><View style={styles.searchBox}><Ionicons name="search" size={19} color={axColors.muted} /><TextInput maxFontSizeMultiplier={1.3} accessibilityLabel="Поиск шаблона цели" value={query} onChangeText={setQuery} placeholder="Найти шаблон" placeholderTextColor={axColors.muted} style={styles.searchInput} /></View><Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>{categories.map(item => <AxFilterChip key={item} label={item} selected={category === item} onPress={() => setCategory(item)} />)}</Animated.ScrollView><View style={styles.templateGrid}>{filtered.map((template, index) => <AxReveal key={template.templateKey} delay={Math.min(index, 6) * 35}><AxPressable accessibilityLabel={`Выбрать ${template.title}`} onPress={() => onSelect(template)} style={styles.templateCard}><View style={[styles.templateIcon, { backgroundColor: `${template.color}18` }]}><MaterialCommunityIcons name={template.icon as IconName} size={25} color={template.color} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.templateTitle}>{template.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.templateDescription} numberOfLines={2}>{template.description}</Text><View style={styles.tracking}><Ionicons name="analytics-outline" size={13} color={template.color} /><Text maxFontSizeMultiplier={1.3} style={[styles.trackingText, { color: template.color }]} numberOfLines={1}>{template.tracking}</Text></View></View><Ionicons name="arrow-forward" size={19} color={axColors.muted} /></AxPressable></AxReveal>)}</View>{filtered.length === 0 ? <AxStatePanel icon="search-outline" title="Шаблон не найден" message="Попробуйте другое слово или выберите категорию «Все»." /> : null}</View>;
+  return <View><View style={styles.searchBox}><Ionicons name="search" size={19} color={axColors.muted} /><TextInput selectionColor={axColors.ink} maxFontSizeMultiplier={1.3} accessibilityLabel="Поиск шаблона цели" value={query} onChangeText={setQuery} placeholder="Найти шаблон" placeholderTextColor={axColors.muted} style={styles.searchInput} /></View><TabSwipeScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>{categories.map(item => <AxFilterChip key={item} label={item} selected={category === item} onPress={() => setCategory(item)} />)}</TabSwipeScrollView><View style={styles.templateGrid}>{filtered.map((template, index) => <AxReveal key={template.templateKey} delay={Math.min(index, 6) * 35}><AxPressable accessibilityLabel={`Выбрать ${template.title}`} onPress={() => onSelect(template)} style={styles.templateCard}><View style={[styles.templateIcon, { backgroundColor: axColors.surfaceMuted }]}><MaterialCommunityIcons name={template.icon as IconName} size={25} color={axColors.ink} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.templateTitle}>{template.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.templateDescription} numberOfLines={2}>{template.description}</Text><View style={styles.tracking}><Ionicons name="analytics-outline" size={13} color={axColors.ink} /><Text maxFontSizeMultiplier={1.3} style={[styles.trackingText, { color: axColors.ink }]} numberOfLines={1}>{template.tracking}</Text></View></View><Ionicons name="arrow-forward" size={19} color={axColors.muted} /></AxPressable></AxReveal>)}</View>{filtered.length === 0 ? <AxStatePanel icon="search-outline" title="Шаблон не найден" message="Попробуйте другое слово или выберите категорию «Все»." /> : null}</View>;
 }
 
 function TitleStep({ draft, onDraft }: StepProps) {
@@ -622,26 +622,26 @@ function TitleStep({ draft, onDraft }: StepProps) {
 }
 
 function MetricStep({ draft, onDraft }: StepProps) {
-  return <View><EditorIntro icon="analytics-outline" title="Что отслеживаем?" text="Показатель поможет видеть движение, а не только финальную точку." /><View style={styles.metricGrid}>{metricOptions.map(option => <AxPressable key={option.key} accessibilityLabel={option.label} onPress={() => onDraft(current => ({ ...current, metricKey: option.key, unit: option.unit || current.unit }))} style={[styles.metricOption, draft.metricKey === option.key && styles.metricOptionActive]}><MaterialCommunityIcons name={option.icon as IconName} size={23} color={draft.metricKey === option.key ? axColors.white : axColors.green} /><Text maxFontSizeMultiplier={1.3} style={[styles.metricOptionText, draft.metricKey === option.key && styles.metricOptionTextActive]}>{option.label}</Text>{draft.metricKey === option.key ? <Ionicons name="checkmark-circle" size={17} color={axColors.white} /> : null}</AxPressable>)}</View></View>;
+  return <View><EditorIntro icon="analytics-outline" title="Что отслеживаем?" text="Показатель поможет видеть движение, а не только финальную точку." /><View style={styles.metricGrid}>{metricOptions.map(option => <AxPressable key={option.key} accessibilityLabel={option.label} onPress={() => onDraft(current => ({ ...current, metricKey: option.key, unit: option.unit || current.unit }))} style={[styles.metricOption, draft.metricKey === option.key && styles.metricOptionActive]}><MaterialCommunityIcons name={option.icon as IconName} size={23} color={draft.metricKey === option.key ? axColors.onAccent : axColors.green} /><Text maxFontSizeMultiplier={1.3} style={[styles.metricOptionText, draft.metricKey === option.key && styles.metricOptionTextActive]}>{option.label}</Text>{draft.metricKey === option.key ? <Ionicons name="checkmark-circle" size={17} color={axColors.onAccent} /> : null}</AxPressable>)}</View></View>;
 }
 
 function ValuesStep({ draft, onDraft }: StepProps) {
-  return <View><EditorIntro icon="speedometer-outline" title="Задайте значения" text="Начальное значение фиксирует точку старта. Его можно оставить нулевым для привычки." /><View style={styles.fieldRow}><Field row label="Начальное" value={draft.startValue} onChangeText={startValue => onDraft(current => ({ ...current, startValue, currentValue: current.currentValue === current.startValue ? startValue : current.currentValue }))} keyboardType="decimal-pad" /><Field row label="Целевое" value={draft.targetValue} onChangeText={targetValue => onDraft(current => ({ ...current, targetValue }))} keyboardType="decimal-pad" /></View><View style={styles.fieldRow}><Field row label="Текущее" value={draft.currentValue} onChangeText={currentValue => onDraft(current => ({ ...current, currentValue }))} keyboardType="decimal-pad" /><Field row label="Единица" value={draft.unit} onChangeText={unit => onDraft(current => ({ ...current, unit }))} placeholder="кг, шагов…" maxLength={24} /></View><View style={styles.calculated}><Text maxFontSizeMultiplier={1.3} style={styles.calculatedLabel}>Расчётный прогресс</Text><Text maxFontSizeMultiplier={1.3} style={styles.calculatedValue}>{draftProgress(draft)}%</Text><GoalProgress progress={draftProgress(draft)} color={draft.color} /></View></View>;
+  return <View><EditorIntro icon="speedometer-outline" title="Задайте значения" text="Начальное значение фиксирует точку старта. Его можно оставить нулевым для привычки." /><View style={styles.fieldRow}><Field row label="Начальное" value={draft.startValue} onChangeText={startValue => onDraft(current => ({ ...current, startValue, currentValue: current.currentValue === current.startValue ? startValue : current.currentValue }))} keyboardType="decimal-pad" /><Field row label="Целевое" value={draft.targetValue} onChangeText={targetValue => onDraft(current => ({ ...current, targetValue }))} keyboardType="decimal-pad" /></View><View style={styles.fieldRow}><Field row label="Текущее" value={draft.currentValue} onChangeText={currentValue => onDraft(current => ({ ...current, currentValue }))} keyboardType="decimal-pad" /><Field row label="Единица" value={draft.unit} onChangeText={unit => onDraft(current => ({ ...current, unit }))} placeholder="кг, шагов…" maxLength={24} /></View><View style={styles.calculated}><Text maxFontSizeMultiplier={1.3} style={styles.calculatedLabel}>Расчётный прогресс</Text><Text maxFontSizeMultiplier={1.3} style={styles.calculatedValue}>{draftProgress(draft)}%</Text><GoalProgress progress={draftProgress(draft)} color={axColors.ink} /></View></View>;
 }
 
 function DeadlineStep({ draft, onDraft }: StepProps) {
   const options = [{ label: "30 дней", value: dateAfter(30) }, { label: "60 дней", value: dateAfter(60) }, { label: "90 дней", value: dateAfter(90) }, { label: "Без срока", value: null }] as const;
-  return <View><EditorIntro icon="calendar-outline" title="Когда хотите прийти к цели?" text="Срок нужен для ориентира — он не оценивает ваш результат." /><View style={styles.deadlineGrid}>{options.map(option => <AxPressable key={option.label} accessibilityLabel={option.label} onPress={() => onDraft(current => ({ ...current, dueDate: option.value }))} style={[styles.deadlineCard, draft.dueDate === option.value && styles.deadlineCardActive]}><Ionicons name={option.value ? "calendar-number-outline" : "infinite-outline"} size={22} color={draft.dueDate === option.value ? axColors.white : axColors.green} /><Text maxFontSizeMultiplier={1.3} style={[styles.deadlineLabel, draft.dueDate === option.value && styles.deadlineLabelActive]}>{option.label}</Text>{option.value ? <Text maxFontSizeMultiplier={1.3} style={[styles.deadlineDate, draft.dueDate === option.value && styles.deadlineLabelActive]}>{formatDate(option.value)}</Text> : null}</AxPressable>)}</View><Field label="Другая дата" value={draft.dueDate ?? ""} onChangeText={dueDate => onDraft(current => ({ ...current, dueDate: dueDate || null }))} placeholder="ГГГГ-ММ-ДД" keyboardType="numbers-and-punctuation" maxLength={10} /></View>;
+  return <View><EditorIntro icon="calendar-outline" title="Когда хотите прийти к цели?" text="Срок нужен для ориентира — он не оценивает ваш результат." /><View style={styles.deadlineGrid}>{options.map(option => <AxPressable key={option.label} accessibilityLabel={option.label} onPress={() => onDraft(current => ({ ...current, dueDate: option.value }))} style={[styles.deadlineCard, draft.dueDate === option.value && styles.deadlineCardActive]}><Ionicons name={option.value ? "calendar-number-outline" : "infinite-outline"} size={22} color={draft.dueDate === option.value ? axColors.onAccent : axColors.green} /><Text maxFontSizeMultiplier={1.3} style={[styles.deadlineLabel, draft.dueDate === option.value && styles.deadlineLabelActive]}>{option.label}</Text>{option.value ? <Text maxFontSizeMultiplier={1.3} style={[styles.deadlineDate, draft.dueDate === option.value && styles.deadlineLabelActive]}>{formatDate(option.value)}</Text> : null}</AxPressable>)}</View><Field label="Другая дата" value={draft.dueDate ?? ""} onChangeText={dueDate => onDraft(current => ({ ...current, dueDate: dueDate || null }))} placeholder="ГГГГ-ММ-ДД" keyboardType="numbers-and-punctuation" maxLength={10} /></View>;
 }
 
 function ScheduleStep({ draft, onDraft }: StepProps) {
   const frequencies: Array<{ value: ProfileGoal["frequency"]; label: string }> = [{ value: "daily", label: "Каждый день" }, { value: "weekdays", label: "По будням" }, { value: "threePerWeek", label: "3 раза в неделю" }, { value: "weekly", label: "Раз в неделю" }];
-  return <View><EditorIntro icon="repeat-outline" title="Настройте ритм" text="Выберите частоту действий и, если нужно, включите системное напоминание." /><View style={styles.frequencyList}>{frequencies.map(option => <AxPressable key={option.value} accessibilityLabel={option.label} accessibilityState={{ selected: draft.frequency === option.value }} onPress={() => onDraft(current => ({ ...current, frequency: option.value }))} style={[styles.frequencyRow, draft.frequency === option.value && styles.frequencyRowActive]}><View style={[styles.radio, draft.frequency === option.value && styles.radioActive]}>{draft.frequency === option.value ? <View style={styles.radioDot} /> : null}</View><Text maxFontSizeMultiplier={1.3} style={styles.frequencyText}>{option.label}</Text></AxPressable>)}</View><View style={styles.reminderRow}><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.reminderTitle}>Напоминание</Text><Text maxFontSizeMultiplier={1.3} style={styles.reminderSubtitle}>Локальное уведомление на этом устройстве</Text></View><Switch accessibilityLabel="Напоминание о цели" accessibilityState={{ checked: draft.reminderEnabled }} value={draft.reminderEnabled} onValueChange={reminderEnabled => onDraft(current => ({ ...current, reminderEnabled }))} trackColor={{ false: axColors.lineStrong, true: "#9CCCB7" }} thumbColor={draft.reminderEnabled ? axColors.green : axColors.white} /></View>{draft.reminderEnabled ? <><Text maxFontSizeMultiplier={1.3} style={styles.smallLabel}>Время</Text><View style={styles.timeRow}>{["08:00", "12:00", "19:00", "21:30"].map(time => <AxFilterChip key={time} label={time} selected={draft.reminderTime === time} onPress={() => onDraft(current => ({ ...current, reminderTime: time }))} />)}</View><Field label="Другое время" value={draft.reminderTime} onChangeText={reminderTime => onDraft(current => ({ ...current, reminderTime }))} placeholder="ЧЧ:ММ" keyboardType="numbers-and-punctuation" maxLength={5} /></> : null}</View>;
+  return <View><EditorIntro icon="repeat-outline" title="Настройте ритм" text="Выберите частоту действий и, если нужно, включите системное напоминание." /><View style={styles.frequencyList}>{frequencies.map(option => <AxPressable key={option.value} accessibilityLabel={option.label} accessibilityState={{ selected: draft.frequency === option.value }} onPress={() => onDraft(current => ({ ...current, frequency: option.value }))} style={[styles.frequencyRow, draft.frequency === option.value && styles.frequencyRowActive]}><View style={[styles.radio, draft.frequency === option.value && styles.radioActive]}>{draft.frequency === option.value ? <View style={styles.radioDot} /> : null}</View><Text maxFontSizeMultiplier={1.3} style={styles.frequencyText}>{option.label}</Text></AxPressable>)}</View><View style={styles.reminderRow}><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.reminderTitle}>Напоминание</Text><Text maxFontSizeMultiplier={1.3} style={styles.reminderSubtitle}>Локальное уведомление на этом устройстве</Text></View><AxSwitch accessibilityLabel="Напоминание о цели" accessibilityState={{ checked: draft.reminderEnabled }} value={draft.reminderEnabled} onValueChange={reminderEnabled => onDraft(current => ({ ...current, reminderEnabled }))} /></View>{draft.reminderEnabled ? <><Text maxFontSizeMultiplier={1.3} style={styles.smallLabel}>Время</Text><View style={styles.timeRow}>{["08:00", "12:00", "19:00", "21:30"].map(time => <AxFilterChip key={time} label={time} selected={draft.reminderTime === time} onPress={() => onDraft(current => ({ ...current, reminderTime: time }))} />)}</View><Field label="Другое время" value={draft.reminderTime} onChangeText={reminderTime => onDraft(current => ({ ...current, reminderTime }))} placeholder="ЧЧ:ММ" keyboardType="numbers-and-punctuation" maxLength={5} /></> : null}</View>;
 }
 
 function PreviewStep({ draft }: { draft: GoalDraft }) {
   const progress = draftProgress(draft);
-  return <View><EditorIntro icon="checkmark-done-outline" title="Проверьте цель" text="После сохранения её можно будет изменить в любой момент." /><View style={styles.previewCard}><View style={[styles.previewIcon, { backgroundColor: `${draft.color}18` }]}><MaterialCommunityIcons name={draft.icon as IconName} size={29} color={draft.color} /></View><Text maxFontSizeMultiplier={1.3} style={styles.previewTitle}>{draft.title || "Без названия"}</Text><Text maxFontSizeMultiplier={1.3} style={styles.previewAction}>{draft.nextAction || "Следующее действие не указано"}</Text><View style={styles.previewValues}><Text maxFontSizeMultiplier={1.3} style={styles.previewCurrent}>{formatValue(parseNumber(draft.currentValue))} <Text maxFontSizeMultiplier={1.3} style={styles.previewUnit}>{draft.unit}</Text></Text><AxBadge label={`${progress}%`} tone="success" /></View><GoalProgress progress={progress} color={draft.color} /><View style={styles.previewFacts}><PreviewFact icon="analytics-outline" text={metricOptions.find(item => item.key === draft.metricKey)?.label ?? "Свой показатель"} /><PreviewFact icon="calendar-outline" text={dueLabel(draft.dueDate)} /><PreviewFact icon="repeat-outline" text={frequencyLabel(draft.frequency)} /><PreviewFact icon="notifications-outline" text={draft.reminderEnabled ? draft.reminderTime : "Без напоминания"} /></View></View></View>;
+  return <View><EditorIntro icon="checkmark-done-outline" title="Проверьте цель" text="После сохранения её можно будет изменить в любой момент." /><View style={styles.previewCard}><View style={[styles.previewIcon, { backgroundColor: axColors.surfaceMuted }]}><MaterialCommunityIcons name={draft.icon as IconName} size={29} color={axColors.ink} /></View><Text maxFontSizeMultiplier={1.3} style={styles.previewTitle}>{draft.title || "Без названия"}</Text><Text maxFontSizeMultiplier={1.3} style={styles.previewAction}>{draft.nextAction || "Следующее действие не указано"}</Text><View style={styles.previewValues}><Text maxFontSizeMultiplier={1.3} style={styles.previewCurrent}>{formatValue(parseNumber(draft.currentValue))} <Text maxFontSizeMultiplier={1.3} style={styles.previewUnit}>{draft.unit}</Text></Text><AxBadge label={`${progress}%`} tone="success" /></View><GoalProgress progress={progress} color={axColors.ink} /><View style={styles.previewFacts}><PreviewFact icon="analytics-outline" text={metricOptions.find(item => item.key === draft.metricKey)?.label ?? "Свой показатель"} /><PreviewFact icon="calendar-outline" text={dueLabel(draft.dueDate)} /><PreviewFact icon="repeat-outline" text={frequencyLabel(draft.frequency)} /><PreviewFact icon="notifications-outline" text={draft.reminderEnabled ? draft.reminderTime : "Без напоминания"} /></View></View></View>;
 }
 
 function PreviewFact({ icon, text }: { icon: ComponentProps<typeof Ionicons>["name"]; text: string }) {
@@ -655,7 +655,7 @@ function EditorIntro({ icon, title, text }: { icon: ComponentProps<typeof Ionico
 }
 
 function Field({ label, row, ...props }: ComponentProps<typeof TextInput> & { label: string; row?: boolean }) {
-  return <View style={[styles.field, row && styles.fieldHalf]}><Text maxFontSizeMultiplier={1.3} style={styles.fieldLabel}>{label}</Text><TextInput maxFontSizeMultiplier={1.3} {...props} accessibilityLabel={props.accessibilityLabel ?? label} style={styles.input} placeholderTextColor={axColors.muted} /></View>;
+  return <View style={[styles.field, row && styles.fieldHalf]}><Text maxFontSizeMultiplier={1.3} style={styles.fieldLabel}>{label}</Text><TextInput selectionColor={axColors.ink} maxFontSizeMultiplier={1.3} {...props} accessibilityLabel={props.accessibilityLabel ?? label} style={styles.input} placeholderTextColor={axColors.muted} /></View>;
 }
 
 function draftFromTemplate(template: GoalTemplate): GoalDraft {
@@ -664,7 +664,7 @@ function draftFromTemplate(template: GoalTemplate): GoalDraft {
     title: template.templateKey === "custom" ? "" : template.title,
     category: template.category ?? "Здоровье",
     icon: template.icon ?? "flag-checkered",
-    color: template.color ?? axColors.green,
+    color: template.color ?? "#111111",
     metricKey: template.metricKey ?? "custom",
     startValue: String(template.startValue ?? template.currentValue ?? 0),
     currentValue: String(template.currentValue ?? template.startValue ?? 0),
@@ -821,19 +821,19 @@ const styles = StyleSheet.create({
   errorStrip: { minHeight: 52, borderRadius: axRadius.md, paddingHorizontal: axSpace.x3, marginTop: axSpace.x3, backgroundColor: axColors.dangerSoft, flexDirection: "row", alignItems: "center", gap: axSpace.x2 },
   errorText: { ...axType.caption, flex: 1, color: axColors.danger },
   retry: { ...axType.caption, color: axColors.danger, fontWeight: "800" },
-  heroCard: { minHeight: 214, borderRadius: axRadius.xl, padding: axSpace.x5, marginTop: axSpace.x5, marginBottom: axSpace.x3, backgroundColor: "#17261F", overflow: "hidden" },
+  heroCard: { minHeight: 214, borderRadius: axRadius.xl, padding: axSpace.x5, marginTop: axSpace.x5, marginBottom: axSpace.x3, backgroundColor: "#111111", overflow: "hidden" },
   heroCopy: { paddingRight: 112 },
-  heroEyebrow: { ...axType.label, color: "#92A39A" },
+  heroEyebrow: { ...axType.label, color: "#A0A0A0" },
   heroValueRow: { flexDirection: "row", alignItems: "baseline", marginTop: axSpace.x2 },
-  heroValue: { color: axColors.white, fontSize: 46, lineHeight: 52, fontWeight: "800", letterSpacing: -1.3 },
-  heroPercent: { color: "#B9C9C0", fontSize: 22, fontWeight: "700" },
-  heroCaption: { ...axType.caption, color: "#B9C9C0", marginTop: 2 },
+  heroValue: { color: axColors.white, fontSize: 46, lineHeight: 52, fontWeight: "500", letterSpacing: -1.3 },
+  heroPercent: { color: "#C8C8C8", fontSize: 22, fontWeight: "700" },
+  heroCaption: { ...axType.caption, color: "#C8C8C8", marginTop: 2 },
   ringWrap: { position: "absolute", right: axSpace.x4, top: axSpace.x4, width: 104, height: 104, alignItems: "center", justifyContent: "center" },
   ringText: { position: "absolute", color: axColors.white, fontSize: 18, fontWeight: "800" },
   heroFacts: { flexDirection: "row", gap: 7, marginTop: axSpace.x5 },
-  heroFact: { flex: 1, minWidth: 0, minHeight: 58, borderRadius: axRadius.md, padding: 9, backgroundColor: "#26382F" },
+  heroFact: { flex: 1, minWidth: 0, minHeight: 58, borderRadius: axRadius.md, padding: 9, backgroundColor: "#303030" },
   heroFactValue: { color: axColors.white, fontSize: 18, fontWeight: "800" },
-  heroFactLabel: { color: "#AAB9B0", fontSize: 8, lineHeight: 11, marginTop: 2 },
+  heroFactLabel: { color: "#B8B8B8", fontSize: 8, lineHeight: 11, marginTop: 2 },
   createButton: { marginBottom: axSpace.x6 },
   goalsSummary: { minHeight: 76, borderRadius: axRadius.lg, padding: axSpace.x3, marginTop: axSpace.x4, marginBottom: axSpace.x3, backgroundColor: axColors.surface, borderWidth: 1, borderColor: axColors.line, flexDirection: "row", alignItems: "center", gap: axSpace.x3 },
   goalsSummaryIcon: { width: 44, height: 44, borderRadius: 15, backgroundColor: axColors.greenSoft, alignItems: "center", justifyContent: "center" },
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
   goalValue: { ...axType.caption, color: axColors.text, fontWeight: "700" },
   goalDue: { ...axType.caption, color: axColors.muted },
   emptyPlan: { paddingTop: axSpace.x3 },
-  goalStartCard: { borderRadius: axRadius.xl, padding: axSpace.x4, backgroundColor: axColors.greenSoft, borderWidth: 1, borderColor: "#D2E7DB", gap: axSpace.x4, marginBottom: axSpace.x4 },
+  goalStartCard: { borderRadius: axRadius.xl, padding: axSpace.x4, backgroundColor: axColors.greenSoft, borderWidth: 1, borderColor: "#E0E0E0", gap: axSpace.x4, marginBottom: axSpace.x4 },
   goalStartTop: { flexDirection: "row", alignItems: "center", gap: axSpace.x3 },
   goalStartIcon: { width: 46, height: 46, borderRadius: 16, backgroundColor: axColors.surface, alignItems: "center", justifyContent: "center" },
   goalStartTitle: { ...axType.cardTitle, color: axColors.ink },
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
   detailProgress: { flexDirection: "row", alignItems: "center", gap: axSpace.x4, marginBottom: axSpace.x4 },
   lightRing: { width: 84, height: 84, alignItems: "center", justifyContent: "center" },
   lightRingText: { position: "absolute", color: axColors.ink, fontSize: 14, fontWeight: "800" },
-  detailCurrent: { color: axColors.ink, fontSize: 28, fontWeight: "800" },
+  detailCurrent: { color: axColors.ink, fontSize: 28, fontWeight: "500" },
   detailUnit: { color: axColors.muted, fontSize: 14 },
   detailTarget: { ...axType.caption, color: axColors.muted, marginTop: 3 },
   detailGrid: { flexDirection: "row", flexWrap: "wrap", gap: axSpace.x2 },
@@ -954,15 +954,15 @@ const styles = StyleSheet.create({
   metricOption: { width: "48.6%", minHeight: 76, borderRadius: axRadius.lg, padding: axSpace.x3, backgroundColor: axColors.surface, borderWidth: 1, borderColor: axColors.line, justifyContent: "space-between" },
   metricOptionActive: { backgroundColor: axColors.green, borderColor: axColors.green },
   metricOptionText: { ...axType.bodyStrong, color: axColors.ink, marginTop: 8 },
-  metricOptionTextActive: { color: axColors.white },
+  metricOptionTextActive: { color: axColors.onAccent },
   calculated: { borderRadius: axRadius.lg, padding: axSpace.x3, backgroundColor: axColors.greenSoft },
   calculatedLabel: { ...axType.caption, color: axColors.muted },
-  calculatedValue: { color: axColors.green, fontSize: 24, fontWeight: "800", marginTop: 2 },
+  calculatedValue: { color: axColors.green, fontSize: 24, fontWeight: "500", marginTop: 2 },
   deadlineGrid: { flexDirection: "row", flexWrap: "wrap", gap: axSpace.x2, marginBottom: axSpace.x4 },
   deadlineCard: { width: "48.6%", minHeight: 96, borderRadius: axRadius.lg, padding: axSpace.x3, backgroundColor: axColors.surface, borderWidth: 1, borderColor: axColors.line },
   deadlineCardActive: { backgroundColor: axColors.green, borderColor: axColors.green },
   deadlineLabel: { ...axType.bodyStrong, color: axColors.ink, marginTop: 9 },
-  deadlineLabelActive: { color: axColors.white },
+  deadlineLabelActive: { color: axColors.onAccent },
   deadlineDate: { ...axType.caption, color: axColors.muted, marginTop: 2 },
   frequencyList: { gap: axSpace.x2 },
   frequencyRow: { minHeight: 54, borderRadius: axRadius.md, paddingHorizontal: axSpace.x3, backgroundColor: axColors.surface, borderWidth: 1, borderColor: axColors.line, flexDirection: "row", alignItems: "center", gap: axSpace.x3 },
@@ -981,7 +981,7 @@ const styles = StyleSheet.create({
   previewTitle: { ...axType.section, color: axColors.ink, marginTop: axSpace.x3 },
   previewAction: { ...axType.body, color: axColors.muted, marginTop: 3 },
   previewValues: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: axSpace.x5 },
-  previewCurrent: { color: axColors.ink, fontSize: 25, fontWeight: "800" },
+  previewCurrent: { color: axColors.ink, fontSize: 25, fontWeight: "500" },
   previewUnit: { color: axColors.muted, fontSize: 13 },
   previewFacts: { marginTop: axSpace.x4, gap: axSpace.x2 },
   previewFact: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: axSpace.x2 },

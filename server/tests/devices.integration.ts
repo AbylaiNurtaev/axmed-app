@@ -37,6 +37,24 @@ async function call(path: string, token?: string, body?: unknown) {
   return { status: response.status, body: response.status === 204 ? null : await response.json() as any };
 }
 
+test("device bindings persist without measurements, replace only their kind and stay account-isolated", async () => {
+  const a = sessions[0]!;
+  const b = sessions[1]!;
+  const band = { id: "bound-g72", name: "G72", adapterId: "hband", kind: "fitness-band" };
+  const scale = { id: "bound-scale", name: "AxMed Scale", adapterId: "lefu-scale", kind: "scale" };
+  assert.equal((await call("/api/devices/bindings")).status, 401);
+  assert.equal((await call("/api/devices/bindings", a.accessToken, { ...band, userId: users[1] })).status, 400);
+  assert.equal((await call("/api/devices/bindings", a.accessToken, { ...scale, adapterId: "hband" })).status, 400);
+  assert.equal((await call("/api/devices/bindings", a.accessToken, band)).status, 200);
+  assert.equal((await call("/api/devices/bindings", a.accessToken, scale)).status, 200);
+  assert.equal((await call("/api/devices/bindings", a.accessToken, { ...band, id: "replacement-g72" })).status, 200);
+  const saved = await call("/api/devices/bindings", a.accessToken);
+  assert.equal(saved.body.length, 2);
+  assert.equal(saved.body.find((device: any) => device.kind === "fitness-band").id, "replacement-g72");
+  assert.equal(saved.body.find((device: any) => device.kind === "scale").id, scale.id);
+  assert.equal((await call("/api/devices/bindings", b.accessToken)).body.length, 0);
+});
+
 test("authenticated sync is atomic, deduplicated, account-isolated and revoked on logout", async () => {
   const a = sessions[0]!;
   const b = sessions[1]!;

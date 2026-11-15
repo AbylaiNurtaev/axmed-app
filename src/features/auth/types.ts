@@ -2,6 +2,12 @@ export type AuthMode = "signUp" | "signIn";
 
 export type Gender = "male" | "female";
 
+export type RegistrationBasics = {
+  firstName: string;
+  birthDate: string;
+  gender: Gender;
+};
+
 export type AuthRoute =
   | { name: "welcome" }
   | { name: "auth"; mode: AuthMode; email?: string; notice?: string }
@@ -11,7 +17,7 @@ export type AuthRoute =
   | { name: "ageRestriction" }
   | { name: "consents" }
   | { name: "bodyData" }
-  | { name: "dataSource" }
+  | { name: "dataSource"; kind?: "fitness-band" | "scale" }
   | { name: "connectionError"; source: string }
   | { name: "firstResult" };
 

@@ -5,8 +5,8 @@ import helmet from "helmet";
 import { config } from "./config.js";
 import { query } from "./database.js";
 import { ApiError, errorHandler } from "./errors.js";
-import { deviceSyncSchema } from "./deviceSchemas.js";
-import { loadDeviceReadings, requireDeviceUser, requireSession, saveDeviceReadings } from "./deviceService.js";
+import { deviceBindingSchema, deviceSyncSchema } from "./deviceSchemas.js";
+import { loadDeviceBindings, loadDeviceReadings, requireDeviceUser, requireSession, saveDeviceBinding, saveDeviceReadings } from "./deviceService.js";
 import { completeGoalAction, createGoal, deleteGoal, listGoals, undoGoalAction, updateGoal } from "./goalService.js";
 import { createHabit, createTask, deleteHabit, deleteTask, loadPlanWorkspace, setHabitEvent, setTaskEvent, undoHabitEvent, undoTaskEvent, updateGoalManually, updateHabit, updateTask } from "./planService.js";
 import { loadProfile, removeAvatar, updateProfile, uploadAvatar } from "./profileService.js";
@@ -194,6 +194,15 @@ app.delete("/api/security/sessions/:sessionId", asyncHandler(async (request, res
 app.post("/api/security/logout-all", asyncHandler(async (request, response) => {
   await revokeAllSessions(responseLocals(request).userId);
   response.status(204).send();
+}));
+
+app.get("/api/devices/bindings", asyncHandler(async (request, response) => {
+  const userId = await requireDeviceUser(request.get("authorization"));
+  response.json(await loadDeviceBindings(userId));
+}));
+app.post("/api/devices/bindings", asyncHandler(async (request, response) => {
+  const userId = await requireDeviceUser(request.get("authorization"));
+  response.json(await saveDeviceBinding(userId, deviceBindingSchema.parse(request.body)));
 }));
 
 app.post("/api/devices/sync", asyncHandler(async (request, response) => {

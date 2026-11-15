@@ -1,3 +1,4 @@
+import { deviceBindings } from "../../devices/deviceBindings";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -92,7 +93,7 @@ export function ScaleMeasurementFlow({ visible, previousWeight, onClose, onCompl
       setStarted(true);
       void scaleSync.sync();
     } else if (!["requestingPermission", "scanning", "connecting", "verifying"].includes(connection.phase) && !unavailable) {
-      void scale.startScan();
+      void deviceBindings.scan("scale");
     }
     // Opening the flow is the only trigger. Connection changes are handled below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,7 +125,7 @@ export function ScaleMeasurementFlow({ visible, previousWeight, onClose, onCompl
       void scaleSync.sync();
     } else {
       setStarted(false);
-      void scale.startScan();
+      void deviceBindings.scan("scale");
     }
   };
 
@@ -153,14 +154,14 @@ export function ScaleMeasurementFlow({ visible, previousWeight, onClose, onCompl
 
         {!connected && connection.devices.length > 0 ? <View style={styles.devices}>
           <Text maxFontSizeMultiplier={1.3} style={styles.devicesTitle}>Найдены рядом</Text>
-          {connection.devices.map(device => <AxPressable key={device.id} accessibilityLabel={`Подключить ${device.name}`} onPress={() => void scale.connect(device.id)} style={styles.deviceRow}><View style={styles.deviceIcon}><Ionicons name="bluetooth" size={19} color={axColors.green} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.deviceName}>{device.name || "AxMed Scale"}</Text><Text maxFontSizeMultiplier={1.3} style={styles.deviceMeta}>Сигнал {device.rssi} dBm</Text></View><Text maxFontSizeMultiplier={1.3} style={styles.deviceAction}>Подключить</Text></AxPressable>)}
+          {connection.devices.map(device => <AxPressable key={device.id} accessibilityLabel={`Подключить ${device.name}`} onPress={() => void deviceBindings.connect("scale", device.id)} style={styles.deviceRow}><View style={styles.deviceIcon}><Ionicons name="bluetooth" size={19} color={axColors.green} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.deviceName}>{device.name || "AxMed Scale"}</Text><Text maxFontSizeMultiplier={1.3} style={styles.deviceMeta}>Сигнал {device.rssi} dBm</Text></View><Text maxFontSizeMultiplier={1.3} style={styles.deviceAction}>Подключить</Text></AxPressable>)}
         </View> : null}
 
         <View style={styles.timeline}>{stages.map((item, index) => {
           const complete = index < current || flowPhase === "complete";
           const active = index === current && flowPhase !== "complete";
           return <Animated.View key={item.title} entering={reduceMotion ? undefined : FadeIn.duration(axMotion.standard).delay(index * 35)} style={styles.stageRow}>
-            <View style={styles.stageRail}>{index > 0 ? <View style={[styles.railTop, index <= current && styles.railDone]} /> : null}<View style={[styles.stageIcon, complete && styles.stageIconDone, active && styles.stageIconActive]}><Ionicons name={complete ? "checkmark" : item.icon} size={17} color={complete || active ? axColors.white : axColors.muted} /></View>{index < stages.length - 1 ? <View style={[styles.railBottom, index < current && styles.railDone]} /> : null}</View>
+            <View style={styles.stageRail}>{index > 0 ? <View style={[styles.railTop, index <= current && styles.railDone]} /> : null}<View style={[styles.stageIcon, complete && styles.stageIconDone, active && styles.stageIconActive]}><Ionicons name={complete ? "checkmark" : item.icon} size={17} color={complete || active ? axColors.onAccent : axColors.muted} /></View>{index < stages.length - 1 ? <View style={[styles.railBottom, index < current && styles.railDone]} /> : null}</View>
             <View style={styles.stageCopy}><Text maxFontSizeMultiplier={1.3} style={[styles.stageTitle, (complete || active) && styles.stageTitleActive]}>{item.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.stageDetail}>{active && sync.liveValue !== undefined ? `${sync.liveValue.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} кг · дождитесь фиксации` : item.detail}</Text></View>
             {active && !error ? <View style={styles.activeDot} /> : null}
           </Animated.View>;
@@ -177,19 +178,19 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: axColors.background },
   header: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 12, flexDirection: "row", alignItems: "center", gap: 12 },
   headerCopy: { flex: 1 },
-  title: { color: axColors.ink, fontSize: 28, lineHeight: 34, fontWeight: "800", letterSpacing: -0.6 },
+  title: { color: axColors.ink, fontSize: 28, lineHeight: 34, fontWeight: "500", letterSpacing: -0.6 },
   subtitle: { color: axColors.muted, fontSize: 11, marginTop: 2 },
   close: { width: 44, height: 44, borderRadius: 15, backgroundColor: axColors.surface, borderWidth: 1, borderColor: axColors.line, alignItems: "center", justifyContent: "center" },
   scroll: { paddingHorizontal: 18, paddingBottom: 24 },
-  liveCard: { minHeight: 210, borderRadius: 26, padding: 20, backgroundColor: axColors.ink, alignItems: "center", marginBottom: 16 },
-  liveIcon: { width: 54, height: 54, borderRadius: 18, backgroundColor: "#26362E", alignItems: "center", justifyContent: "center" },
-  liveLabel: { color: "#B9C4BD", fontSize: 11, marginTop: 12 },
-  liveValue: { color: axColors.white, fontSize: 46, lineHeight: 54, fontWeight: "800", letterSpacing: -1 },
-  liveUnit: { color: "#AAB5AE", fontSize: 16, fontWeight: "600" },
-  liveDelta: { color: "#B9C4BD", fontSize: 10, marginTop: 2 },
-  progressTrack: { width: "100%", height: 5, borderRadius: 3, backgroundColor: "#34423A", overflow: "hidden", marginTop: 18 },
-  progressFill: { height: 5, borderRadius: 3, backgroundColor: "#60C994" },
-  progressText: { color: "#B9C4BD", fontSize: 9, marginTop: 7 },
+  liveCard: { minHeight: 210, borderRadius: 26, padding: 20, backgroundColor: "#111111", alignItems: "center", marginBottom: 16 },
+  liveIcon: { width: 54, height: 54, borderRadius: 18, backgroundColor: "#303030", alignItems: "center", justifyContent: "center" },
+  liveLabel: { color: "#C0C0C0", fontSize: 11, marginTop: 12 },
+  liveValue: { color: axColors.white, fontSize: 46, lineHeight: 54, fontWeight: "500", letterSpacing: -1 },
+  liveUnit: { color: "#B0B0B0", fontSize: 16, fontWeight: "600" },
+  liveDelta: { color: "#C0C0C0", fontSize: 10, marginTop: 2 },
+  progressTrack: { width: "100%", height: 5, borderRadius: 3, backgroundColor: "#404040", overflow: "hidden", marginTop: 18 },
+  progressFill: { height: 5, borderRadius: 3, backgroundColor: "#FFFFFF" },
+  progressText: { color: "#C0C0C0", fontSize: 9, marginTop: 7 },
   devices: { borderRadius: 20, padding: 14, backgroundColor: axColors.surface, borderWidth: 1, borderColor: axColors.line, marginBottom: 14 },
   devicesTitle: { color: axColors.ink, fontSize: 13, fontWeight: "800", marginBottom: 8 },
   deviceRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: 10 },
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
   timeline: { borderRadius: 22, paddingVertical: 8, paddingHorizontal: 14, backgroundColor: axColors.surface, borderWidth: 1, borderColor: axColors.line },
   stageRow: { minHeight: 60, flexDirection: "row", alignItems: "center", gap: 11 },
   stageRail: { width: 34, alignSelf: "stretch", alignItems: "center", justifyContent: "center" },
-  stageIcon: { width: 32, height: 32, borderRadius: 11, backgroundColor: "#EEF0ED", alignItems: "center", justifyContent: "center", zIndex: 2 },
+  stageIcon: { width: 32, height: 32, borderRadius: 11, backgroundColor: "#F0F0F0", alignItems: "center", justifyContent: "center", zIndex: 2 },
   stageIconDone: { backgroundColor: axColors.green },
   stageIconActive: { backgroundColor: axColors.blue },
   railTop: { position: "absolute", top: 0, bottom: "50%", width: 2, backgroundColor: axColors.line },

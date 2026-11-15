@@ -28,6 +28,17 @@ after(async () => {
   await pool.end();
 });
 
+test("the first registration step stores the entered name in the database and returns it on reload", async () => {
+  const saved = await call("PATCH", "/api/profile", { firstName: "  Айгерим  ", birthDate: "1995-01-01", gender: "female" });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.firstName, "Айгерим");
+  const stored = await query("SELECT first_name, full_name, display_name FROM users WHERE id=$1", [userId]);
+  assert.equal(stored.rows[0]!.first_name, "Айгерим");
+  assert.equal(stored.rows[0]!.full_name, "Айгерим");
+  assert.equal(stored.rows[0]!.display_name, "Айгерим");
+  assert.equal((await call("GET", "/api/profile")).body.firstName, "Айгерим");
+});
+
 test("personal profile fields persist and avatar can be removed safely", async () => {
   const updated = await call("PATCH", "/api/profile", {
     firstName: "Абай", lastName: "Нуртаев", phone: "+7 (771) 594-37-38",

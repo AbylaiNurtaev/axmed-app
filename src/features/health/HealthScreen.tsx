@@ -6,12 +6,12 @@ import {
   type LayoutChangeEvent,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View
 } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
+import { TabSwipeGuard, TabSwipeScrollView as ScrollView } from "../../ui/SwipeTabs";
 import Animated, {
   cancelAnimation,
   Easing,
@@ -293,7 +293,7 @@ function BraceletScreen({ connection, sync, latest, summary, samples, onBack, on
   return <HealthPage title="Браслет" subtitle="Активность, восстановление и жизненные показатели" onBack={onBack}>
     <View style={styles.deviceHero}>
       <View style={styles.deviceHeroTop}>
-        <View style={[styles.deviceHeroIcon, { backgroundColor: connected ? palette.greenSoft : "#EFF1EE" }]}><Ionicons name="watch-outline" size={26} color={connected ? palette.green : palette.muted} /></View>
+        <View style={[styles.deviceHeroIcon, { backgroundColor: connected ? palette.greenSoft : "#F0F0F0" }]}><Ionicons name="watch-outline" size={26} color={connected ? palette.green : palette.muted} /></View>
         <View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.deviceHeroTitle}>{selectedDevice?.name ?? sync.batch?.device.name ?? "Фитнес-браслет AxMed"}</Text><Text maxFontSizeMultiplier={1.3} style={styles.cardSubtitle}>{connected ? "Подключён и готов к синхронизации" : sync.batch ? "Показаны последние сохранённые данные" : connection.phase === "scanning" ? "Ищем устройство рядом" : "Устройство не подключено"}</Text></View>
         <View style={[styles.connectionBadge, connected && styles.connectionBadgeOnline]}><View style={[styles.statusDot, { backgroundColor: connected ? palette.green : palette.muted }]} /><Text maxFontSizeMultiplier={1.3} style={[styles.connectionBadgeText, connected && styles.connectionBadgeTextOnline]}>{connected ? "Онлайн" : "Оффлайн"}</Text></View>
       </View>
@@ -503,9 +503,9 @@ function HealthOverview({
               <Text maxFontSizeMultiplier={1.3} style={styles.eyebrow}>СОСТОЯНИЕ СЕГОДНЯ</Text>
               <Text maxFontSizeMultiplier={1.3} style={styles.stateTitle}>{factors.status}</Text>
               <View style={styles.factorRow}>
-                <Factor label="Активность" value={factors.activity} color={palette.green} delay={80} />
-                <Factor label="Восстановление" value={factors.recovery} color={palette.purple} delay={140} />
-                <Factor label="Состав тела" value={factors.composition} color={palette.blue} delay={200} />
+                <Factor label="Активность" value={factors.activity} color="#FFFFFF" delay={80} />
+                <Factor label="Восстановление" value={factors.recovery} color="#D8D8D8" delay={140} />
+                <Factor label="Состав тела" value={factors.composition} color="#B8B8B8" delay={200} />
               </View>
             </View>
             <ScoreRing score={factors.score} />
@@ -605,7 +605,7 @@ function AnalysisScreen({ braceletSummary, scaleLatest, onBack }: { braceletSumm
   ];
   return <HealthPage title="Состояние сегодня" subtitle="Как складывается общий результат" onBack={onBack}>
     <View style={styles.analysisHero}><ScoreRing score={health.score} large /><Text maxFontSizeMultiplier={1.3} style={styles.analysisTitle}>{health.status}</Text><Text maxFontSizeMultiplier={1.3} style={styles.analysisText}>Сводный балл помогает быстро увидеть общую картину, но не заменяет консультацию специалиста.</Text></View>
-    <View style={styles.factorCards}>{factors.map(factor => <View key={factor.title} style={styles.factorCard}><View style={[styles.factorCardIcon, { backgroundColor: `${factor.color}18` }]}><Ionicons name={factor.icon} size={21} color={factor.color} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.factorCardTitle}>{factor.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.cardSubtitle}>{factor.text}</Text><View style={styles.factorTrack}><View style={[styles.factorFill, { width: `${factor.score}%`, backgroundColor: factor.color }]} /></View></View><Text maxFontSizeMultiplier={1.3} style={[styles.factorScore, { color: factor.color }]}>{factor.score || "—"}</Text></View>)}</View>
+    <View style={styles.factorCards}>{factors.map(factor => <View key={factor.title} style={styles.factorCard}><View style={[styles.factorCardIcon, { backgroundColor: palette.surfaceMuted }]}><Ionicons name={factor.icon} size={21} color={factor.color} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.factorCardTitle}>{factor.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.cardSubtitle}>{factor.text}</Text><View style={styles.factorTrack}><View style={[styles.factorFill, { width: `${factor.score}%`, backgroundColor: factor.color }]} /></View></View><Text maxFontSizeMultiplier={1.3} style={[styles.factorScore, { color: factor.color }]}>{factor.score || "—"}</Text></View>)}</View>
   </HealthPage>;
 }
 
@@ -627,7 +627,7 @@ function ScoreRing({ score, large = false }: { score: number; large?: boolean })
   const reduceMotion = useAxReducedMotion();
   useEffect(() => { progress.value = withTiming(score / 100, { duration: reduceMotion ? 0 : 360, easing: Easing.out(Easing.cubic) }); }, [progress, reduceMotion, score]);
   const animatedProps = useAnimatedProps(() => ({ strokeDashoffset: circumference * (1 - progress.value) }));
-  return <View accessible accessibilityRole="progressbar" accessibilityLabel="Общий балл здоровья" accessibilityValue={{ min: 0, max: 100, now: score, text: score ? `${score} из 100` : "Нет данных" }} style={[styles.scoreRing, { width: size, height: size }]}><Svg importantForAccessibility="no-hide-descendants" width={size} height={size} viewBox={`0 0 ${size} ${size}`}><Circle cx={size / 2} cy={size / 2} r={radius} stroke="#DCE5DF" strokeWidth={stroke} fill="none" /><AnimatedCircle animatedProps={animatedProps} cx={size / 2} cy={size / 2} r={radius} stroke={palette.green} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={`${circumference} ${circumference}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} /></Svg><Text maxFontSizeMultiplier={1.3} style={[styles.scoreRingValue, large && styles.scoreRingValueLarge]}>{score || "—"}</Text><Text maxFontSizeMultiplier={1.3} style={[styles.scoreRingCaption, large && styles.scoreRingCaptionLarge]}>из 100</Text></View>;
+  return <View accessible accessibilityRole="progressbar" accessibilityLabel="Общий балл здоровья" accessibilityValue={{ min: 0, max: 100, now: score, text: score ? `${score} из 100` : "Нет данных" }} style={[styles.scoreRing, { width: size, height: size }]}><Svg importantForAccessibility="no-hide-descendants" width={size} height={size} viewBox={`0 0 ${size} ${size}`}><Circle cx={size / 2} cy={size / 2} r={radius} stroke={large ? palette.line : "#404040"} strokeWidth={stroke} fill="none" /><AnimatedCircle animatedProps={animatedProps} cx={size / 2} cy={size / 2} r={radius} stroke={large ? palette.ink : "#FFFFFF"} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={`${circumference} ${circumference}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} /></Svg><Text maxFontSizeMultiplier={1.3} style={[styles.scoreRingValue, large && styles.scoreRingValueLarge]}>{score || "—"}</Text><Text maxFontSizeMultiplier={1.3} style={[styles.scoreRingCaption, large && styles.scoreRingCaptionLarge]}>из 100</Text></View>;
 }
 
 function Factor({ label, value, color, delay = 0 }: { label: string; value: number; color: string; delay?: number }) {
@@ -683,7 +683,7 @@ function InteractiveMetricChart({ readings, color }: { readings: DeviceReading[]
   };
   const selectedPoint = points[selected];
   const selectedReading = displayReadings[selected];
-  return <View
+  return <TabSwipeGuard
     accessibilityRole="image"
     accessibilityLabel={`График: ${displayReadings.length} значений, от ${valueLabel(min, 1)} до ${valueLabel(max, 1)}`}
     style={styles.chartWrap}
@@ -693,7 +693,7 @@ function InteractiveMetricChart({ readings, color }: { readings: DeviceReading[]
   >
     {selectedReading && selectedPoint ? <View pointerEvents="none" style={[styles.chartTooltip, { left: Math.max(8, Math.min(chartWidth - 112, (selectedPoint.x / 320) * chartWidth - 52)) }]}><Text maxFontSizeMultiplier={1.3} style={styles.chartTooltipValue}>{valueLabel(selectedReading.value, 2)}</Text><Text maxFontSizeMultiplier={1.3} style={styles.chartTooltipDate}>{dateTimeLabel(selectedReading.recordedAt)}</Text></View> : null}
     <Svg width="100%" height="160" viewBox="0 0 320 160"><Path d="M18 38 H302 M18 82 H302 M18 126 H302" stroke={palette.line} strokeWidth="1" /><Path d={area} fill={color} opacity="0.09" /><AnimatedPath animatedProps={lineProps} d={path} strokeDasharray="1000 1000" stroke={color} strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />{points.map((point, index) => <Circle key={`${point.x}:${index}`} cx={point.x} cy={point.y} r={index === selected ? 5 : 2.5} fill={palette.surface} stroke={color} strokeWidth={index === selected ? 3 : 2} />)}</Svg>
-  </View>;
+  </TabSwipeGuard>;
 }
 
 function StatRow({ readings, info }: { readings: DeviceReading[]; info: MetricInfo }) {
@@ -721,9 +721,9 @@ const styles = StyleSheet.create({
   overviewScroll: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 116 },
   pageScroll: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 116 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
-  pageTitle: { color: palette.ink, fontSize: 31, lineHeight: 37, fontWeight: "800", letterSpacing: -0.7 },
+  pageTitle: { color: palette.ink, fontSize: 31, lineHeight: 37, fontWeight: "500", letterSpacing: -0.7 },
   pageDate: { color: palette.muted, fontSize: 13, lineHeight: 19, marginTop: 3 },
-  syncButton: { width: 50, height: 50, borderRadius: 17, backgroundColor: palette.greenSoft, borderWidth: 1, borderColor: "#D2E7DB", alignItems: "center", justifyContent: "center" },
+  syncButton: { width: 50, height: 50, borderRadius: 17, backgroundColor: palette.greenSoft, borderWidth: 1, borderColor: "#E0E0E0", alignItems: "center", justifyContent: "center" },
   syncProgress: { position: "absolute", bottom: 3, color: palette.green, fontSize: 7, fontWeight: "900" },
   pressed: { opacity: 0.68, transform: [{ scale: 0.98 }] },
   cardPressed: { opacity: 0.78, transform: [{ scale: 0.992 }] },
@@ -747,70 +747,70 @@ const styles = StyleSheet.create({
   deviceFactLabel: { color: palette.muted, fontSize: 8, marginTop: 2 },
   syncStageCard: { borderRadius: 21, padding: 14, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, marginBottom: 20, overflow: "hidden" },
   syncStageComplete: { backgroundColor: palette.greenSoft, borderColor: palette.green },
-  syncStageError: { backgroundColor: palette.dangerSoft, borderColor: "#F0D1D1" },
+  syncStageError: { backgroundColor: palette.dangerSoft, borderColor: "#D8D8D8" },
   syncStageHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   syncStageIcon: { width: 39, height: 39, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   syncStageTitle: { color: palette.ink, fontSize: 12, fontWeight: "800" },
   syncStageDetail: { color: palette.muted, fontSize: 9, lineHeight: 13, marginTop: 2 },
   syncStagePercent: { color: palette.green, fontSize: 12, fontWeight: "900" },
-  syncStageTrack: { height: 5, borderRadius: 3, backgroundColor: "#DDE8E1", overflow: "hidden", marginTop: 12 },
+  syncStageTrack: { height: 5, borderRadius: 3, backgroundColor: "#E8E8E8", overflow: "hidden", marginTop: 12 },
   syncStageFill: { height: 5, borderRadius: 3, backgroundColor: palette.green },
   syncStageChips: { gap: 6, paddingTop: 12, paddingRight: 8 },
   syncStageChip: { minHeight: 28, paddingHorizontal: 8, borderRadius: 10, backgroundColor: palette.surfaceMuted, flexDirection: "row", alignItems: "center", gap: 4 },
   syncStageChipActive: { backgroundColor: palette.greenSoft },
   syncStageChipText: { color: palette.muted, fontSize: 8, fontWeight: "700" },
   pressureCard: { minHeight: 91, borderRadius: 20, padding: 14, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 12 },
-  pressureValue: { color: palette.ink, fontSize: 22, lineHeight: 28, fontWeight: "800", marginTop: 2 },
+  pressureValue: { color: palette.ink, fontSize: 22, lineHeight: 28, fontWeight: "500", marginTop: 2 },
   warningList: { gap: 7, marginBottom: 14 },
   warningRow: { minHeight: 44, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 9, backgroundColor: palette.amberSoft, flexDirection: "row", alignItems: "center", gap: 8 },
-  warningText: { flex: 1, color: "#765A25", fontSize: 9, lineHeight: 13 },
-  stateCard: { minHeight: 196, borderRadius: 24, backgroundColor: "#18231D", padding: 18, flexDirection: "row", overflow: "hidden", marginBottom: 24 },
+  warningText: { flex: 1, color: "#555555", fontSize: 9, lineHeight: 13 },
+  stateCard: { minHeight: 196, borderRadius: 24, backgroundColor: "#111111", padding: 18, flexDirection: "row", overflow: "hidden", marginBottom: 24 },
   stateSkeleton: { minHeight: 196, borderRadius: 24, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, padding: 18, gap: 13, marginBottom: 24 },
   skeletonFactors: { gap: 9, marginTop: 3 },
   stateCopy: { flex: 1, zIndex: 2, paddingRight: 8 },
-  eyebrow: { color: palette.muted, fontSize: 10, fontWeight: "800", letterSpacing: 1.1 },
-  stateTitle: { color: "#FFFFFF", fontSize: 22, lineHeight: 28, fontWeight: "800", marginTop: 8 },
+  eyebrow: { color: "#A8A8A8", fontSize: 10, fontWeight: "800", letterSpacing: 1.1 },
+  stateTitle: { color: "#FFFFFF", fontSize: 22, lineHeight: 28, fontWeight: "500", marginTop: 8 },
   factorRow: { marginTop: 13, gap: 9 },
   factor: { width: "100%" },
   factorTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
-  factorLabel: { color: "#B9C4BD", fontSize: 9, flex: 1 },
+  factorLabel: { color: "#C0C0C0", fontSize: 9, flex: 1 },
   factorValue: { fontSize: 10, fontWeight: "800" },
-  factorMiniTrack: { height: 3, borderRadius: 2, overflow: "hidden", backgroundColor: "#34423A" },
+  factorMiniTrack: { height: 3, borderRadius: 2, overflow: "hidden", backgroundColor: "#404040" },
   factorMiniFill: { height: 3, borderRadius: 2 },
   scoreRing: { alignItems: "center", justifyContent: "center" },
-  scoreRingValue: { position: "absolute", top: 32, color: "#FFFFFF", fontSize: 25, fontWeight: "800" },
-  scoreRingCaption: { position: "absolute", top: 61, color: "#AAB5AE", fontSize: 9 },
+  scoreRingValue: { position: "absolute", top: 32, color: "#FFFFFF", fontSize: 25, fontWeight: "500" },
+  scoreRingCaption: { position: "absolute", top: 61, color: "#B0B0B0", fontSize: 9 },
   scoreRingValueLarge: { top: 42, color: palette.ink, fontSize: 34 },
   scoreRingCaptionLarge: { top: 82, color: palette.muted, fontSize: 11 },
   stateChevron: { position: "absolute", right: 16, bottom: 15 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2, marginBottom: 12 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  sectionTitle: { color: palette.ink, fontSize: 21, lineHeight: 27, fontWeight: "800", letterSpacing: -0.35 },
+  sectionTitle: { color: palette.ink, fontSize: 22, lineHeight: 28, fontWeight: "500", letterSpacing: -0.35 },
   sectionSubtitle: { color: palette.muted, fontSize: 12, lineHeight: 17, marginTop: 1 },
   sectionAction: { flexDirection: "row", alignItems: "center", gap: 1, minHeight: 36 },
   sectionActionText: { color: palette.green, fontSize: 12, fontWeight: "700" },
   demoBadge: { borderRadius: 9, paddingHorizontal: 7, paddingVertical: 4, backgroundColor: palette.amberSoft },
-  demoBadgeText: { color: "#8A6728", fontSize: 8, fontWeight: "900", letterSpacing: 0.55 },
+  demoBadgeText: { color: "#555555", fontSize: 8, fontWeight: "900", letterSpacing: 0.55 },
   metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9, marginBottom: 11 },
   metricReveal: { width: "48.5%" },
   metricCard: { width: "100%", minHeight: 136, borderRadius: 21, padding: 13, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line },
   metricCardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   metricIcon: { width: 35, height: 35, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   metricCardLabel: { color: palette.muted, fontSize: 11, lineHeight: 15 },
-  metricCardValue: { color: palette.ink, fontSize: 23, lineHeight: 29, fontWeight: "800", marginTop: 2 },
+  metricCardValue: { color: palette.ink, fontSize: 23, lineHeight: 29, fontWeight: "500", marginTop: 2 },
   metricCardUnit: { color: palette.muted, fontSize: 10, fontWeight: "600" },
   metricCardDelta: { color: palette.muted, fontSize: 9, marginTop: 5 },
   metricCardTime: { color: palette.muted, fontSize: 7, marginTop: 4 },
   outlineButton: { minHeight: 49, borderRadius: 17, borderWidth: 1, borderColor: palette.green, backgroundColor: palette.surface, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 22, paddingHorizontal: 14 },
   outlineButtonText: { color: palette.green, fontSize: 13, fontWeight: "800" },
   primaryButton: { minHeight: 51, borderRadius: 17, backgroundColor: palette.green, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 14, marginBottom: 22 },
-  primaryButtonText: { color: "#FFF", fontSize: 14, fontWeight: "800" },
+  primaryButtonText: { color: palette.onAccent, fontSize: 14, fontWeight: "800" },
   actionSpacing: { marginBottom: 22 },
   scaleCard: { borderRadius: 23, padding: 16, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, marginBottom: 10 },
   scaleLead: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 15 },
   scaleIcon: { width: 46, height: 46, borderRadius: 15, backgroundColor: palette.greenSoft, alignItems: "center", justifyContent: "center" },
   scaleLabel: { color: palette.muted, fontSize: 10 },
-  scaleWeight: { color: palette.ink, fontSize: 27, lineHeight: 32, fontWeight: "800" },
+  scaleWeight: { color: palette.ink, fontSize: 27, lineHeight: 32, fontWeight: "500" },
   scaleWeightUnit: { color: palette.muted, fontSize: 12, fontWeight: "600" },
   numberRow: { flexDirection: "row", alignItems: "baseline", gap: 4 },
   caption: { color: palette.muted, fontSize: 10, lineHeight: 15 },
@@ -819,33 +819,33 @@ const styles = StyleSheet.create({
   smallIcon: { width: 28, height: 28, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   scaleMetricValue: { color: palette.ink, fontSize: 13, lineHeight: 18, fontWeight: "800", marginTop: 8 },
   scaleMetricLabel: { color: palette.muted, fontSize: 9, marginTop: 2 },
-  scaleDemoText: { alignSelf: "flex-start", color: "#8A6728", backgroundColor: palette.amberSoft, fontSize: 7, fontWeight: "900", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, marginTop: 4, overflow: "hidden" },
-  measurementProgress: { borderRadius: 18, padding: 13, marginTop: -12, marginBottom: 22, backgroundColor: palette.greenSoft, borderWidth: 1, borderColor: "#D1E5D9" },
-  measurementProgressSuccess: { backgroundColor: "#EAF5EF" },
-  measurementProgressError: { backgroundColor: palette.dangerSoft, borderColor: "#F2CECE" },
+  scaleDemoText: { alignSelf: "flex-start", color: "#555555", backgroundColor: palette.amberSoft, fontSize: 7, fontWeight: "900", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, marginTop: 4, overflow: "hidden" },
+  measurementProgress: { borderRadius: 18, padding: 13, marginTop: -12, marginBottom: 22, backgroundColor: palette.greenSoft, borderWidth: 1, borderColor: "#E0E0E0" },
+  measurementProgressSuccess: { backgroundColor: "#F0F0F0" },
+  measurementProgressError: { backgroundColor: palette.dangerSoft, borderColor: "#D8D8D8" },
   measurementProgressTop: { flexDirection: "row", alignItems: "center", gap: 9 },
   measurementProgressTitle: { color: palette.ink, fontSize: 11, fontWeight: "800" },
   measurementProgressText: { color: palette.muted, fontSize: 9, lineHeight: 13, marginTop: 1 },
   measurementProgressValue: { color: palette.green, fontSize: 10, fontWeight: "900" },
-  measurementTrack: { height: 4, borderRadius: 2, backgroundColor: "#CFE1D7", overflow: "hidden", marginTop: 10 },
+  measurementTrack: { height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", overflow: "hidden", marginTop: 10 },
   measurementFill: { height: 4, borderRadius: 2, backgroundColor: palette.green },
   trendCard: { borderRadius: 23, padding: 15, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, marginBottom: 23 },
   metricChips: { gap: 7, paddingBottom: 12 },
   metricChip: { minHeight: 34, borderRadius: 12, justifyContent: "center", paddingHorizontal: 12, backgroundColor: palette.surfaceMuted },
   metricChipActive: { backgroundColor: palette.ink },
   metricChipText: { color: palette.text, fontSize: 11, fontWeight: "700" },
-  metricChipTextActive: { color: "#FFF" },
+  metricChipTextActive: { color: palette.onAccent },
   periodControl: { marginBottom: 12 },
   periodControlCompact: { marginBottom: 0 },
   periodTabs: { gap: 7, paddingBottom: 12 },
   periodTabsCompact: { paddingBottom: 0 },
   periodTab: { minHeight: 34, borderRadius: 12, justifyContent: "center", paddingHorizontal: 11, backgroundColor: palette.surfaceMuted, borderWidth: 1, borderColor: palette.line },
-  periodTabActive: { backgroundColor: palette.greenSoft, borderColor: "#C7DDCF" },
+  periodTabActive: { backgroundColor: palette.greenSoft, borderColor: "#D8D8D8" },
   periodTabText: { color: palette.muted, fontSize: 10, fontWeight: "700" },
   periodTabTextActive: { color: palette.green },
   trendSummary: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: 2 },
   trendLabel: { color: palette.muted, fontSize: 11 },
-  trendValue: { color: palette.ink, fontSize: 25, lineHeight: 31, fontWeight: "800" },
+  trendValue: { color: palette.ink, fontSize: 25, lineHeight: 31, fontWeight: "500" },
   trendUnit: { color: palette.muted, fontSize: 10, fontWeight: "600" },
   deltaBadge: { minHeight: 28, borderRadius: 10, flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8 },
   deltaGood: { backgroundColor: palette.greenSoft },
@@ -854,9 +854,9 @@ const styles = StyleSheet.create({
   deltaTextGood: { color: palette.green },
   deltaTextWarm: { color: palette.coral },
   chartWrap: { height: 160, marginHorizontal: -2, marginTop: 3 },
-  chartTooltip: { position: "absolute", top: 3, width: 104, zIndex: 3, borderRadius: 11, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: palette.ink, alignItems: "center" },
+  chartTooltip: { position: "absolute", top: 3, width: 104, zIndex: 3, borderRadius: 11, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: "#111111", alignItems: "center" },
   chartTooltipValue: { color: palette.white, fontSize: 11, fontWeight: "900" },
-  chartTooltipDate: { color: "#B9C4BD", fontSize: 7, marginTop: 1 },
+  chartTooltipDate: { color: "#C0C0C0", fontSize: 7, marginTop: 1 },
   chartEmpty: { minHeight: 150, alignItems: "center", justifyContent: "center", gap: 7 },
   chartEmptyText: { color: palette.muted, fontSize: 11 },
   statRow: { flexDirection: "row", gap: 7, marginTop: 4 },
@@ -873,25 +873,25 @@ const styles = StyleSheet.create({
   errorAction: { color: palette.danger, fontSize: 10, fontWeight: "800" },
   backHeader: { flexDirection: "row", alignItems: "flex-start", gap: 11, marginBottom: 20 },
   backButton: { width: 42, height: 42, borderRadius: 15, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, alignItems: "center", justifyContent: "center" },
-  backTitle: { color: palette.ink, fontSize: 24, lineHeight: 29, fontWeight: "800", letterSpacing: -0.4 },
+  backTitle: { color: palette.ink, fontSize: 24, lineHeight: 29, fontWeight: "500", letterSpacing: -0.4 },
   backSubtitle: { color: palette.muted, fontSize: 11, lineHeight: 16, marginTop: 2 },
   detailHero: { borderRadius: 24, padding: 20, alignItems: "center", backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, marginBottom: 14 },
   detailIcon: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", marginBottom: 10 },
-  detailValue: { color: palette.ink, fontSize: 38, lineHeight: 45, fontWeight: "800", letterSpacing: -0.8 },
+  detailValue: { color: palette.ink, fontSize: 38, lineHeight: 45, fontWeight: "500", letterSpacing: -0.8 },
   detailUnit: { color: palette.muted, fontSize: 13, fontWeight: "600" },
   detailStatus: { fontSize: 12, fontWeight: "800", marginTop: 4, marginBottom: 5 },
   demoPill: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: palette.amberSoft, marginTop: 10 },
-  demoPillText: { color: "#8A6728", fontSize: 8, fontWeight: "900", letterSpacing: 0.5 },
+  demoPillText: { color: "#555555", fontSize: 8, fontWeight: "900", letterSpacing: 0.5 },
   specialCard: { borderRadius: 22, padding: 15, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, marginBottom: 14 },
   specialHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
   specialTitle: { color: palette.ink, fontSize: 15, lineHeight: 20, fontWeight: "800" },
   specialSubtitle: { color: palette.muted, fontSize: 9, lineHeight: 13, marginTop: 2 },
-  specialPercent: { fontSize: 22, lineHeight: 27, fontWeight: "900" },
+  specialPercent: { fontSize: 22, lineHeight: 27, fontWeight: "500" },
   specialRoundIcon: { width: 38, height: 38, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   regularityBadge: { maxWidth: "52%", minHeight: 30, borderRadius: 11, paddingHorizontal: 9, backgroundColor: palette.purpleSoft, flexDirection: "row", alignItems: "center", gap: 5 },
   regularityText: { flexShrink: 1, color: palette.purple, fontSize: 8, fontWeight: "800" },
   sleepTimeRow: { minHeight: 64, marginTop: 13, borderRadius: 16, paddingHorizontal: 12, backgroundColor: palette.surfaceMuted, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sleepTimeline: { height: 12, borderRadius: 6, overflow: "hidden", flexDirection: "row", gap: 2, marginTop: 14, backgroundColor: "#ECEDEC" },
+  sleepTimeline: { height: 12, borderRadius: 6, overflow: "hidden", flexDirection: "row", gap: 2, marginTop: 14, backgroundColor: "#F0F0F0" },
   sleepStage: { minWidth: 4, height: 12, borderRadius: 4 },
   sleepLegend: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   sleepLegendItem: { width: "47%", flexDirection: "row", alignItems: "center", gap: 5 },
@@ -905,16 +905,16 @@ const styles = StyleSheet.create({
   specialFactRight: { alignItems: "flex-end" },
   specialFactValue: { color: palette.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   specialFactLabel: { color: palette.muted, fontSize: 8, marginTop: 2 },
-  goalTrack: { height: 8, borderRadius: 4, backgroundColor: "#E0EAE4", overflow: "hidden", marginTop: 13 },
+  goalTrack: { height: 8, borderRadius: 4, backgroundColor: "#E8E8E8", overflow: "hidden", marginTop: 13 },
   goalFill: { height: 8, borderRadius: 4, backgroundColor: palette.green },
   dayBars: { height: 112, flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 15 },
   dayBarColumn: { flex: 1, height: "100%", alignItems: "center", justifyContent: "flex-end" },
-  dayBarTrack: { flex: 1, width: 18, borderRadius: 9, backgroundColor: "#E8ECE9", overflow: "hidden", justifyContent: "flex-end" },
+  dayBarTrack: { flex: 1, width: 18, borderRadius: 9, backgroundColor: "#E8E8E8", overflow: "hidden", justifyContent: "flex-end" },
   dayBarFill: { width: 18, borderRadius: 9, backgroundColor: palette.green },
   dayBarLabel: { color: palette.muted, fontSize: 8, marginTop: 6 },
   heartFacts: { flexDirection: "row", flexWrap: "wrap", rowGap: 13, columnGap: 8, marginTop: 15 },
   specialFootnote: { color: palette.muted, fontSize: 9, lineHeight: 14, marginTop: 13 },
-  pressurePair: { fontSize: 22, lineHeight: 28, fontWeight: "900" },
+  pressurePair: { fontSize: 22, lineHeight: 28, fontWeight: "500" },
   detailChartCard: { borderRadius: 23, padding: 15, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, marginBottom: 12 },
   detailChartHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   cardTitle: { color: palette.ink, fontSize: 17, fontWeight: "800" },
@@ -936,10 +936,10 @@ const styles = StyleSheet.create({
   sourceTab: { flex: 1, minHeight: 37, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: palette.surfaceMuted },
   sourceTabActive: { backgroundColor: palette.ink },
   sourceTabText: { color: palette.muted, fontSize: 10, fontWeight: "700" },
-  sourceTabTextActive: { color: "#FFF" },
+  sourceTabTextActive: { color: palette.onAccent },
   filterMetricRow: { gap: 7, paddingBottom: 14 },
   filterMetricChip: { minHeight: 34, paddingHorizontal: 12, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: palette.surfaceMuted, borderWidth: 1, borderColor: "transparent" },
-  filterMetricChipActive: { backgroundColor: palette.greenSoft, borderColor: "#CFE4D8" },
+  filterMetricChipActive: { backgroundColor: palette.greenSoft, borderColor: "#E0E0E0" },
   filterMetricText: { color: palette.muted, fontSize: 10, fontWeight: "700" },
   filterMetricTextActive: { color: palette.green },
   historyCountRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -949,7 +949,7 @@ const styles = StyleSheet.create({
   emptyTitle: { color: palette.ink, fontSize: 16, fontWeight: "800", marginTop: 11 },
   emptyText: { color: palette.muted, fontSize: 11, lineHeight: 17, textAlign: "center", marginTop: 5, maxWidth: 265 },
   emptyButton: { minHeight: 41, borderRadius: 14, backgroundColor: palette.green, paddingHorizontal: 15, alignItems: "center", justifyContent: "center", marginTop: 13 },
-  emptyButtonText: { color: "#FFF", fontSize: 11, fontWeight: "800" },
+  emptyButtonText: { color: palette.onAccent, fontSize: 11, fontWeight: "800" },
   measurementHero: { borderRadius: 22, padding: 19, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, alignItems: "center", marginBottom: 12 },
   measurementSourceIcon: { width: 54, height: 54, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   measurementHeroTitle: { color: palette.ink, fontSize: 20, fontWeight: "800", marginTop: 10 },
@@ -958,21 +958,21 @@ const styles = StyleSheet.create({
   measurementMetricLabel: { color: palette.muted, fontSize: 10, marginTop: 8 },
   measurementMetricValue: { color: palette.ink, fontSize: 18, fontWeight: "800", marginTop: 3 },
   measurementMetricUnit: { color: palette.muted, fontSize: 8, fontWeight: "600" },
-  mockCaption: { color: "#8A6728", fontSize: 8, fontWeight: "800", marginTop: 5 },
+  mockCaption: { color: "#555555", fontSize: 8, fontWeight: "800", marginTop: 5 },
   disclaimer: { borderRadius: 18, padding: 14, backgroundColor: palette.greenSoft, flexDirection: "row", alignItems: "flex-start", gap: 9 },
   disclaimerText: { flex: 1, color: palette.text, fontSize: 10, lineHeight: 16 },
-  reportPeriodTabs: { flexDirection: "row", padding: 4, borderRadius: 16, backgroundColor: "#E9ECE8", marginBottom: 14 },
+  reportPeriodTabs: { flexDirection: "row", padding: 4, borderRadius: 16, backgroundColor: "#E8E8E8", marginBottom: 14 },
   reportPeriodTab: { flex: 1, minHeight: 40, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   reportPeriodTabActive: { backgroundColor: palette.surface },
   reportPeriodText: { color: palette.muted, fontSize: 11, fontWeight: "700" },
   reportPeriodTextActive: { color: palette.ink },
-  reportSummaryCard: { borderRadius: 24, padding: 19, backgroundColor: "#18231D", marginBottom: 12 },
-  reportBigValue: { color: "#FFF", fontSize: 44, fontWeight: "800", marginTop: 9 },
-  reportBigLabel: { color: "#B9C4BD", fontSize: 11 },
+  reportSummaryCard: { borderRadius: 24, padding: 19, backgroundColor: "#111111", marginBottom: 12 },
+  reportBigValue: { color: "#FFF", fontSize: 44, fontWeight: "500", marginTop: 9 },
+  reportBigLabel: { color: "#C0C0C0", fontSize: 11 },
   reportFacts: { flexDirection: "row", gap: 8, marginTop: 17 },
-  reportFact: { flex: 1, borderRadius: 14, padding: 10, backgroundColor: "#2A372F" },
+  reportFact: { flex: 1, borderRadius: 14, padding: 10, backgroundColor: "#303030" },
   reportFactValue: { color: "#FFF", fontSize: 16, fontWeight: "800" },
-  reportFactLabel: { color: "#AEBAB2", fontSize: 8, marginTop: 3 },
+  reportFactLabel: { color: "#B8B8B8", fontSize: 8, marginTop: 3 },
   reportPreview: { borderRadius: 21, paddingHorizontal: 14, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, marginBottom: 12 },
   reportPreviewRow: { minHeight: 51, borderTopWidth: 1, borderTopColor: palette.line, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   reportPreviewLabel: { flex: 1, color: palette.text, fontSize: 11 },
@@ -984,7 +984,7 @@ const styles = StyleSheet.create({
   factorCard: { minHeight: 91, borderRadius: 20, padding: 13, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.line, flexDirection: "row", alignItems: "center", gap: 11 },
   factorCardIcon: { width: 43, height: 43, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   factorCardTitle: { color: palette.ink, fontSize: 13, fontWeight: "800" },
-  factorTrack: { height: 4, borderRadius: 2, backgroundColor: "#E8EBE7", overflow: "hidden", marginTop: 8 },
+  factorTrack: { height: 4, borderRadius: 2, backgroundColor: "#E8E8E8", overflow: "hidden", marginTop: 8 },
   factorFill: { height: 4, borderRadius: 2 },
   factorScore: { width: 28, textAlign: "right", fontSize: 16, fontWeight: "800" },
   flex: { flex: 1, minWidth: 0 }

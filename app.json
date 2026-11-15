@@ -26,7 +26,7 @@
     "android": {
       "package": "com.axmed.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#00a87e"
+        "backgroundColor": "#111111"
       }
     },
     "plugins": [

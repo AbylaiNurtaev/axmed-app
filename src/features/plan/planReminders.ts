@@ -74,7 +74,7 @@ async function permission() {
 }
 async function ensureChannel() {
   if (Platform.OS !== "android") return;
-  await Notifications.setNotificationChannelAsync(channelId, { name: "План и привычки", importance: Notifications.AndroidImportance.DEFAULT, vibrationPattern: [0, 160], lightColor: "#237354" });
+  await Notifications.setNotificationChannelAsync(channelId, { name: "План и привычки", importance: Notifications.AndroidImportance.DEFAULT, vibrationPattern: [0, 160], lightColor: "#111111" });
 }
 function taskWeekdays(recurrence: PlanTask["recurrence"], days: number[], due: Date) {
   if (recurrence === "daily") return [1, 2, 3, 4, 5, 6, 7];

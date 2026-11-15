@@ -1,7 +1,8 @@
+import { useAuthStyles, type AuthColors } from "./authTheme";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AuthApiError, completePasswordReset, requestPasswordReset, verifyPasswordResetCode } from "./authApi";
-import { AuthScaffold, AuthHeader, CodeInput, FormField, PageTitle, PrimaryButton, authColors } from "./onboardingUi";
+import { AuthScaffold, AuthHeader, CodeInput, FormField, PageTitle, PrimaryButton } from "./onboardingUi";
 import { countdownLabel, useSecondsRemaining } from "./useSecondsRemaining";
 
 type Stage = "email" | "code" | "password";
@@ -10,6 +11,7 @@ const emailPattern = /^(?=.{3,254}$)(?=.{1,64}@)[a-z0-9]+(?:[._%+-][a-z0-9]+)*@(
 export function PasswordRecoveryScreen({ initialEmail, onBack, onComplete }: {
   initialEmail: string; onBack: () => void; onComplete: (email: string) => void;
 }) {
+  const { styles } = useAuthStyles(createStyles);
   const [stage, setStage] = useState<Stage>("email");
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
@@ -137,10 +139,10 @@ export function PasswordRecoveryScreen({ initialEmail, onBack, onComplete }: {
   </AuthScaffold>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (authColors: AuthColors) => StyleSheet.create({
   card: { gap: 18 },
   email: { color: authColors.ink, fontSize: 14, lineHeight: 21, padding: 14, borderRadius: 16,
-    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: authColors.line },
+    backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line },
   help: { color: authColors.muted, fontSize: 12, lineHeight: 19 },
   error: { color: authColors.danger, fontSize: 13, lineHeight: 20, padding: 14,
     borderRadius: 16, backgroundColor: authColors.soft },

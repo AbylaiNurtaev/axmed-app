@@ -1,3 +1,4 @@
+import { useAuthStyles, type AuthColors } from "./authTheme";
 import { useEffect, useState } from "react";
 import {
   StyleSheet,
@@ -6,7 +7,7 @@ import {
 } from "react-native";
 import type { VerificationResult } from "./authApi";
 import { AuthMode } from "./types";
-import { AuthScaffold, AuthHeader, CodeInput, PageTitle, PrimaryButton, LinkButton, authColors } from "./onboardingUi";
+import { AuthScaffold, AuthHeader, CodeInput, PageTitle, PrimaryButton, LinkButton } from "./onboardingUi";
 
 export { WelcomeScreen } from "./WelcomeScreen";
 export { AuthChoiceScreen } from "./AuthChoiceScreen";
@@ -28,6 +29,7 @@ export function VerificationScreen({
   onConfirm: (code: string) => Promise<void>;
   onResend: () => Promise<VerificationResult>;
 }) {
+  const { styles } = useAuthStyles(createStyles);
   const [code, setCode] = useState("");
   const [seconds, setSeconds] = useState(32);
   const [verificationError, setVerificationError] = useState("");
@@ -104,9 +106,9 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (authColors: AuthColors) => StyleSheet.create({
   email: { color: authColors.ink, fontSize: 14, lineHeight: 21, padding: 15, borderRadius: 17,
-    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: authColors.line },
+    backgroundColor: authColors.surface, borderWidth: 1, borderColor: authColors.line },
   codeSection: { marginTop: 30, marginBottom: 26 },
   codeLabel: { color: authColors.ink, fontSize: 12, fontWeight: "500", marginBottom: 10 },
   developmentCode: { color: authColors.muted, fontSize: 12, marginTop: 10 },

@@ -3,11 +3,27 @@ import { jwtVerify } from "jose";
 import { config } from "./config.js";
 import { inTransaction, query } from "./database.js";
 import { ApiError } from "./errors.js";
-import type { DeviceSyncInput } from "./deviceSchemas.js";
+import type { DeviceBindingInput, DeviceSyncInput } from "./deviceSchemas.js";
 import { applyDeviceSyncToPlan } from "./planService.js";
 
 const signingKey = new TextEncoder().encode(config.JWT_SECRET);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function saveDeviceBinding(userId: string, input: DeviceBindingInput) {
+  const result = await query(`INSERT INTO device_bindings (user_id, kind, adapter_id, external_id, name)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (user_id, kind) DO UPDATE SET adapter_id = EXCLUDED.adapter_id,
+      external_id = EXCLUDED.external_id, name = EXCLUDED.name, connected_at = now()
+    RETURNING external_id AS id, name, adapter_id AS "adapterId", kind, connected_at AS "connectedAt"`,
+    [userId, input.kind, input.adapterId, input.id, input.name]);
+  return result.rows[0];
+}
+
+export async function loadDeviceBindings(userId: string) {
+  const result = await query(`SELECT external_id AS id, name, adapter_id AS "adapterId", kind,
+    connected_at AS "connectedAt" FROM device_bindings WHERE user_id = $1 ORDER BY kind`, [userId]);
+  return result.rows;
+}
 
 export async function requireDeviceUser(authorization?: string) {
   return (await requireSession(authorization)).userId;

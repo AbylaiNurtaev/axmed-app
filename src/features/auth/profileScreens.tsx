@@ -1,33 +1,40 @@
+import { useAuthStyles, type AuthColors } from "./authTheme";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { Gender } from "./types";
-import {
-  AuthScaffold,
-  AuthHeader,
-  InfoBanner,
-  PageTitle,
-  PrimaryButton,
-  SecondaryButton,
-  StepHeader,
-  Surface,
-  authColors
-} from "./onboardingUi";
+import type { RegistrationBasics } from "./types";
+import { AuthScaffold, AuthHeader, FormField, InfoBanner, PageTitle, PrimaryButton, SecondaryButton, StepHeader, Surface } from "./onboardingUi";
 
 export function AboutScreen({
+  values,
+  onChange,
   onBack,
   onContinue,
   onUnderAge
 }: {
+  values: RegistrationBasics;
+  onChange: (values: RegistrationBasics) => void;
   onBack: () => void;
-  onContinue: (birthDate: string, gender: Gender) => void;
+  onContinue: () => Promise<void>;
   onUnderAge: () => void;
 }) {
-  const [birthDate, setBirthDate] = useState("15.04.1990");
-  const [gender, setGender] = useState<Gender>("male");
+  const { styles, authColors } = useAuthStyles(createStyles);
+  const { firstName, birthDate, gender } = values;
+  const dateInput = useRef<TextInput>(null);
+  const pending = useRef(false);
+  const [nameError, setNameError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [error, setError] = useState("");
 
-  const continueFlow = () => {
+  const continueFlow = async () => {
+    if (pending.current) return;
+    if (!firstName.trim()) {
+      setNameError("Введите имя");
+      return;
+    }
+    setNameError("");
+    setSaveError("");
     const age = calculateAge(birthDate);
     if (age === null) {
       setError("Введите дату в формате ДД.ММ.ГГГГ");
@@ -39,7 +46,11 @@ export function AboutScreen({
       return;
     }
     setError("");
-    onContinue(birthDate, gender);
+    pending.current = true;
+    setSaving(true);
+    try { await onContinue(); }
+    catch (failure) { setSaveError(failure instanceof Error ? failure.message : "Не удалось сохранить данные. Попробуйте ещё раз."); }
+    finally { pending.current = false; setSaving(false); }
   };
 
   return (
@@ -50,22 +61,31 @@ export function AboutScreen({
         subtitle="Эти данные помогут нам точнее анализировать ваши показатели и давать персональные рекомендации."
       />
 
+      <View style={styles.nameField}>
+        <FormField label="Имя" accessibilityLabel="Имя" value={firstName} placeholder="Как вас зовут?"
+          autoComplete="given-name" textContentType="givenName" autoCapitalize="words" maxLength={60}
+          returnKeyType="next" editable={!saving} error={nameError}
+          onSubmitEditing={() => dateInput.current?.focus()}
+          onChangeText={firstName => { onChange({ ...values, firstName }); setNameError(""); setSaveError(""); }} />
+      </View>
       <Text style={styles.fieldLabel}>Дата рождения</Text>
       <View style={[styles.dateField, !!error && styles.dateFieldError]}>
         <Ionicons name="calendar-outline" size={21} color={authColors.muted} />
         <TextInput
+          ref={dateInput}
           accessibilityLabel="Дата рождения"
           keyboardType="number-pad"
           maxLength={10}
-          onChangeText={(value) => { setBirthDate(formatBirthDate(value)); if (error) setError(""); }}
+          editable={!saving}
+          onChangeText={(value) => { onChange({ ...values, birthDate: formatBirthDate(value) }); if (error) setError(""); setSaveError(""); }}
           placeholder="ДД.ММ.ГГГГ"
-          placeholderTextColor="#777777"
+          placeholderTextColor={authColors.muted}
           selectionColor={authColors.ink}
           style={styles.dateInput}
           value={birthDate}
         />
         {!!birthDate && (
-          <Pressable accessibilityRole="button" accessibilityLabel="Очистить дату" hitSlop={10} onPress={() => setBirthDate("")}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Очистить дату" hitSlop={10} disabled={saving} onPress={() => onChange({ ...values, birthDate: "" })}>
             <Ionicons name="close-circle" size={26} color="#BBBBBB" />
           </Pressable>
         )}
@@ -75,13 +95,14 @@ export function AboutScreen({
 
       <Text style={[styles.fieldLabel, styles.genderLabel]}>Пол при рождении</Text>
       <View style={styles.genderRow}>
-        <GenderCard label="Мужской" icon="gender-male" selected={gender === "male"} onPress={() => setGender("male")} />
-        <GenderCard label="Женский" icon="gender-female" selected={gender === "female"} onPress={() => setGender("female")} />
+        <GenderCard label="Мужской" icon="gender-male" disabled={saving} selected={gender === "male"} onPress={() => onChange({ ...values, gender: "male" })} />
+        <GenderCard label="Женский" icon="gender-female" disabled={saving} selected={gender === "female"} onPress={() => onChange({ ...values, gender: "female" })} />
       </View>
 
       <View style={styles.flexSpacer} />
       <View style={styles.bottomAction}>
-        <PrimaryButton title="Продолжить" onPress={continueFlow} />
+        {saveError ? <Text accessibilityRole="alert" style={styles.saveError}>{saveError}</Text> : null}
+        <PrimaryButton title={saving ? "Сохраняем…" : "Продолжить"} disabled={saving} onPress={continueFlow} />
       </View>
     </AuthScaffold>
   );
@@ -91,28 +112,33 @@ function GenderCard({
   label,
   icon,
   selected,
-  onPress
+  onPress,
+  disabled = false
 }: {
   label: string;
   icon: "gender-male" | "gender-female";
   selected: boolean;
   onPress: () => void;
+  disabled?: boolean;
 }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       aria-checked={selected}
       onPress={onPress}
+      disabled={disabled}
       style={[styles.genderCard, selected && styles.genderCardSelected]}
     >
-      <MaterialCommunityIcons name={icon} size={34} color={selected ? authColors.white : authColors.muted} />
+      <MaterialCommunityIcons name={icon} size={34} color={selected ? authColors.onAccent : authColors.muted} />
       <Text style={[styles.genderText, selected && styles.genderTextSelected]}>{label}</Text>
     </Pressable>
   );
 }
 
 export function AgeRestrictionScreen({ onFixDate, onExit }: { onFixDate: () => void; onExit: () => void }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return (
     <AuthScaffold contentStyle={styles.restrictionContent}>
       <AuthHeader onBack={onFixDate} />
@@ -169,6 +195,7 @@ const consentItems: {
 ];
 
 export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onContinue: () => void; onExit: () => void }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   const [checked, setChecked] = useState<Record<ConsentKey, boolean>>({ terms: true, privacy: true, health: true });
   const [activeDocument, setActiveDocument] = useState<(typeof consentItems)[number] | null>(null);
   const allChecked = consentItems.every((item) => checked[item.key]);
@@ -269,9 +296,10 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
 }
 
 function Checkbox({ checked }: { checked: boolean }) {
+  const { styles, authColors } = useAuthStyles(createStyles);
   return (
     <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-      {checked && <Ionicons name="checkmark" size={19} color="#fff" />}
+      {checked && <Ionicons name="checkmark" size={19} color={authColors.onAccent} />}
     </View>
   );
 }
@@ -299,19 +327,21 @@ function calculateAge(value: string) {
   return age;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (authColors: AuthColors) => StyleSheet.create({
+  nameField: { marginBottom: 22 },
+  saveError: { color: authColors.danger, fontSize: 13, lineHeight: 20, marginBottom: 12 },
   fieldLabel: { color: authColors.ink, fontSize: 12, fontWeight: "500", marginBottom: 8 },
-  dateField: { height: 56, borderWidth: 1, borderColor: authColors.line, borderRadius: 17, paddingHorizontal: 17, flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: "rgba(255,255,255,0.96)" },
+  dateField: { height: 56, borderWidth: 1, borderColor: authColors.line, borderRadius: 17, paddingHorizontal: 17, flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: authColors.surface },
   dateFieldError: { borderColor: authColors.danger },
   dateInput: { flex: 1, minWidth: 0, height: "100%", color: authColors.ink, fontSize: 16, outlineWidth: 0 },
   error: { color: authColors.danger, fontSize: 13, marginTop: 7 },
   helper: { color: authColors.muted, fontSize: 12, lineHeight: 18, marginTop: 9 },
   genderLabel: { marginTop: 30 },
   genderRow: { flexDirection: "row", gap: 12 },
-  genderCard: { flex: 1, minHeight: 112, borderWidth: 1, borderColor: authColors.line, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", gap: 10 },
-  genderCardSelected: { borderColor: authColors.green, backgroundColor: "#111111" },
-  genderText: { color: "#6B6B6B", fontSize: 15 },
-  genderTextSelected: { color: authColors.white, fontWeight: "500" },
+  genderCard: { flex: 1, minHeight: 112, borderWidth: 1, borderColor: authColors.line, borderRadius: 18, backgroundColor: authColors.surface, alignItems: "center", justifyContent: "center", gap: 10 },
+  genderCardSelected: { borderColor: authColors.green, backgroundColor: authColors.ink },
+  genderText: { color: authColors.muted, fontSize: 15 },
+  genderTextSelected: { color: authColors.onAccent, fontWeight: "500" },
   flexSpacer: { flex: 1, minHeight: 28 },
   bottomAction: { marginTop: 20 },
   restrictionContent: { justifyContent: "space-between" },
@@ -328,14 +358,14 @@ const styles = StyleSheet.create({
   consentTitle: { color: authColors.ink, fontSize: 14, lineHeight: 20, fontWeight: "500" },
   consentDescription: { color: authColors.text, fontSize: 12, lineHeight: 16, marginTop: 2 },
   checkboxButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  checkbox: { width: 24, height: 24, borderRadius: 5, borderWidth: 1.5, borderColor: "#B5B5B5", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+  checkbox: { width: 24, height: 24, borderRadius: 5, borderWidth: 1.5, borderColor: authColors.line, backgroundColor: authColors.surface, alignItems: "center", justifyContent: "center" },
   checkboxChecked: { backgroundColor: authColors.greenDark, borderColor: authColors.greenDark },
   acceptAll: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 18, marginBottom: 16, paddingHorizontal: 2 },
   acceptAllText: { flex: 1, color: authColors.ink, fontSize: 13, lineHeight: 19, fontWeight: "600" },
   consentActions: { marginTop: "auto", paddingTop: 20, gap: 6 },
   documentOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.35)" },
-  documentSheet: { width: "100%", maxWidth: 480, alignSelf: "center", maxHeight: "82%", borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: authColors.white, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 24 },
-  documentHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: "#DCDCDC", alignSelf: "center", marginBottom: 16 },
+  documentSheet: { width: "100%", maxWidth: 480, alignSelf: "center", maxHeight: "82%", borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: authColors.surface, paddingHorizontal: 22, paddingTop: 12, paddingBottom: 24 },
+  documentHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: authColors.soft, alignSelf: "center", marginBottom: 16 },
   documentHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 },
   documentTitle: { flex: 1, color: authColors.ink, fontSize: 22, lineHeight: 28, fontWeight: "500" },
   documentClose: { width: 40, height: 40, borderRadius: 20, backgroundColor: authColors.soft, alignItems: "center", justifyContent: "center" },

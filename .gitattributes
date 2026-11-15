@@ -1,2 +1,3 @@
 modules/axmed-lefu-scale/ios/Frameworks/** -whitespace
 modules/axmed-lefu-scale/ios/Resources/Device.json -whitespace
+ios/.xcode.env text eol=lf

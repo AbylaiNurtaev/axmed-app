@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { AccessibilityInfo, Animated, AppState, Easing, StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { useAxTheme } from "../../ui/theme";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const LINE_COUNT = 19;
@@ -45,6 +46,7 @@ const ribbons = Array.from({ length: LINE_COUNT }, (_, line) => ({
 }));
 
 export function WelcomeMotion({ height }: { height: number }) {
+  const { colors } = useAxTheme();
   const progress = useRef(new Animated.Value(0)).current;
   const paths = useMemo(() => ribbons.map(({ frames }) => progress.interpolate({
     inputRange,
@@ -106,7 +108,7 @@ export function WelcomeMotion({ height }: { height: number }) {
       importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.container}>
       <Svg width="100%" height={height} viewBox="0 0 360 310">
         {paths.map((path, index) => (
-          <AnimatedPath key={index} d={path} fill="none" stroke="#111111" strokeWidth={1.15}
+          <AnimatedPath key={index} d={path} fill="none" stroke={colors.ink} strokeWidth={1.15}
             strokeOpacity={ribbons[index].opacity} strokeLinecap="round" />
         ))}
       </Svg>

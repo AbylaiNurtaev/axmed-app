@@ -75,7 +75,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return <View style={styles.metric}><Text style={styles.metricValue}>{value}</Text><Text style={styles.metricLabel}>{label}</Text></View>;
 }
 const styles = StyleSheet.create({
-  card: { backgroundColor: "#F2FAF7", borderRadius: 20, padding: 18, gap: 8, marginBottom: 18 },
+  card: { backgroundColor: "#F8F8F8", borderRadius: 20, padding: 18, gap: 8, marginBottom: 18 },
   heading: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
   copy: { flex: 1 },
   title: { color: authColors.ink, fontSize: 18, fontWeight: "700" },

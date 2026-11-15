@@ -1,10 +1,10 @@
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Platform, StyleSheet, useColorScheme, View } from "react-native";
+import { Alert, Platform, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AuthFlow } from "./src/features/auth/AuthFlow";
 import { SessionRestoreScreen } from "./src/features/auth/SessionRestoreScreen";
-import { HomeScreen, homeColors } from "./src/features/home/HomeScreen";
+import { HomeScreen } from "./src/features/home/HomeScreen";
 import { ConnectedDevicesScreen } from "./src/features/devices/ConnectedDevicesScreen";
 import { ScaleProfileScreen } from "./src/features/devices/ScaleProfileScreen";
 import { HealthScreen } from "./src/features/health/HealthScreen";
@@ -12,8 +12,10 @@ import { PlanScreen } from "./src/features/plan/PlanScreen";
 import { PersonalDataScreen, ProfileInfoScreen, ProfileMainScreen, type ProfileRoute } from "./src/features/profile/ProfileScreens";
 import { AppearanceScreen, GeneralSettingsScreen, LogoutScreen, MedicalContextScreen as ProfileMedicalContextScreen, NotificationsScreen, ProfileReportsScreen, SecurityScreen } from "./src/features/profile/ProfileSettingsScreens";
 import { FloatingTabBar, type AxTabItem } from "./src/ui/FloatingTabBar";
+import { SwipeTabs } from "./src/ui/SwipeTabs";
 import { AxThemeProvider, type AxTextSize, type AxThemePreference } from "./src/ui/theme";
 import { setAutoSyncEnabled } from "./src/settings/runtimeSettings";
+import { startDeviceBindings } from "./src/devices/deviceBindings";
 import {
   authenticateWithSocial, getSessionUserId, loginWithEmail, loadProfile, type ProfileData,
   logout, registerWithEmail, resendVerificationCode, restoreSession, saveProfile,
@@ -32,12 +34,12 @@ const mainTabItems: ReadonlyArray<AxTabItem<Tab>> = [
 type ProfileDetail = ProfileRoute | null;
 
 const metrics = [
-  { icon: "scale-bathroom", label: "Вес", sub: "Вес", value: "65.4", unit: "кг", delta: "-0.4 кг", color: "#00a87e", points: [82, 76, 64, 60, 55, 58, 54, 45, 39] },
-  { icon: "water-percent", label: "Процент жира", sub: "Жир", value: "24.5", unit: "%", delta: "-1.2 %", color: "#ff5b21", points: [70, 61, 58, 51, 48, 51, 49, 43, 36] },
-  { icon: "dumbbell", label: "Мышечная масса", sub: "Вес", value: "27.1", unit: "кг", delta: "+0.6 кг", color: "#df1d58", points: [32, 38, 48, 52, 50, 55, 65, 67, 82] },
-  { icon: "water", label: "Вода в организме", sub: "Вода", value: "54.2", unit: "%", delta: "+1.1 %", color: "#1a86df", points: [35, 42, 52, 61, 63, 62, 68, 72, 84] },
-  { icon: "stomach", label: "Индекс висцерального жира", sub: "Баллы", value: "6", unit: "", delta: "-1", color: "#00a87e", points: [68, 56, 54, 49, 50, 46, 43] },
-  { icon: "clipboard-pulse-outline", label: "Метаболический возраст", sub: "Возраст", value: "28", unit: "лет", delta: "-2", color: "#00a87e", points: [69, 55, 51, 53, 50, 43] }
+  { icon: "scale-bathroom", label: "Вес", sub: "Вес", value: "65.4", unit: "кг", delta: "-0.4 кг", color: "#111111", points: [82, 76, 64, 60, 55, 58, 54, 45, 39] },
+  { icon: "water-percent", label: "Процент жира", sub: "Жир", value: "24.5", unit: "%", delta: "-1.2 %", color: "#555555", points: [70, 61, 58, 51, 48, 51, 49, 43, 36] },
+  { icon: "dumbbell", label: "Мышечная масса", sub: "Вес", value: "27.1", unit: "кг", delta: "+0.6 кг", color: "#333333", points: [32, 38, 48, 52, 50, 55, 65, 67, 82] },
+  { icon: "water", label: "Вода в организме", sub: "Вода", value: "54.2", unit: "%", delta: "+1.1 %", color: "#444444", points: [35, 42, 52, 61, 63, 62, 68, 72, 84] },
+  { icon: "stomach", label: "Индекс висцерального жира", sub: "Баллы", value: "6", unit: "", delta: "-1", color: "#111111", points: [68, 56, 54, 49, 50, 46, 43] },
+  { icon: "clipboard-pulse-outline", label: "Метаболический возраст", sub: "Возраст", value: "28", unit: "лет", delta: "-2", color: "#111111", points: [69, 55, 51, 53, 50, 43] }
 ] as const;
 
 const emptyProfile: ProfileData = {
@@ -62,7 +64,7 @@ const emptyProfile: ProfileData = {
     waterReminders: true,
     measurementReminders: true,
     recommendations: true,
-    theme: "light",
+    theme: "system",
     textSize: "standard",
     accentColor: "green",
     animations: true,
@@ -105,7 +107,13 @@ function alertMessage(title: string, message?: string) {
 
 
 export default function App() {
+  return <AxThemeProvider preference="system"><AppContent /></AxThemeProvider>;
+}
+
+function AppContent() {
+  useEffect(startDeviceBindings, []);
   const [authState, setAuthState] = useState<AuthState>("restoring");
+  const [restoreError, setRestoreError] = useState<unknown>(null);
   const [restoreAttempt, setRestoreAttempt] = useState(0);
   const handleLogout = useCallback(async () => {
     await logout();
@@ -122,14 +130,18 @@ export default function App() {
       .then((session) => {
         if (active) setAuthState(session ? "signedIn" : "signedOut");
       })
-      .catch(() => {
-        if (active) setAuthState("restoreError");
+      .catch(error => {
+        if (active) {
+          setRestoreError(error);
+          setAuthState("restoreError");
+        }
       });
     return () => { active = false; };
   }, [restoreAttempt]);
 
   if (authState === "restoring" || authState === "restoreError") {
-    return <SessionRestoreScreen failed={authState === "restoreError"} onRetry={() => {
+    return <SessionRestoreScreen failed={authState === "restoreError"} error={restoreError} onRetry={() => {
+      setRestoreError(null);
       setAuthState("restoring");
       setRestoreAttempt(attempt => attempt + 1);
     }} />;
@@ -188,8 +200,8 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   }, []);
 
   const screen = useMemo(() => {
-    if (tab === "home") return <HomeScreen name="Айгерим" score={84} status="Хорошо" metrics={metrics.slice(0, 4)}
-      onOpenProfile={() => setTab("profile")} onOpenMetrics={() => setTab("health")} />;
+    if (tab === "home") return <HomeScreen score={84} status="Хорошо" metrics={metrics.slice(0, 4)}
+      onOpenMetrics={() => setTab("health")} />;
     if (tab === "health") return <HealthScreen />;
     if (tab === "plan") return <PlanScreen />;
     if (profileDetail === "personal") return <PersonalDataScreen profile={profile} onBack={() => setProfileDetail(null)} onSave={persistProfileInline} onProfileChange={setProfile} />;
@@ -209,16 +221,19 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
   const themePreference = (["light", "dark", "system"].includes(String(profile.appPreferences.theme)) ? profile.appPreferences.theme : "system") as AxThemePreference;
   const textSize = (["small", "standard", "large"].includes(String(profile.appPreferences.textSize)) ? profile.appPreferences.textSize : "standard") as AxTextSize;
   const effectiveDark = themePreference === "dark" || themePreference === "system" && systemScheme === "dark";
-  const sectionBackground = effectiveDark ? "#101512" : "#F5F6F2";
+  const sectionBackground = effectiveDark ? "#111111" : "#F7F7F7";
+  const navVisible = !(tab === "profile" && profileDetail);
   return (
     <AxThemeProvider preference={themePreference} textSize={textSize} reduceMotion={profile.appPreferences.reduceMotion === true} highContrast={profile.appPreferences.highContrast === true}>
     <SafeAreaProvider>
-    <SafeAreaView edges={["top", "right", "bottom", "left"]} style={[styles.safe, tab === "home" && styles.homeBackground, tab !== "home" && { backgroundColor: sectionBackground }]}>
-      <StatusBar style={tab !== "home" && effectiveDark ? "light" : "dark"} />
-      <View style={[styles.app, tab === "home" && styles.homeBackground, tab !== "home" && { backgroundColor: sectionBackground }]}>
+    <SafeAreaView edges={navVisible ? ["top", "right", "left"] : ["top", "right", "bottom", "left"]} style={[styles.safe, { backgroundColor: sectionBackground }]}>
+      <StatusBar style={effectiveDark ? "light" : "dark"} />
+      <SwipeTabs activeIndex={mainTabItems.findIndex(item => item.key === tab)} count={mainTabItems.length}
+        enabled={navVisible} onChange={index => { setProfileDetail(null); setTab(mainTabItems[index].key); }}
+        style={[styles.app, { backgroundColor: sectionBackground }]}>
         {screen}
-        {tab === "profile" && profileDetail ? null : <TabBar active={tab} onChange={(next) => { setProfileDetail(null); setTab(next); }} />}
-      </View>
+        {navVisible ? <TabBar active={tab} onChange={(next) => { setProfileDetail(null); setTab(next); }} /> : null}
+      </SwipeTabs>
     </SafeAreaView>
     </SafeAreaProvider>
     </AxThemeProvider>
@@ -226,11 +241,10 @@ function MainApp({ onLogout }: { onLogout: () => Promise<void> }) {
 }
 
 function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
-  return <FloatingTabBar items={mainTabItems} active={active} onChange={onChange} forceLight={active === "home"} />;
+  return <FloatingTabBar items={mainTabItems} active={active} onChange={onChange} />;
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#FFFFFF" },
-  app: { flex: 1, backgroundColor: "#FFFFFF" },
-  homeBackground: { backgroundColor: homeColors.background }
+  app: { flex: 1, backgroundColor: "#FFFFFF" }
 });

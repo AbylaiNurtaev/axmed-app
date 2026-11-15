@@ -100,6 +100,15 @@ CREATE TABLE IF NOT EXISTS health_devices (
   last_sync_at timestamptz,
   UNIQUE (user_id, adapter_id, external_id)
 );
+CREATE TABLE IF NOT EXISTS device_bindings (
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind text NOT NULL CHECK (kind IN ('fitness-band', 'scale')),
+  adapter_id text NOT NULL,
+  external_id text NOT NULL,
+  name text NOT NULL,
+  connected_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, kind)
+);
 CREATE TABLE IF NOT EXISTS device_readings (
   device_id uuid NOT NULL REFERENCES health_devices(id) ON DELETE CASCADE,
   source_record_id text NOT NULL,
