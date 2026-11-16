@@ -302,10 +302,10 @@ export async function clearLocalAccount() {
   emitSession();
   await removeRefreshToken();
   if (userId) {
-    const [{ cancelAllPlanRemindersForUser }, { clearProfileNotifications }] = await Promise.all([
-      import("../plan/planReminders"), import("../profile/profileNotifications")
+    const [{ cancelAllPlanRemindersForUser }, { clearProfileNotifications }, { clearGoalRemindersForUser }] = await Promise.all([
+      import("../plan/planReminders"), import("../profile/profileNotifications"), import("../plan/goalReminders")
     ]);
-    await Promise.allSettled([cancelAllPlanRemindersForUser(userId), clearProfileNotifications(userId)]);
+    await Promise.allSettled([cancelAllPlanRemindersForUser(userId), clearProfileNotifications(userId), clearGoalRemindersForUser(userId)]);
   }
 }
 
@@ -317,7 +317,7 @@ async function request<T>(path: string, body: unknown): Promise<T> {
   return apiRequest<T>(path, { body });
 }
 
-export async function authenticatedRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; signal?: AbortSignal } = {}): Promise<T> {
+export async function authenticatedRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; signal?: AbortSignal; timeoutMs?: number } = {}): Promise<T> {
   const owner = getSessionUserId();
   const revision = sessionRevision;
   if (!owner || !currentSession) throw new AuthApiError("authRequired", "Войдите в аккаунт.", 401);
@@ -362,6 +362,21 @@ export async function deleteProfileAvatar() {
 
 export function loadActiveSessions() {
   return authenticatedRequest<ActiveSession[]>("/api/security/sessions", { method: "GET" });
+}
+
+export type AccountDeletionInfo = { hasPassword: boolean; providers: Array<"google" | "apple">; appleRevocationReady: boolean };
+export type AccountDeletionProof = { method: "password"; password: string }
+  | { method: "google"; idToken: string }
+  | { method: "apple"; idToken: string; authorizationCode: string };
+
+export function loadAccountDeletionInfo(signal?: AbortSignal) {
+  return authenticatedRequest<AccountDeletionInfo>("/api/security/account-deletion", { method: "GET", signal });
+}
+
+export async function deleteMyAccount(proof: AccountDeletionProof) {
+  const owner = getSessionUserId();
+  await authenticatedRequest<void>("/api/security/account-deletion", { body: { confirmation: "DELETE", ...proof }, timeoutMs: 30_000 });
+  if (getSessionUserId() === owner) await clearLocalAccount();
 }
 
 export async function changeAccountPassword(currentPassword: string, newPassword: string) {
@@ -437,12 +452,12 @@ export async function updatePlanGoalProgress(goalId: string, input: { value: num
   return authenticatedRequest<void>(`/api/plan/goals/${goalId}/progress`, { body: input });
 }
 
-async function apiRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; signal?: AbortSignal; accessToken?: string }): Promise<T> {
+async function apiRequest<T>(path: string, options: { body?: unknown; method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; signal?: AbortSignal; accessToken?: string; timeoutMs?: number }): Promise<T> {
   const controller = new AbortController();
   const abort = () => controller.abort();
   options.signal?.addEventListener("abort", abort, { once: true });
   if (options.signal?.aborted) controller.abort();
-  const timeout = setTimeout(abort, 12_000);
+  const timeout = setTimeout(abort, Math.min(options.timeoutMs ?? 12_000, 30_000));
 
   try {
     const response = await fetch(`${apiUrl}${path}`, {

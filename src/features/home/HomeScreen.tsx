@@ -24,11 +24,15 @@ export function HomeScreen({ score, status, metrics, onOpenMetrics }: {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
       <View style={styles.content}>
+        <View style={[styles.demoNotice, { borderColor: homeColors.line, backgroundColor: homeColors.surface }]}>
+          <Text style={[styles.demoTitle, { color: homeColors.ink }]}>Демонстрационные данные</Text>
+          <Text style={[styles.demoCopy, { color: homeColors.muted }]}>Сводка ниже — пример, а не ваши измерения. Данные устройств доступны в разделе «Здоровье».</Text>
+        </View>
         <Pressable accessibilityRole="button" accessibilityLabel={`Ваше состояние: ${score} из 100. ${status}`}
-          accessibilityHint="Открыть показатели и отчёты" onPress={onOpenMetrics}
+          accessibilityHint="Демонстрационная оценка. Открыть показатели и отчёты" onPress={onOpenMetrics}
           style={({ pressed }) => [styles.summary, pressed && styles.summaryPressed]}>
           <View style={styles.summaryHeader}>
-            <Text allowFontScaling style={styles.summaryTitle}>Ваше состояние</Text>
+            <Text allowFontScaling style={styles.summaryTitle}>Пример сводки</Text>
             <View aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.summaryArrow}>
               <Ionicons name="arrow-forward" size={18} color={homeColors.white} style={styles.diagonalArrow} />
             </View>
@@ -92,7 +96,7 @@ function MetricCard({ metric, narrow, singleColumn, onPress }: {
   const { styles, colors: homeColors } = useAxStyles(createStyles);
   return (
     <Pressable accessibilityRole="button"
-      accessibilityLabel={`${metric.label}: ${formatValue(metric.value)} ${metric.unit}. Изменение: ${formatValue(metric.delta)}`}
+      accessibilityLabel={`Демонстрационные данные. ${metric.label}: ${formatValue(metric.value)} ${metric.unit}. Изменение: ${formatValue(metric.delta)}`}
       accessibilityHint="Открыть показатели и отчёты" onPress={onPress}
       style={({ pressed }) => [styles.metric, narrow && styles.metricNarrow, singleColumn && styles.metricFull, pressed && styles.pressed]}>
       <View style={styles.metricHeader}>
@@ -102,6 +106,7 @@ function MetricCard({ metric, narrow, singleColumn, onPress }: {
         <Text allowFontScaling style={styles.delta}>{formatValue(metric.delta)}</Text>
       </View>
       <Text allowFontScaling style={styles.metricName}>{metric.label}</Text>
+      <Text style={styles.demoMetric}>Демо</Text>
       <View style={styles.valueRow}>
         <Text allowFontScaling style={[styles.value, narrow && styles.valueNarrow]}>{formatValue(metric.value)}</Text>
         <Text allowFontScaling style={styles.unit}>{metric.unit}</Text>
@@ -132,6 +137,10 @@ function MetricTrend({ points }: { points: readonly number[] }) {
 
 const createStyles = (homeColors: AxThemeColors) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: homeColors.background },
+  demoNotice: { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 16, gap: 5 },
+  demoTitle: { fontSize: 13, fontWeight: "700" },
+  demoCopy: { fontSize: 12, lineHeight: 18 },
+  demoMetric: { fontSize: 10, color: homeColors.muted, marginTop: 4 },
   scroll: { flexGrow: 1, alignItems: "center" },
   content: { width: "100%", maxWidth: 480, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 116 },
   summary: { backgroundColor: "#111111", borderWidth: 1, borderColor: homeColors.line, borderRadius: 28, padding: 22 },

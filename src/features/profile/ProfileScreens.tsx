@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   RefreshControl,
   ScrollView,
@@ -131,7 +132,7 @@ export function ProfileMainScreen({ profile, loading, onRefresh, onOpen, onProfi
     { title: "Поддержка", data: [
       menu("help", "help-buoy-outline", "Помощь", "Ответы и связь с поддержкой", axColors.blue, axColors.blueSoft),
       menu("privacy", "lock-closed-outline", "Политика конфиденциальности", undefined, axColors.green, axColors.greenSoft),
-      menu("about", "information-circle-outline", "О приложении", "AxMed 1.0.0", axColors.muted, axColors.surfaceMuted),
+      menu("about", "information-circle-outline", "О приложении", "AxMed 1.1.0", axColors.muted, axColors.surfaceMuted),
       menu("logout", "log-out-outline", "Выйти", "Данные останутся в аккаунте", axColors.danger, axColors.dangerSoft)
     ]}
   ], [connectedCount, profile.appPreferences.syncEnabled, profile.emailVerified, theme, units]);
@@ -234,7 +235,7 @@ export function ProfileMainScreen({ profile, loading, onRefresh, onOpen, onProfi
 
   const footer = <View style={styles.footer}>
     <AxButton label="Выйти из аккаунта" icon="log-out-outline" variant="ghost" onPress={() => onOpen("logout")} />
-    <Text maxFontSizeMultiplier={1.3} style={styles.version}>AxMed · Версия 1.0.0</Text>
+    <Text maxFontSizeMultiplier={1.3} style={styles.version}>AxMed · Версия 1.1.0</Text>
   </View>;
 
   return <View style={styles.root}>
@@ -374,17 +375,18 @@ export function PersonalDataScreen({ profile, onBack, onSave, onProfileChange }:
 export function ProfileInfoScreen({ type, onBack }: { type: "help" | "privacy" | "about"; onBack: () => void }) {
   const copy = type === "help" ? {
     title: "Помощь", subtitle: "Короткие ответы о работе AxMed", icon: "help-buoy-outline" as IconName,
-    paragraphs: ["Если устройство не синхронизируется, убедитесь, что Bluetooth включён и AxMed получил необходимые разрешения.", "Данные профиля и измерений сохраняются в вашем аккаунте. Ошибку загрузки можно безопасно повторить.", "По вопросам аккаунта обратитесь в службу поддержки через официальный канал AxMed."]
+    paragraphs: ["Если устройство не синхронизируется, убедитесь, что Bluetooth включён и AxMed получил необходимые разрешения.", "Данные профиля и измерений сохраняются в вашем аккаунте. Ошибку загрузки можно безопасно повторить.", "Поддержка AxMed: nurallinbekjan@gmail.com. Не отправляйте пароли и коды подтверждения."]
   } : type === "privacy" ? {
     title: "Конфиденциальность", subtitle: "Как AxMed работает с данными", icon: "lock-closed-outline" as IconName,
-    paragraphs: ["AxMed использует данные профиля, устройств и измерений для отображения вашей динамики и персональных функций приложения.", "Секретные ключи облачного хранилища находятся только на сервере. Мобильное приложение не получает к ним доступ.", "Вы можете изменить данные профиля или удалить фотографию в любое время. Медицинские показатели не являются медицинским заключением."]
+    paragraphs: ["AxMed использует данные профиля, устройств и измерений для отображения вашей динамики и персональных функций приложения. Подключение устройств и загрузка фотографии необязательны.", "Безвозвратно удалить аккаунт и связанные данные можно в разделе «Профиль → Безопасность → Удалить аккаунт». Для подтверждения понадобится пароль или связанный способ входа.", "Демонстрационные показатели помечены отдельно. Оценки приложения не являются медицинским заключением. По вопросам данных: nurallinbekjan@gmail.com."]
   } : {
-    title: "О приложении", subtitle: "AxMed · Версия 1.0.0", icon: "information-circle-outline" as IconName,
+    title: "О приложении", subtitle: "AxMed · Версия 1.1.0", icon: "information-circle-outline" as IconName,
     paragraphs: ["AxMed объединяет данные фитнес-браслета, умных весов, целей и привычек в одном спокойном wellness-интерфейсе.", "Приложение помогает наблюдать динамику, но не заменяет консультацию врача.", "© AxMed"]
   };
   return <ScrollView contentContainerStyle={styles.infoContent} showsVerticalScrollIndicator={false}>
     <View style={styles.detailHeader}><AxIconButton icon="arrow-back" label="Назад" tone="neutral" onPress={onBack} /><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.detailTitle}>{copy.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.detailSubtitle}>{copy.subtitle}</Text></View></View>
     <AxCard style={styles.infoCard}><View style={styles.infoHeroIcon}><Ionicons name={copy.icon} size={32} color={axColors.green} /></View>{copy.paragraphs.map((paragraph, index) => <Text maxFontSizeMultiplier={1.3} key={index} style={styles.infoParagraph}>{paragraph}</Text>)}</AxCard>
+    {type !== "about" ? <AxButton label={type === "privacy" ? "Полная политика конфиденциальности" : "Открыть страницу поддержки"} variant="secondary" icon="open-outline" onPress={() => { void Linking.openURL(`https://axmed-api-production.up.railway.app/legal/${type === "privacy" ? "privacy-policy" : "support"}.html`).catch(() => undefined); }} /> : null}
   </ScrollView>;
 }
 

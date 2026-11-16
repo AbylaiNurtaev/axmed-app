@@ -2,8 +2,10 @@ import cors from "cors";
 import express, { type Request, type RequestHandler } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
 import { query } from "./database.js";
+import { accountDeletionInfo, deleteAccount } from "./accountDeletionService.js";
 import { ApiError, errorHandler } from "./errors.js";
 import { deviceBindingSchema, deviceSyncSchema } from "./deviceSchemas.js";
 import { loadDeviceBindings, loadDeviceReadings, requireDeviceUser, requireSession, saveDeviceBinding, saveDeviceReadings } from "./deviceService.js";
@@ -26,6 +28,7 @@ import {
 } from "./authService.js";
 import {
   credentialsSchema,
+  deleteAccountSchema,
   changePasswordSchema,
   emailOnlySchema,
   loginSchema,
@@ -51,7 +54,9 @@ import {
 export const app = express();
 
 app.disable("x-powered-by");
+if (config.TRUST_PROXY_HOPS > 0) app.set("trust proxy", config.TRUST_PROXY_HOPS);
 app.use(helmet());
+app.use("/legal", express.static(fileURLToPath(new URL("../public", import.meta.url)), { index: false, maxAge: 0 }));
 app.use(cors({
   origin: config.corsOrigins === "*" ? true : config.corsOrigins,
   credentials: false
@@ -193,6 +198,17 @@ app.delete("/api/security/sessions/:sessionId", asyncHandler(async (request, res
 
 app.post("/api/security/logout-all", asyncHandler(async (request, response) => {
   await revokeAllSessions(responseLocals(request).userId);
+  response.status(204).send();
+}));
+
+app.get("/api/security/account-deletion", asyncHandler(async (request, response) => {
+  response.json(await accountDeletionInfo(responseLocals(request).userId));
+}));
+
+app.post("/api/security/account-deletion", credentialLimiter, asyncHandler(async (request, response) => {
+  const input = deleteAccountSchema.parse(request.body);
+  const locals = responseLocals(request);
+  await deleteAccount(locals.userId, locals.sessionId, input);
   response.status(204).send();
 }));
 

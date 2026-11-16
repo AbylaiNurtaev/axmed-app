@@ -1,4 +1,7 @@
 {
+  "cli": {
+    "appVersionSource": "local"
+  },
   "build": {
     "development": {
       "developmentClient": true,
@@ -8,6 +11,30 @@
       },
       "ios": {
         "simulator": false
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "developmentClient": false,
+      "environment": "production",
+      "credentialsSource": "remote",
+      "env": {
+        "EXPO_NO_CAPABILITY_SYNC": "1",
+        "EXPO_PUBLIC_API_URL": "https://axmed-api-production.up.railway.app",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "1067093205466-sts78mosd7tm2cafg1vsn9lkk0trj6bi.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "1067093205466-lt209nb5s2p05dovapkp9u7ac6qspu6l.apps.googleusercontent.com"
+      },
+      "ios": {
+        "simulator": false,
+        "buildConfiguration": "Release"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6763402577",
+        "appleTeamId": "SAZ93YMRD7"
       }
     }
   }

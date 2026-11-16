@@ -21,7 +21,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.1.0</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -46,7 +46,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>16</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>12.0</string>
 	<key>LSRequiresIPhoneOS</key>
@@ -59,7 +59,10 @@
 		<true/>
 	</dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>AxMed использует Bluetooth для поиска и подключения вашего фитнес-браслета.</string>
+	<string>AxMed использует Bluetooth для поиска фитнес-браслета и получения измерений с весов.</string>
+	<!-- Required by the bundled SDK's media API references; AxMed does not request media-library access. -->
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Библиотека браслета содержит функции управления музыкой. AxMed не запрашивает доступ к медиатеке, и для функций здоровья он не нужен.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>AxMed использует камеру, чтобы сделать фото профиля.</string>
 	<key>NSBonjourServices</key>

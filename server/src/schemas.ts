@@ -48,6 +48,12 @@ export const changePasswordSchema = z.object({
 
 export const sessionIdSchema = z.string().uuid();
 
+export const deleteAccountSchema = z.discriminatedUnion("method", [
+  z.object({ confirmation: z.literal("DELETE"), method: z.literal("password"), password: z.string().min(1).max(128) }).strict(),
+  z.object({ confirmation: z.literal("DELETE"), method: z.literal("google"), idToken: z.string().min(20).max(20_000) }).strict(),
+  z.object({ confirmation: z.literal("DELETE"), method: z.literal("apple"), idToken: z.string().min(20).max(20_000), authorizationCode: z.string().min(1).max(4_000) }).strict()
+]);
+
 export const socialAuthSchema = z.object({
   provider: z.enum(["google", "apple"]),
   mode: z.enum(["signUp", "signIn"]),

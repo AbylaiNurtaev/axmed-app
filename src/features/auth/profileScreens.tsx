@@ -1,7 +1,7 @@
 import { useAuthStyles, type AuthColors } from "./authTheme";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRef, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { RegistrationBasics } from "./types";
 import { AuthScaffold, AuthHeader, FormField, InfoBanner, PageTitle, PrimaryButton, SecondaryButton, StepHeader, Surface } from "./onboardingUi";
 
@@ -184,7 +184,7 @@ const consentItems: {
     key: "privacy",
     title: "Политика конфиденциальности",
     description: "Как мы защищаем ваши данные",
-    documentText: "Мы собираем данные, которые вы указываете в приложении, чтобы сохранять профиль, анализировать показатели и показывать рекомендации.\n\nМы не продаём персональные данные и не передаём их третьим лицам без законного основания или вашего согласия. Доступ к данным ограничен и защищён.\n\nВы можете запросить исправление или удаление своих данных через службу поддержки."
+    documentText: "Мы сохраняем данные аккаунта, сведения профиля, добавленные вами показатели здоровья и данные подключённых устройств, чтобы предоставлять функции AxMed. Для работы сервиса используются поставщики хранения данных, отправки писем и входа через Apple или Google.\n\nМы не продаём данные о здоровье и не используем их для рекламного отслеживания. Вы сами выбираете, какие дополнительные данные и разрешения предоставить.\n\nУдалить аккаунт и связанные данные можно в приложении: Профиль → Безопасность → Удалить аккаунт. По вопросам исправления данных можно обратиться на nurallinbekjan@gmail.com. Подробности о хранении, поставщиках и сроках удаления приведены в полной политике."
   },
   {
     key: "health",
@@ -196,7 +196,7 @@ const consentItems: {
 
 export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onContinue: () => void; onExit: () => void }) {
   const { styles, authColors } = useAuthStyles(createStyles);
-  const [checked, setChecked] = useState<Record<ConsentKey, boolean>>({ terms: true, privacy: true, health: true });
+  const [checked, setChecked] = useState<Record<ConsentKey, boolean>>({ terms: false, privacy: false, health: false });
   const [activeDocument, setActiveDocument] = useState<(typeof consentItems)[number] | null>(null);
   const allChecked = consentItems.every((item) => checked[item.key]);
 
@@ -286,6 +286,11 @@ export function ConsentsScreen({ onBack, onContinue }: { onBack: () => void; onC
               <Text style={styles.documentBody}>{activeDocument?.documentText}</Text>
             </ScrollView>
             <View style={styles.documentAction}>
+              {activeDocument?.key === "privacy" && (
+                <SecondaryButton title="Полная политика конфиденциальности" onPress={() => {
+                  void Linking.openURL("https://axmed-api-production.up.railway.app/legal/privacy-policy.html").catch(() => {});
+                }} />
+              )}
               <PrimaryButton title="Понятно" onPress={() => setActiveDocument(null)} />
             </View>
           </View>

@@ -31,6 +31,23 @@ CREATE TABLE IF NOT EXISTS auth_identities (
   UNIQUE (provider, provider_user_id)
 );
 
+-- No account FK: keep only the storage prefix until file deletion succeeds,
+-- even after the account and all of its relational records are gone.
+CREATE TABLE IF NOT EXISTS account_deletion_file_jobs (
+  id uuid PRIMARY KEY,
+  object_prefix text NOT NULL UNIQUE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  retry_after timestamptz NOT NULL DEFAULT now(),
+  attempts integer NOT NULL DEFAULT 0
+);
+
+-- Server-only credential envelopes. No HTTP endpoint can read or write these.
+CREATE TABLE IF NOT EXISTS service_credentials (
+  id text PRIMARY KEY,
+  value jsonb NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS email_verification_codes (
   id uuid PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,

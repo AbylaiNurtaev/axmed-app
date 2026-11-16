@@ -57,6 +57,9 @@ target 'AxMed' do
   )
 
   post_install do |installer|
+# @generated begin axmed-hband-bitcode-strip - expo prebuild (DO NOT MODIFY) sync-5ee2b376ff3eceddabda7d95587b61a90f5efb35
+    system(ENV['NODE_BINARY'] || 'node', File.join(__dir__, '..', 'scripts', 'strip-hband-bitcode.cjs')) || raise('AxMed HBand bitcode strip failed')
+# @generated end axmed-hband-bitcode-strip
 # @generated begin axmed-fmdb-system-header - expo prebuild (DO NOT MODIFY) sync-b4f3b2943955d72987d8306aff595e5c0d93fef1
     system(ENV['NODE_BINARY'] || 'node', File.join(__dir__, '..', 'scripts', 'patch-fmdb-ios.cjs'), __dir__) || raise('AxMed FMDB header fix failed')
 # @generated end axmed-fmdb-system-header

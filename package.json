@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "devices:test": "node --experimental-strip-types --test tests/device-gateway.test.mjs tests/device-bindings.test.mjs tests/device-sync.test.mjs tests/scale-mock.test.mjs tests/health-export.test.mjs tests/plan-model.test.mjs",
-    "devices:test-build": "node --test tests/fmdb-build-fix.test.cjs",
+    "devices:test-build": "node --test tests/fmdb-build-fix.test.cjs tests/hband-bitcode.test.cjs",
     "devices:verify-sdk": "node scripts/verify-hband-sdk.mjs",
     "devices:test-native": "node scripts/test-hband-parser.mjs",
     "devices:test-scale": "node scripts/test-lefu-scale-parser.mjs",

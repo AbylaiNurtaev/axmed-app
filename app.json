@@ -8,7 +8,7 @@
         "projectId": "ca415684-7238-461a-bb54-0764d41b6672"
       }
     },
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
@@ -16,11 +16,13 @@
     ],
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "16",
       "bundleIdentifier": "com.anonymous.pochka2new",
       "appleTeamId": "SAZ93YMRD7",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSBluetoothAlwaysUsageDescription": "AxMed использует Bluetooth для поиска фитнес-браслета и получения измерений с весов."
+        "NSBluetoothAlwaysUsageDescription": "AxMed использует Bluetooth для поиска фитнес-браслета и получения измерений с весов.",
+        "NSAppleMusicUsageDescription": "Библиотека браслета содержит функции управления музыкой. AxMed не запрашивает доступ к медиатеке, и для функций здоровья он не нужен."
       }
     },
     "android": {
@@ -49,6 +51,7 @@
       ],
       "expo-notifications",
       "./plugins/with-fmdb-system-header",
+      "./plugins/with-hband-bitcode-strip",
       "expo-sharing"
     ]
   }

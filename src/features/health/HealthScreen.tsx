@@ -318,6 +318,7 @@ function BraceletScreen({ connection, sync, latest, summary, samples, onBack, on
         digits={info.digits}
         delta={metricChange(samples, metric)}
         updatedAt={reading?.recordedAt}
+        demo={reading?.origin === "mock"}
         onPress={() => onMetric(metric)}
       /></AxReveal>;
     })}</View>
@@ -377,11 +378,11 @@ function calculateHealthFactors(summary: ReturnType<typeof readingSummary> | und
   const sleepHoursValue = sleepHours(summary?.sleepMinutes);
   const recovery = sleepHoursValue === undefined ? 0 : Math.min(100, Math.round((sleepHoursValue / 8) * 100));
   const bodyReading = scaleLatest.get("bodyScore")?.value;
-  const composition = bodyReading === undefined ? (scaleLatest.has("weight") ? 80 : 0) : Math.max(0, Math.min(100, Math.round(bodyReading)));
+  const composition = bodyReading === undefined ? 0 : Math.max(0, Math.min(100, Math.round(bodyReading)));
   const available = [activity, recovery, composition].filter(value => value > 0);
   const score = available.length ? Math.round(available.reduce((sum, value) => sum + value, 0) / available.length) : 0;
   const status = score >= 80 ? "Хорошее состояние" : score >= 60 ? "Стабильное состояние" : score > 0 ? "Есть точки роста" : "Нужны свежие данные";
-  return { activity, recovery, composition, score, status };
+  return { activity, recovery, composition, score, status, demo: scaleLatest.get("bodyScore")?.origin === "mock" };
 }
 
 function metricChange(samples: readonly DeviceReading[], metric: Metric) {
@@ -500,7 +501,7 @@ function HealthOverview({
         {initializing ? <View style={styles.stateSkeleton}><AxSkeleton width="48%" height={11} /><AxSkeleton width="72%" height={27} /><View style={styles.skeletonFactors}><AxSkeleton height={31} /><AxSkeleton height={31} /><AxSkeleton height={31} /></View></View> : <AxReveal delay={40}>
           <AxPressable accessibilityLabel="Подробный анализ состояния" onPress={() => onRoute({ name: "analysis" })} style={styles.stateCard} scale={0.985}>
             <View style={styles.stateCopy}>
-              <Text maxFontSizeMultiplier={1.3} style={styles.eyebrow}>СОСТОЯНИЕ СЕГОДНЯ</Text>
+              <Text maxFontSizeMultiplier={1.3} style={styles.eyebrow}>{factors.demo ? "УСЛОВНАЯ ОЦЕНКА · ЕСТЬ ДЕМО" : "УСЛОВНАЯ ОЦЕНКА СЕГОДНЯ"}</Text>
               <Text maxFontSizeMultiplier={1.3} style={styles.stateTitle}>{factors.status}</Text>
               <View style={styles.factorRow}>
                 <Factor label="Активность" value={factors.activity} color="#FFFFFF" delay={80} />
@@ -604,7 +605,7 @@ function AnalysisScreen({ braceletSummary, scaleLatest, onBack }: { braceletSumm
     { title: "Состав тела", score: health.composition, icon: "body-outline" as IconName, color: palette.blue, text: scaleLatest.has("weight") ? `${valueLabel(scaleLatest.get("weight")?.value, 2)} кг · последнее измерение` : "Выполните измерение" }
   ];
   return <HealthPage title="Состояние сегодня" subtitle="Как складывается общий результат" onBack={onBack}>
-    <View style={styles.analysisHero}><ScoreRing score={health.score} large /><Text maxFontSizeMultiplier={1.3} style={styles.analysisTitle}>{health.status}</Text><Text maxFontSizeMultiplier={1.3} style={styles.analysisText}>Сводный балл помогает быстро увидеть общую картину, но не заменяет консультацию специалиста.</Text></View>
+    <View style={styles.analysisHero}><ScoreRing score={health.score} large /><Text maxFontSizeMultiplier={1.3} style={styles.analysisTitle}>{health.status}</Text><Text maxFontSizeMultiplier={1.3} style={styles.analysisText}>{health.demo ? "Оценка содержит демонстрационные показатели состава тела. " : ""}Сводный балл — условная оценка по доступным данным. Он не является медицинским заключением и не заменяет консультацию специалиста.</Text></View>
     <View style={styles.factorCards}>{factors.map(factor => <View key={factor.title} style={styles.factorCard}><View style={[styles.factorCardIcon, { backgroundColor: palette.surfaceMuted }]}><Ionicons name={factor.icon} size={21} color={factor.color} /></View><View style={styles.flex}><Text maxFontSizeMultiplier={1.3} style={styles.factorCardTitle}>{factor.title}</Text><Text maxFontSizeMultiplier={1.3} style={styles.cardSubtitle}>{factor.text}</Text><View style={styles.factorTrack}><View style={[styles.factorFill, { width: `${factor.score}%`, backgroundColor: factor.color }]} /></View></View><Text maxFontSizeMultiplier={1.3} style={[styles.factorScore, { color: factor.color }]}>{factor.score || "—"}</Text></View>)}</View>
   </HealthPage>;
 }
@@ -642,9 +643,9 @@ function SectionHeader({ title, subtitle, action, badge, onPress }: { title: str
   return <View style={styles.sectionHeader}><View style={styles.flex}><View style={styles.sectionTitleRow}><Text maxFontSizeMultiplier={1.3} style={styles.sectionTitle}>{title}</Text>{badge ? <View style={styles.demoBadge}><Text maxFontSizeMultiplier={1.3} style={styles.demoBadgeText}>{badge}</Text></View> : null}</View>{subtitle ? <Text maxFontSizeMultiplier={1.3} style={styles.sectionSubtitle}>{subtitle}</Text> : null}</View>{action && onPress ? <Pressable accessibilityRole="button" onPress={onPress} style={styles.sectionAction}><Text maxFontSizeMultiplier={1.3} style={styles.sectionActionText}>{action}</Text><Ionicons name="chevron-forward" size={15} color={palette.green} /></Pressable> : null}</View>;
 }
 
-function MetricCard({ info, value, unit, digits, delta, updatedAt, onPress }: { info: MetricInfo; value?: number; unit: string; digits: number; delta?: number; updatedAt?: string; onPress: () => void }) {
+function MetricCard({ info, value, unit, digits, delta, updatedAt, demo = false, onPress }: { info: MetricInfo; value?: number; unit: string; digits: number; delta?: number; updatedAt?: string; demo?: boolean; onPress: () => void }) {
   const deltaLabel = delta === undefined ? "Последнее значение" : `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${valueLabel(Math.abs(delta), digits)} ${unit}`;
-  return <AxPressable accessibilityLabel={`${info.label}: ${valueLabel(value, digits)} ${unit}`} onPress={onPress} style={styles.metricCard}><View style={styles.metricCardTop}><View style={[styles.metricIcon, { backgroundColor: info.soft }]}><Ionicons name={info.icon} size={19} color={info.color} /></View><Ionicons name="chevron-forward" size={15} color={palette.muted} /></View><Text maxFontSizeMultiplier={1.3} style={styles.metricCardLabel}>{info.shortLabel}</Text><Text maxFontSizeMultiplier={1.3} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.78} style={styles.metricCardValue}>{valueLabel(value, digits)} <Text maxFontSizeMultiplier={1.3} style={styles.metricCardUnit}>{value !== undefined ? unit : ""}</Text></Text><Text maxFontSizeMultiplier={1.3} style={[styles.metricCardDelta, delta !== undefined && { color: info.color }]}>{value === undefined ? "Нет данных" : deltaLabel}</Text>{updatedAt ? <Text maxFontSizeMultiplier={1.3} style={styles.metricCardTime}>{dateTimeLabel(updatedAt)}</Text> : null}</AxPressable>;
+  return <AxPressable accessibilityLabel={`${demo ? "Демонстрационные данные. " : ""}${info.label}: ${valueLabel(value, digits)} ${unit}`} onPress={onPress} style={styles.metricCard}><View style={styles.metricCardTop}><View style={[styles.metricIcon, { backgroundColor: info.soft }]}><Ionicons name={info.icon} size={19} color={info.color} /></View>{demo ? <Text style={styles.demoBadgeText}>ДЕМО</Text> : <Ionicons name="chevron-forward" size={15} color={palette.muted} />}</View><Text maxFontSizeMultiplier={1.3} style={styles.metricCardLabel}>{info.shortLabel}</Text><Text maxFontSizeMultiplier={1.3} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.78} style={styles.metricCardValue}>{valueLabel(value, digits)} <Text maxFontSizeMultiplier={1.3} style={styles.metricCardUnit}>{value !== undefined ? unit : ""}</Text></Text><Text maxFontSizeMultiplier={1.3} style={[styles.metricCardDelta, delta !== undefined && { color: info.color }]}>{value === undefined ? "Нет данных" : deltaLabel}</Text>{updatedAt ? <Text maxFontSizeMultiplier={1.3} style={styles.metricCardTime}>{dateTimeLabel(updatedAt)}</Text> : null}</AxPressable>;
 }
 
 function PeriodTabs({ value, onChange, compact = false }: { value: Period; onChange: (value: Period) => void; compact?: boolean }) {
