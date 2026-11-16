@@ -13,6 +13,17 @@
         "simulator": false
       }
     },
+    "store-capture": {
+      "extends": "production",
+      "distribution": "internal",
+      "env": {
+        "AXMED_HBAND_SIMULATOR_STUB": "1"
+      },
+      "ios": {
+        "simulator": true,
+        "buildConfiguration": "Release"
+      }
+    },
     "production": {
       "distribution": "store",
       "developmentClient": false,

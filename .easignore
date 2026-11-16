@@ -4,6 +4,8 @@ dist/
 build/
 coverage/
 .git/
+.github/
+scripts/ios-capture/
 figma/
 docs/
 server/
