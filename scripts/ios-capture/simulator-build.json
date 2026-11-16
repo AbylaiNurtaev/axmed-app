@@ -1,0 +1,13 @@
+{
+  "buildId": "b4fb4a1b-a626-44dd-a5d3-2d163664897d",
+  "version": "1.1.0",
+  "buildNumber": "16",
+  "bundleIdentifier": "com.anonymous.pochka2new",
+  "platform": "iPhoneSimulator",
+  "deviceFamilies": [
+    1,
+    2
+  ],
+  "sha256": "f9e0777902b2b706773ed48541d3b8c321180b628c6106b9bdd320691890ef65",
+  "archiveBytes": 21756780
+}

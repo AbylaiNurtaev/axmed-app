@@ -12,47 +12,55 @@ concurrency:
 jobs:
   capture:
     runs-on: macos-26
-    timeout-minutes: 45
-    env:
-      AXMED_HBAND_SIMULATOR_STUB: '1'
-      EXPO_NO_DOTENV: '1'
-      EXPO_NO_CAPABILITY_SYNC: '1'
-      NODE_ENV: production
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-          cache: npm
-      - name: Prepare native dependencies
+      - name: Download the verified simulator build
+        env:
+          AXMED_SIMULATOR_ARCHIVE_URL: ${{ secrets.AXMED_SIMULATOR_ARCHIVE_URL }}
         run: |
-          npm ci --include=dev
-          node -e 'for(const [key,value] of Object.entries(require("./eas.json").build.production.env)) require("fs").appendFileSync(process.env.GITHUB_ENV, key+"="+value+"\n")'
-          node -e 'const fs=require("fs");const file="ios/Podfile.properties.json";const config=JSON.parse(fs.readFileSync(file));config["ios.buildReactNativeFromSource"]="false";fs.writeFileSync(file,JSON.stringify(config));'
-          echo "NODE_BINARY=$(command -v node)" >> "$GITHUB_ENV"
-          pod install --project-directory=ios > pod-install.log 2>&1 || { tail -n 80 pod-install.log; exit 1; }
-      - name: Build simulator app
-        run: |
-          xcodebuild -workspace ios/AxMed.xcworkspace -scheme AxMed -configuration Release -sdk iphonesimulator -derivedDataPath .capture-build CODE_SIGNING_ALLOWED=NO build > native-build.log 2>&1 || { tail -n 100 native-build.log; exit 1; }
+          node -e 'const u=new URL(process.env.AXMED_SIMULATOR_ARCHIVE_URL);if(u.protocol!=="https:"||u.hostname!=="expo.dev"||!u.pathname.startsWith("/artifacts/eas/"))throw Error("Unexpected simulator archive source")'
+          curl --fail --location --retry 2 "$AXMED_SIMULATOR_ARCHIVE_URL" --output .capture-app.archive
+          node -e 'const fs=require("fs"),c=require("crypto");const expected=require("./scripts/ios-capture/simulator-build.json");if(c.createHash("sha256").update(fs.readFileSync(".capture-app.archive")).digest("hex")!==expected.sha256)throw Error("Simulator archive checksum mismatch")'
+          tar -tf .capture-app.archive > .capture-archive-files.txt
+          node -e 'const names=require("fs").readFileSync(".capture-archive-files.txt","utf8").trim().split("\n");if(names.some(name=>name.startsWith("/")||name.split("/").includes("..")))throw Error("Unsafe archive path")'
+          mkdir -p .capture-app
+          tar -xf .capture-app.archive -C .capture-app
       - name: Prepare UI capture project
         env:
           AXMED_PREVIEW_CREDENTIALS: ${{ secrets.AXMED_PREVIEW_CREDENTIALS }}
         run: ruby scripts/ios-capture/create-project.rb
       - name: Capture iPhone and iPad
         run: |
-          mkdir -p artifacts/screenshots
+          mkdir -p artifacts/screenshots artifacts/diagnostics
+          app=$(find .capture-app -maxdepth 3 -type d -name AxMed.app -print -quit)
+          test -n "$app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Info.plist")" = '16'
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleSupportedPlatforms:0' "$app/Info.plist")" = 'iPhoneSimulator'
           xcrun simctl list devices available -j > .capture-devices.json
-          node -e 'const all=Object.entries(require("./.capture-devices.json").devices).sort(([a],[b])=>b.localeCompare(a,undefined,{numeric:true})).flatMap(([,devices])=>devices);for(const [kind,pattern] of [["iphone-6.9",/iPhone (17|16) Pro Max/],["ipad-13",/iPad Pro 13-inch/]]){const device=all.find(item=>pattern.test(item.name));if(!device)throw Error("No compatible simulator: "+kind);console.log(kind+"\t"+device.udid)}' > .capture-targets.tsv
+          node -e 'const all=Object.entries(require("./.capture-devices.json").devices).filter(([runtime])=>runtime.includes(".iOS-")).sort(([a],[b])=>a.localeCompare(b,undefined,{numeric:true})).flatMap(([,devices])=>devices);for(const [kind,pattern] of [["iphone-6.9",/iPhone (17|16) Pro Max/],["ipad-13",/iPad Pro 13-inch/]]){const device=all.find(item=>pattern.test(item.name));if(!device)throw Error("No compatible simulator: "+kind);console.log(kind+"\t"+device.udid)}' > .capture-targets.tsv
           while IFS=$'\t' read -r kind udid; do
             xcrun simctl boot "$udid"
-            xcrun simctl bootstatus "$udid" -b
+            node scripts/ios-capture/run-command.cjs 600 xcrun simctl bootstatus "$udid" -b
             xcrun simctl ui "$udid" appearance light
             xcrun simctl status_bar "$udid" override --time '9:41' --dataNetwork wifi --wifiMode active --wifiBars 3 --batteryState charged --batteryLevel 100
-            xcrun simctl install "$udid" .capture-build/Build/Products/Release-iphonesimulator/AxMed.app
-            xcodebuild -project scripts/ios-capture/AxMedCapture.xcodeproj -scheme AxMedCaptureTests -destination "platform=iOS Simulator,id=$udid" -configuration Debug -derivedDataPath .capture-ui CODE_SIGNING_ALLOWED=NO test > ui-capture.log 2>&1 || { tail -n 100 ui-capture.log; exit 1; }
-            container=$(xcrun simctl get_app_container "$udid" com.axmed.capturetests.xctrunner data)
+            xcrun simctl install "$udid" "$app"
+            capture_rc=0
+            node scripts/ios-capture/run-command.cjs 240 xcodebuild -project scripts/ios-capture/AxMedCapture.xcodeproj -scheme AxMedCaptureTests -destination "platform=iOS Simulator,id=$udid" -destination-timeout 60 -parallel-testing-enabled NO -configuration Debug -derivedDataPath .capture-ui -test-timeouts-enabled YES -maximum-test-execution-time-allowance 180 -default-test-execution-time-allowance 180 CODE_SIGNING_ALLOWED=NO test > ui-capture.log 2>&1 || capture_rc=$?
+            container=$(xcrun simctl get_app_container "$udid" com.axmed.capturetests.xctrunner data 2>/dev/null || true)
             mkdir -p "artifacts/screenshots/$kind"
-            cp "$container/Documents/AxMedCaptures/"*.png "artifacts/screenshots/$kind/"
+            if [ -n "$container" ] && [ -d "$container/Documents/AxMedCaptures" ]; then
+              cp "$container/Documents/AxMedCaptures/"*.png "artifacts/screenshots/$kind/"
+            fi
+            if [ "$capture_rc" -ne 0 ]; then
+              xcrun simctl io "$udid" screenshot "artifacts/diagnostics/$kind-failure.png" || true
+              tail -n 100 ui-capture.log
+              exit "$capture_rc"
+            fi
+            test "$(find "artifacts/screenshots/$kind" -name '*.png' | wc -l | tr -d ' ')" -eq 4
             xcrun simctl shutdown "$udid"
           done < .capture-targets.tsv
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -62,3 +70,10 @@ jobs:
           path: artifacts/screenshots/**/*.png
           if-no-files-found: warn
           retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: failure()
+        with:
+          name: axmed-capture-diagnostics
+          path: artifacts/diagnostics/*.png
+          if-no-files-found: warn
+          retention-days: 3

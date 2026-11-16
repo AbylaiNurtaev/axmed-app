@@ -26,7 +26,9 @@ credentials = JSON.parse(ENV.fetch('AXMED_PREVIEW_CREDENTIALS'))
 puts "::add-mask::#{credentials.fetch('password')}"
 file = File.join(project.path, 'xcshareddata/xcschemes/AxMedCaptureTests.xcscheme')
 document = REXML::Document.new(File.read(file))
-variables = document.elements['Scheme/TestAction'].add_element('EnvironmentVariables')
+test_action = document.elements['Scheme/TestAction']
+test_action.attributes['shouldUseLaunchSchemeArgsEnv'] = 'NO'
+variables = test_action.add_element('EnvironmentVariables')
 {'AXMED_PREVIEW_EMAIL' => credentials.fetch('email'), 'AXMED_PREVIEW_PASSWORD' => credentials.fetch('password')}.each do |key, value|
   variables.add_element('EnvironmentVariable', {'key' => key, 'value' => value, 'isEnabled' => 'YES'})
 end
