@@ -23,6 +23,7 @@ scheme.add_test_target(target)
 scheme.test_action.build_configuration = 'Debug'
 scheme.save_as(project.path, 'AxMedCaptureTests', true)
 credentials = JSON.parse(ENV.fetch('AXMED_PREVIEW_CREDENTIALS'))
+puts "::add-mask::#{credentials.fetch('password')}"
 file = File.join(project.path, 'xcshareddata/xcschemes/AxMedCaptureTests.xcscheme')
 document = REXML::Document.new(File.read(file))
 variables = document.elements['Scheme/TestAction'].add_element('EnvironmentVariables')

@@ -23,3 +23,4 @@ credentials.json
 *.jks
 *.ipa
 *.log
+scripts/ios-capture/AxMedCapture.xcodeproj/
