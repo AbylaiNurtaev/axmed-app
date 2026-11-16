@@ -7,6 +7,9 @@ import { config } from "../src/config.js";
 import { inTransaction, migrateDatabase, pool, query } from "../src/database.js";
 import { createSession, hashPassword, type SessionResponse } from "../src/security.js";
 import { createAccountDeletionService } from "../src/accountDeletionService.js";
+import { queueAccountPhotoCleanupSql } from "../src/accountDeletionFiles.js";
+import { uploadAvatar } from "../src/profileService.js";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 let server: Server;
 let base: string;
@@ -112,4 +115,30 @@ test("Google-linked accounts can be deleted using a verified matching Google ide
   const remove = createAccountDeletionService({ verifyIdentity: async provider => ({ provider, subject: `provider-${current.id}`, email: null, emailVerified: true }), revokeApple: async () => { throw Error("Google deletion must not revoke Apple"); } });
   await remove(current.id, current.sessionId, { confirmation: "DELETE", method: "google", idToken: "test-fixture-token-value" });
   assert.equal(await exists(current.id), false);
+});
+
+test("an avatar finishing after account deletion queues cleanup again and invalidates stale workers", async t => {
+  const current = await fixture();
+  const prefix = `users/${current.id}/profile/`;
+  const oldJob = randomUUID();
+  await query(queueAccountPhotoCleanupSql, [oldJob, prefix]);
+  const previous = { AWS_ACCESS_KEY: config.AWS_ACCESS_KEY, AWS_SECRET_KEY: config.AWS_SECRET_KEY, AWS_BUCKET_NAME: config.AWS_BUCKET_NAME, AWS_S3_REGION: config.AWS_S3_REGION };
+  Object.assign(config, { AWS_ACCESS_KEY: "fixture", AWS_SECRET_KEY: "fixture", AWS_BUCKET_NAME: "fixture", AWS_S3_REGION: "us-east-1" });
+  t.mock.method(S3Client.prototype, "send", async (command: unknown) => {
+    assert.ok(command instanceof PutObjectCommand);
+    // Simulate a deletion completing while this upload is in flight.
+    await query("DELETE FROM users WHERE id = $1", [current.id]);
+    return {};
+  });
+  try {
+    await assert.rejects(uploadAvatar(current.id, "photo.png", "image/png", "AA=="), { status: 401, code: "UNAUTHORIZED" });
+    const queued = (await query<{ id: string }>("SELECT id FROM account_deletion_file_jobs WHERE object_prefix = $1", [prefix])).rows[0]!;
+    assert.ok(queued); assert.notEqual(queued.id, oldJob);
+    // The old worker cannot remove a newly queued generation.
+    await query("DELETE FROM account_deletion_file_jobs WHERE id = $1", [oldJob]);
+    assert.equal((await query("SELECT id FROM account_deletion_file_jobs WHERE id = $1", [queued.id])).rowCount, 1);
+  } finally {
+    Object.assign(config, previous);
+    t.mock.restoreAll();
+  }
 });

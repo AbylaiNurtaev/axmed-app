@@ -6,7 +6,7 @@ import { ApiError } from "./errors.js";
 import { verifyPassword } from "./security.js";
 import { verifySocialIdentity } from "./social.js";
 import { appleRevocationConfigured, revokeAppleAuthorization } from "./appleRevocation.js";
-import { processAccountDeletionFiles } from "./accountDeletionFiles.js";
+import { processAccountDeletionFiles, queueAccountPhotoCleanupSql } from "./accountDeletionFiles.js";
 import type { deleteAccountSchema } from "./schemas.js";
 
 type Input = z.infer<typeof deleteAccountSchema>;
@@ -55,7 +55,7 @@ export function createAccountDeletionService(dependencies = {
       if (input.method !== "apple" && currentIdentities.rows.some(identity => identity.provider === "apple")) throw new ApiError(409, "APPLE_CONFIRMATION_REQUIRED", "Повторите подтверждение с Apple.");
       if (input.method !== "password" && !currentIdentities.rows.some(identity => identity.provider === input.method && identity.provider_user_id === verifiedSubject)) throw new ApiError(409, "DELETION_REAUTH_REQUIRED", "Способ входа изменился. Повторите подтверждение.");
       if (current.avatar_url || config.AWS_BUCKET_NAME) {
-        await client.query("INSERT INTO account_deletion_file_jobs (id, object_prefix) VALUES ($1, $2) ON CONFLICT (object_prefix) DO NOTHING", [randomUUID(), `users/${userId}/profile/`]);
+        await client.query(queueAccountPhotoCleanupSql, [randomUUID(), `users/${userId}/profile/`]);
       }
       // All account-owned profile, device, measurement, plan and session tables
       // reference users through ON DELETE CASCADE.

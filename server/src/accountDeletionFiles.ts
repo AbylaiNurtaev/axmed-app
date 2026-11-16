@@ -5,6 +5,11 @@ import { query } from "./database.js";
 let running = false;
 const prefixPattern = /^users\/[0-9a-f-]{36}\/profile\/$/i;
 
+// A new generation must survive a worker finishing an older cleanup of the
+// same prefix, for example when an avatar upload completes after deletion.
+export const queueAccountPhotoCleanupSql = `INSERT INTO account_deletion_file_jobs (id, object_prefix) VALUES ($1, $2)
+  ON CONFLICT (object_prefix) DO UPDATE SET id = EXCLUDED.id, retry_after = now(), attempts = 0`;
+
 export async function purgeExpiredSecurityCounters() {
   await query("DELETE FROM login_attempts WHERE window_started_at < now() - interval '30 days' AND (blocked_until IS NULL OR blocked_until < now())");
   await query("DELETE FROM password_reset_requests WHERE greatest(window_started_at, last_sent_at) < now() - interval '30 days'");

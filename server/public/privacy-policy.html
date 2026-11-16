@@ -27,12 +27,14 @@
       <li><strong>Connected devices:</strong> device name, device identifier, type and synchronisation information. Saved bindings associate your selected tracker or scale with your account.</li>
       <li><strong>Your content and preferences:</strong> goals, tasks, habits, progress entries, reminders, units, theme and other settings.</li>
       <li><strong>Service and security information:</strong> sign-in sessions and limited request metadata, including IP address and user-agent information, used to operate the service and protect accounts.</li>
+      <li><strong>Google sign-in technical data:</strong> when you choose Google, its SDK may process account and device identifiers, technical usage information and approximate location inferred from IP. Its privacy manifest declares authentication and analytics purposes, without advertising tracking.</li>
     </ul>
     <h2>2. How information is used</h2>
     <p>Information is used to maintain your account, verify sign-in, deliver verification and password-recovery codes, save your profile and device bindings, synchronise measurements, display your history and goal progress, and provide reminders you enable. Some screens include demonstration values; these values are not measurements taken from your body.</p>
     <h2>3. Storage and service providers</h2>
     <p>Account information, saved measurements, goals and device bindings are processed by the AxMed backend and its database. The backend is hosted on Railway. Apple and Google process authentication when you choose their sign-in options. An email delivery provider processes the messages needed for account verification and password recovery. If you upload a profile photo, the photo is uploaded to the configured AWS S3 storage. Photo upload is unavailable when storage is not configured.</p>
     <p>Bluetooth communication connects your phone to a compatible device. When you synchronise, supported measurements and the device information needed to save them are sent to the AxMed backend and associated with your account.</p>
+    <p>Google describes its sign-in processing in its <a href="https://developers.google.com/identity/sign-in/ios/app-privacy">SDK data disclosure</a>. AxMed does not send wellness measurements to Google through this sign-in integration.</p>
     <h2>4. Tracking and advertising</h2>
     <p>AxMed does not use these data for cross-app advertising tracking or sell health and fitness information to data brokers. Account and measurement information is used for the app's features and personal wellness displays.</p>
     <h2>5. Your choices, retention and deletion requests</h2>
@@ -54,12 +56,14 @@
       <li><strong>Подключённые устройства:</strong> название, идентификатор, тип и сведения о синхронизации. Сохранённая привязка связывает выбранный браслет или весы с вашим аккаунтом.</li>
       <li><strong>Ваши записи и настройки:</strong> цели, задачи, привычки, прогресс, напоминания, единицы измерения, тема и другие предпочтения.</li>
       <li><strong>Работа и защита сервиса:</strong> сессии входа и ограниченные технические сведения о запросах, в том числе IP-адрес и user-agent, необходимые для работы сервиса и защиты аккаунта.</li>
+      <li><strong>Технические данные входа через Google:</strong> если вы выбираете Google, SDK может обрабатывать идентификаторы аккаунта и устройства, сведения об использовании входа и примерное местоположение по IP. В его декларации указаны цели авторизации и аналитики без рекламного отслеживания.</li>
     </ul>
     <h2>2. Для чего используются данные</h2>
     <p>Для работы аккаунта, подтверждения входа, отправки кодов регистрации и восстановления пароля, сохранения профиля и привязок устройств, синхронизации измерений, отображения истории и прогресса целей, а также включённых вами напоминаний. Часть экранов содержит демонстрационные значения — они не являются измерениями вашего тела.</p>
     <h2>3. Хранение и поставщики услуг</h2>
     <p>Данные аккаунта, сохранённые измерения, цели и привязки устройств обрабатываются сервером AxMed и его базой данных. Сервер размещён на Railway. Apple и Google обрабатывают авторизацию, если вы выбираете соответствующий способ входа. Почтовый провайдер обрабатывает письма с кодами подтверждения и восстановления доступа. Загруженная вами фотография профиля загружается в настроенное хранилище AWS S3. Если хранилище не настроено, загрузка фото недоступна.</p>
     <p>Bluetooth соединяет телефон с совместимым устройством. При синхронизации поддерживаемые измерения и необходимые сведения об устройстве передаются на сервер AxMed и связываются с вашим аккаунтом.</p>
+    <p>Обработка входа описана в <a href="https://developers.google.com/identity/sign-in/ios/app-privacy">декларации Google</a>. AxMed не передаёт Google измерения самочувствия в рамках этой интеграции входа.</p>
     <h2>4. Отслеживание и реклама</h2>
     <p>AxMed не использует эти сведения для рекламного отслеживания между приложениями и не продаёт данные о здоровье и фитнесе брокерам данных. Данные аккаунта и измерений используются для функций приложения и персонального отображения показателей.</p>
     <h2>5. Ваш выбор, хранение и запросы на удаление</h2>

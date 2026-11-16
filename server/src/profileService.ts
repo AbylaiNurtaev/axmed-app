@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { ApiError } from "./errors.js";
 import { config } from "./config.js";
 import { query } from "./database.js";
+import { queueAccountPhotoCleanupSql } from "./accountDeletionFiles.js";
 
 export type ProfileUpdateInput = {
   fullName?: string | null;
@@ -109,6 +110,13 @@ export async function uploadAvatar(userId: string, fileName: string, mimeType: s
     [userId, avatarUrl]
   );
 
+  if (!result.rowCount) {
+    // Deletion may have already purged the prefix while PutObject was running.
+    // Keep a fresh cleanup job for this late object after the user row is gone.
+    await query(queueAccountPhotoCleanupSql, [randomUUID(), `users/${userId}/profile/`]);
+    throw new ApiError(401, "UNAUTHORIZED", "Аккаунт уже удалён или сессия истекла.");
+  }
+
   const previousKey = avatarObjectKey(current.avatarUrl, userId);
   if (previousKey) {
     try {
@@ -176,7 +184,8 @@ function cleanNullable(value: string | null) {
   return cleaned || null;
 }
 
-function toProfile(row: ProfileRow) {
+function toProfile(row: ProfileRow | undefined) {
+  if (!row) throw new ApiError(401, "UNAUTHORIZED", "Аккаунт уже удалён или сессия истекла.");
   return {
     id: row.id,
     email: row.email,
