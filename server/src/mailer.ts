@@ -1,6 +1,8 @@
 import nodemailer from "nodemailer";
 import { config } from "./config.js";
 import { ApiError } from "./errors.js";
+import { emailApiCredential } from "./emailConfiguration.js";
+import { sendWithEmailApi } from "./transactionalEmail.js";
 
 const smtpConfigured = Boolean(config.SMTP_HOST && config.SMTP_USER && config.SMTP_PASSWORD);
 const transporter = smtpConfigured
@@ -14,31 +16,29 @@ const transporter = smtpConfigured
     })
   : null;
 
-export function recoveryEmailConfigured() { return Boolean(config.RESEND_API_KEY || transporter); }
+export async function recoveryEmailConfigured() { return Boolean(await emailApiCredential() || transporter); }
 
 async function deliverMail(message: { to: string; subject: string; text: string; html?: string }) {
-  if (config.RESEND_API_KEY) {
-    try {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${config.RESEND_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: config.EMAIL_FROM || config.SMTP_FROM, ...message }),
-        signal: AbortSignal.timeout(15_000)
-      });
-      if (response.ok) return;
-      // Provider responses may contain recipients. Keep codes and personal data out of logs.
-      console.error(`Email provider rejected delivery (HTTP ${response.status})`);
-    } catch {
-      console.error("Email provider request failed");
-    }
-    throw new ApiError(503, "EMAIL_DELIVERY_FAILED", "Не удалось отправить письмо. Попробуйте позже.");
-  }
+  const credential = await emailApiCredential();
+  if (credential) return sendWithEmailApi(credential, message);
   if (!transporter) throw new ApiError(503, "EMAIL_NOT_CONFIGURED", "Отправка писем пока недоступна.");
-  await transporter.sendMail({ from: config.SMTP_FROM, ...message });
+  try {
+    await transporter.sendMail({ from: config.SMTP_FROM, ...message });
+  } catch (error) {
+    // SMTP errors can include recipients, credentials and message content.
+    // Log only recognised operational codes, never the raw provider error.
+    const failure = error as { code?: string; responseCode?: number };
+    const knownCodes = ["ETIMEDOUT", "ECONNECTION", "ESOCKET", "EDNS", "ETLS", "EAUTH", "ENOAUTH", "EENVELOPE", "EMESSAGE"];
+    console.error(JSON.stringify({ event: "email_delivery_failed", transport: "smtp",
+      code: failure?.code && knownCodes.includes(failure.code) ? failure.code : "UNKNOWN",
+      ...(Number.isInteger(failure?.responseCode) && failure.responseCode! >= 400 && failure.responseCode! <= 599
+        ? { responseCode: failure.responseCode } : {}) }));
+    throw new ApiError(503, "EMAIL_DELIVERY_FAILED", "Не удалось отправить письмо с кодом. Попробуйте позже.");
+  }
 }
 
 export async function sendVerificationCode(email: string, code: string) {
-  if (!recoveryEmailConfigured()) {
+  if (!await recoveryEmailConfigured()) {
     if (config.AUTH_EXPOSE_DEV_CODE && config.NODE_ENV !== "production") return { delivered: false };
     throw new ApiError(503, "EMAIL_NOT_CONFIGURED", "Отправка писем пока недоступна.");
   }

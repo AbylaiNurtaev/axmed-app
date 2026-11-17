@@ -33,6 +33,7 @@ const environmentSchema = z.object({
   SMTP_PASSWORD: z.string().default(""),
   SMTP_FROM: z.string().default("AxMed <no-reply@example.com>"),
   RESEND_API_KEY: z.string().default(""),
+  BREVO_API_KEY: z.string().default(""),
   EMAIL_FROM: z.string().default(""),
   AWS_ACCESS_KEY: z.string().default(""),
   AWS_SECRET_KEY: z.string().default(""),

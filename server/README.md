@@ -44,9 +44,12 @@ API слушает `0.0.0.0:4000`, health check: `GET /health`. Таблицы �
 - Google и Apple ID tokens проверяются по официальным JWKS, issuer, audience и expiration.
 
 Для временной локальной проверки можно задать `AUTH_FIXED_VERIFICATION_CODE=111111` в `server/.env`; сервер игнорирует эту настройку при `NODE_ENV=production`.
-Это касается только регистрации. Восстановление всегда требует SMTP, использует случайный код и не возвращает его в JSON.
+Это касается только регистрации. Восстановление всегда требует почтовый сервис, использует случайный код и не возвращает его в JSON.
 
 Из корня проекта: `npm run api:test:password-recovery` проверяет новую авторизацию на отдельной
 временной БД с локальным SMTP-приёмником. Настоящие адреса и данные основной базы не используются.
 
-Для production обязательно замените `JWT_SECRET`, настройте HTTPS, SMTP, точный `CORS_ORIGIN` и отключите `AUTH_EXPOSE_DEV_CODE`.
+Для production обязательно замените `JWT_SECRET`, настройте HTTPS, почтовый сервис, точный `CORS_ORIGIN` и отключите `AUTH_EXPOSE_DEV_CODE`.
+
+На Railway Free/Trial/Hobby обычный SMTP заблокирован: используйте Resend или Brevo
+через HTTPS API. Настройка и проверка описаны в [EMAIL_DELIVERY.md](EMAIL_DELIVERY.md).

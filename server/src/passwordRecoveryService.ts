@@ -18,7 +18,7 @@ type ChallengeRow = { id: string; code_hash: string; expires_at: Date; verified_
 // Deliberately independent of AUTH_FIXED_VERIFICATION_CODE / AUTH_EXPOSE_DEV_CODE.
 // The request response must not reveal whether an address owns a password account.
 export async function requestPasswordReset(email: string) {
-  if (!recoveryEmailConfigured()) throw new ApiError(503, "RECOVERY_UNAVAILABLE", "Восстановление пароля временно недоступно. Попробуйте позже.");
+  if (!await recoveryEmailConfigured()) throw new ApiError(503, "RECOVERY_UNAVAILABLE", "Восстановление пароля временно недоступно. Попробуйте позже.");
   const code = randomInt(100_000, 1_000_000).toString();
   const recipient = await inTransaction(async client => {
     const key = authSubject(email);
